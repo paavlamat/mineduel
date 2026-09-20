@@ -2,11 +2,15 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>MINE DUEL — Online Co-op & Duel</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#04050a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>MINE DUEL — Online Co-op &amp; Duel</title>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
   html,body{height:100%}
+  html{-webkit-text-size-adjust:100%}
   body{
     background:#04050a;
     background-image:
@@ -15,9 +19,11 @@
       radial-gradient(1200px 800px at 10% 100%, rgba(120,80,255,.09), transparent 60%);
     color:#cfe4ff;
     font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace;
-    display:flex;align-items:center;justify-content:center;
-    padding:18px 16px;min-height:100vh;overflow-x:hidden;
+    display:flex;flex-direction:column;align-items:center;
+    padding:0 16px calc(18px + env(safe-area-inset-bottom,0px));
+    min-height:100vh;overflow-x:hidden;
     -webkit-font-smoothing:antialiased;
+    overscroll-behavior-y:none;
   }
   body::before{
     content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
@@ -31,19 +37,28 @@
   }
   @keyframes gridpan{from{background-position:0 0,0 0}to{background-position:64px 64px,64px 64px}}
 
+  .hidden{display:none !important}
+
   #app{
     position:relative;z-index:1;
-    width:100%;max-width:1900px;
+    width:100%;max-width:1900px;margin:0 auto;
     display:flex;flex-direction:column;gap:20px;align-items:center;
+    padding-top:calc(env(safe-area-inset-top,0px));
   }
 
-  /* ── HEADER ── */
+  /* ── HEADER (sticky so the fullscreen button is ALWAYS visible) ── */
   header{
+    position:sticky;top:0;z-index:30;
     display:flex;align-items:center;justify-content:space-between;
-    gap:24px;width:100%;flex-wrap:wrap;padding:6px 10px;
+    gap:14px;width:100%;flex-wrap:wrap;
+    padding:10px 12px;
+    margin:0 -12px;
+    background:linear-gradient(180deg,rgba(4,5,10,.94),rgba(4,5,10,.62));
+    backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+    border-bottom:1px solid rgba(255,255,255,.06);
   }
   h1{
-    font-size:clamp(32px,4.6vw,54px);letter-spacing:.24em;font-weight:900;color:#fff;
+    font-size:clamp(22px,4.6vw,54px);letter-spacing:.24em;font-weight:900;color:#fff;
     text-shadow:0 0 14px rgba(77,216,255,.9),0 0 40px rgba(77,216,255,.5);
     animation:hglow 5s ease-in-out infinite;line-height:1;
   }
@@ -64,10 +79,7 @@
     padding:11px 22px;border-radius:99px;
     transition:all .3s;
   }
-  #statusbar .led{
-    width:10px;height:10px;border-radius:50%;background:#64748b;
-    transition:all .3s;
-  }
+  #statusbar .led{width:10px;height:10px;border-radius:50%;background:#64748b;transition:all .3s}
   #statusbar.live{border-color:rgba(52,211,153,.4);background:rgba(52,211,153,.08);color:#a7f3d0}
   #statusbar.live .led{background:#34d399;box-shadow:0 0 16px #34d399}
   #statusbar.warn{border-color:rgba(251,191,36,.4);background:rgba(251,191,36,.08);color:#fde68a}
@@ -75,7 +87,6 @@
   #statusbar.bad{border-color:rgba(255,61,129,.4);background:rgba(255,61,129,.08);color:#ffb1c7}
   #statusbar.bad .led{background:#ff3d81;box-shadow:0 0 16px #ff3d81}
 
-  /* Fullscreen button */
   .fs-btn{
     width:46px;height:46px;padding:0;flex:none;
     display:inline-flex;align-items:center;justify-content:center;
@@ -124,7 +135,7 @@
 
   .phead{
     display:flex;align-items:center;gap:12px;margin-bottom:14px;
-    position:relative;z-index:1;
+    position:relative;z-index:1;flex-wrap:wrap;
   }
   .dot{
     width:13px;height:13px;border-radius:50%;background:var(--pc);
@@ -138,27 +149,21 @@
     white-space:nowrap;font-weight:700;
   }
 
-  /* Stat row */
-  .pstats{
-    display:flex;gap:10px;margin-bottom:14px;
-    position:relative;z-index:1;
-  }
+  .pstats{display:flex;gap:10px;margin-bottom:14px;position:relative;z-index:1;flex-wrap:wrap}
   .pstat{
-    flex:1;min-width:0;
+    flex:1 1 0;min-width:80px;
     background:rgba(255,255,255,.03);
     border:1px solid rgba(255,255,255,.07);
     border-radius:13px;
-    padding:10px 16px;
+    padding:10px 14px;
     display:flex;flex-direction:column;gap:3px;
     transition:background .2s;
   }
   .pstat:hover{background:rgba(255,255,255,.05)}
-  .pstat .plabel{
-    font-size:9.5px;letter-spacing:.24em;color:#5d7fa8;font-weight:800;
-  }
+  .pstat .plabel{font-size:9.5px;letter-spacing:.2em;color:#5d7fa8;font-weight:800}
   .pstat .pval{
     font-family:'Courier New',monospace;
-    font-size:24px;font-weight:900;line-height:1;
+    font-size:clamp(18px,3.4vw,24px);font-weight:900;line-height:1;
     color:var(--pc);
     text-shadow:0 0 12px color-mix(in srgb, var(--pc) 60%, transparent);
     font-variant-numeric:tabular-nums;
@@ -177,7 +182,6 @@
     border-radius:99px;
   }
 
-  /* Territory split bar */
   .tbar{
     display:flex;height:9px;border-radius:99px;overflow:hidden;
     background:rgba(255,255,255,.05);margin-bottom:16px;position:relative;z-index:1;
@@ -194,10 +198,11 @@
   .boardwrap canvas{
     display:block;width:100%;height:auto;border-radius:16px;
     touch-action:none;cursor:crosshair;
+    -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;
     box-shadow:0 10px 40px -20px #000, inset 0 0 0 1px rgba(255,255,255,.03);
   }
 
-  /* ── FREEZE OVERLAY (hold screen) ── */
+  /* ── FREEZE OVERLAY ── */
   .stun{
     position:absolute;inset:0;display:none;flex-direction:column;
     align-items:center;justify-content:center;gap:6px;border-radius:16px;
@@ -213,30 +218,26 @@
   }
   .stun.on{display:flex;animation:stunpop .38s cubic-bezier(.34,1.56,.64,1)}
   .stun-emoji{
-    font-size:clamp(3rem,7vw,4.6rem);line-height:1;
+    font-size:clamp(2.2rem,7vw,4.6rem);line-height:1;
     animation:stunshine 1.4s ease-in-out infinite;
   }
   .stun-title{
-    font-size:clamp(1rem,2.2vw,1.5rem);letter-spacing:.42em;color:#fff;font-weight:900;
+    font-size:clamp(.85rem,2.2vw,1.5rem);letter-spacing:.42em;color:#fff;font-weight:900;
     text-shadow:0 0 16px #ef4444,0 0 32px #ef4444;
     padding-left:.42em;
   }
   .stun-timer{
     font-family:'Courier New',monospace;
-    font-size:clamp(2.6rem,6vw,3.6rem);font-weight:900;line-height:1;
+    font-size:clamp(2rem,6vw,3.6rem);font-weight:900;line-height:1;
     color:#fff;
-    text-shadow:
-      0 0 18px #ef4444,
-      0 0 36px #ef4444,
-      0 0 70px #ef4444;
+    text-shadow:0 0 18px #ef4444,0 0 36px #ef4444,0 0 70px #ef4444;
     font-variant-numeric:tabular-nums;
     letter-spacing:.02em;
     margin-top:2px;
   }
   .stun-sub{
     font-size:10.5px;letter-spacing:.34em;color:#ffb1c7;font-weight:800;
-    margin-top:4px;
-    padding-left:.34em;
+    margin-top:4px;padding-left:.34em;
   }
   @keyframes stunpop{from{transform:scale(.9);opacity:0}to{transform:scale(1);opacity:1}}
   @keyframes stunshine{
@@ -257,7 +258,7 @@
   .oppstun b{color:#fff;font-size:13px}
 
   /* ── CONTROLS ── */
-  .controls{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
+  .controls{display:flex;flex-direction:column;gap:14px;width:100%;align-items:center}
 
   button{
     font-family:inherit;font-size:14px;font-weight:900;letter-spacing:.14em;
@@ -267,6 +268,8 @@
     transition:all .18s cubic-bezier(.4,0,.2,1);
     box-shadow:0 6px 18px -10px #000,inset 0 1px 0 rgba(255,255,255,.08);
     position:relative;
+    -webkit-tap-highlight-color:transparent;
+    touch-action:manipulation;
   }
   button:hover{
     background:linear-gradient(180deg,rgba(34,211,238,.20),rgba(34,211,238,.08));
@@ -296,6 +299,32 @@
     box-shadow:0 0 30px -8px #ff3d81,inset 0 1px 0 rgba(255,255,255,.12);
   }
 
+  /* ── MOBILE TOUCH PAD ── */
+  .touchpad{
+    display:none;gap:20px;justify-content:center;align-items:center;
+    flex-wrap:wrap;width:100%;
+  }
+  @media (pointer:coarse){ .touchpad{display:flex} }
+  .touchpad.force{display:flex}
+  .dpad{
+    --tb:60px;
+    display:grid;
+    grid-template-columns:repeat(3,var(--tb));
+    grid-template-rows:repeat(3,var(--tb));
+    gap:8px;justify-content:center;
+  }
+  .dpad button{
+    width:100%;height:100%;padding:0;font-size:20px;border-radius:16px;
+    letter-spacing:0;line-height:1;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .dpad .u{grid-area:1/2/2/3}
+  .dpad .l{grid-area:2/1/3/2}
+  .dpad .r{grid-area:2/3/3/4}
+  .dpad .dn{grid-area:3/2/4/3}
+  .tp-actions{display:flex;flex-direction:column;gap:10px;min-width:150px}
+  .tp-actions button{width:100%;padding:16px 18px;font-size:13px}
+
   /* ── OVERLAYS ── */
   .overlay{
     position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;
@@ -303,6 +332,7 @@
     backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
     padding:22px;overflow-y:auto;
     animation:ovfade .28s ease;
+    -webkit-overflow-scrolling:touch;
   }
   .overlay.hidden{display:none}
   @keyframes ovfade{from{opacity:0}to{opacity:1}}
@@ -321,7 +351,7 @@
   }
   @keyframes ovpop{from{transform:scale(.94);opacity:0}to{transform:scale(1);opacity:1}}
   .ovbox h2{
-    margin:0 0 14px;font-size:clamp(28px,5vw,42px);
+    margin:0 0 14px;font-size:clamp(24px,5vw,42px);
     letter-spacing:.16em;color:#fff;font-weight:900;
     text-shadow:0 0 24px rgba(77,216,255,.4);
   }
@@ -333,25 +363,20 @@
   .ovbox > p b{font-weight:800}
   .ovbtns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:8px}
   .big{
-    font-size:100px;line-height:1;margin-bottom:18px;
+    font-size:clamp(60px,14vw,100px);line-height:1;margin-bottom:18px;
     filter:drop-shadow(0 0 34px rgba(251,191,36,.7));
     animation:bigpop .55s cubic-bezier(.34,1.56,.64,1);
   }
   @keyframes bigpop{from{transform:scale(.4) rotate(-15deg);opacity:0}to{transform:scale(1) rotate(0);opacity:1}}
   .cd{
-    font-size:clamp(110px,24vw,220px);font-weight:900;
+    font-size:clamp(90px,24vw,220px);font-weight:900;
     letter-spacing:.06em;color:#fff;line-height:1;
-    text-shadow:
-      0 0 34px #4dd8ff,
-      0 0 80px #4dd8ff,
-      0 0 150px #4dd8ff;
+    text-shadow:0 0 34px #4dd8ff,0 0 80px #4dd8ff,0 0 150px #4dd8ff;
     animation:cdpop .55s cubic-bezier(.34,1.56,.64,1);
   }
   @keyframes cdpop{0%{transform:scale(.3);opacity:0}60%{transform:scale(1.12)}100%{transform:scale(1);opacity:1}}
 
-  .statrow{
-    display:flex;gap:14px;justify-content:center;margin:20px 0 8px;flex-wrap:wrap;
-  }
+  .statrow{display:flex;gap:14px;justify-content:center;margin:20px 0 8px;flex-wrap:wrap}
   .statcard{
     flex:0 1 150px;
     background:rgba(255,255,255,.04);
@@ -360,10 +385,7 @@
     padding:14px 16px;
     text-align:center;
   }
-  .statcard .slabel{
-    font-size:9.5px;letter-spacing:.24em;color:#5d7fa8;font-weight:800;
-    margin-bottom:8px;
-  }
+  .statcard .slabel{font-size:9.5px;letter-spacing:.24em;color:#5d7fa8;font-weight:800;margin-bottom:8px}
   .statcard .sval{
     font-family:'Courier New',monospace;
     font-size:26px;font-weight:900;line-height:1;color:#4dd8ff;
@@ -378,7 +400,7 @@
     margin:26px 0 10px;flex-wrap:wrap;
   }
   .codeval{
-    font-size:clamp(46px,10vw,68px);font-weight:900;letter-spacing:.34em;
+    font-size:clamp(38px,10vw,68px);font-weight:900;letter-spacing:.34em;
     padding:18px 26px 18px 38px;border-radius:20px;color:#4dd8ff;
     background:linear-gradient(180deg,rgba(77,216,255,.12),rgba(77,216,255,.05));
     border:2px dashed rgba(77,216,255,.55);
@@ -397,7 +419,7 @@
   .joinrow{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:22px}
   .joinrow input{
     font-family:inherit;font-size:24px;font-weight:900;letter-spacing:.34em;
-    text-align:center;width:220px;padding:16px 12px;border-radius:16px;
+    text-align:center;width:min(220px,60vw);padding:16px 12px;border-radius:16px;
     color:#fff;text-transform:uppercase;
     background:rgba(255,255,255,.05);
     border:1px solid rgba(255,255,255,.18);outline:none;
@@ -428,7 +450,7 @@
   }
   .config-options{display:flex;gap:14px;flex-wrap:wrap}
   .opt{
-    flex:1 1 180px;padding:18px 22px;text-align:left;border-radius:16px;
+    flex:1 1 160px;padding:18px 22px;text-align:left;border-radius:16px;
     background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.02));
     border:1px solid rgba(255,255,255,.12);
     cursor:pointer;transition:all .2s cubic-bezier(.4,0,.2,1);
@@ -454,12 +476,23 @@
   .opt-name{font-size:16px;font-weight:900;letter-spacing:.14em;color:#e6edf7;margin-bottom:6px}
   .opt-desc{font-size:12px;color:#7c8aa5;letter-spacing:.05em;line-height:1.6}
 
+  /* confirm dialog */
+  #modal{z-index:70}
+  .confirm{padding:36px 32px;max-width:460px}
+  .confirm h2{font-size:clamp(20px,4vw,28px);margin-bottom:10px}
+  .confirm p{margin-bottom:22px;font-size:13px;line-height:1.9}
+
   @media(max-width:960px){
     #arena{flex-direction:column;align-items:stretch}
-    .panel{max-width:none;flex:1 1 auto}
+    .panel{max-width:none;flex:1 1 auto;padding:14px 14px 16px;border-radius:20px}
     .pkeys{display:none}
-    .ovbox{padding:36px 26px}
+    .ovbox{padding:34px 22px}
     h1{letter-spacing:.16em}
+    .pstat{padding:8px 10px}
+  }
+  @media(max-width:420px){
+    .tp-actions{min-width:130px}
+    .dpad{--tb:54px}
   }
 </style>
 </head>
@@ -486,6 +519,7 @@
 </div>
 
 <div id="overlay" class="overlay hidden"></div>
+<div id="modal" class="overlay hidden"></div>
 
 <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 <script>
@@ -495,16 +529,14 @@
 /* ══════════════════════════════════════════════════════════════
    CONFIG
    ══════════════════════════════════════════════════════════════ */
-const STUN_MS = 10000;            // 10s freeze (Duel + Territory)
+const STUN_MS = 10000;            /* 10s freeze (Duel + Territory) */
 const PREFIX  = 'mineduel-v5-';
-
-/* ── Bomb density: 1 bomb per 5 tiles, on every board ── */
 const TILES_PER_BOMB = 5;
+
 function bombsFor(rows, cols){
   return Math.max(1, Math.floor((rows * cols) / TILES_PER_BOMB));
 }
 
-/* Territory boards are significantly larger than duel/co-op boards. */
 const STYLES = {
   square: {
     id:'square', name:'Classic',
@@ -526,11 +558,17 @@ function styleDesc(s, terr){
 }
 
 const MODES = {
-  duel:      { id:'duel',      name:'Duel',      desc:'Race · 10s freeze on bomb' },
-  coop:      { id:'coop',      name:'Co-op',     desc:'Shared board · Bomb = loss' },
-  solo:      { id:'solo',      name:'Solo',      desc:'Practise · Bomb = loss' },
-  territory: { id:'territory', name:'Territory', desc:'Larger board · Claim land · Bomb = 10s freeze + tile' }
+  duel:      { id:'duel',      name:'Duel',      desc:'Race · bomb = 10s freeze' },
+  coop:      { id:'coop',      name:'Co-op',     desc:'Shared board · bomb = loss' },
+  solo:      { id:'solo',      name:'Solo',      desc:'Practise · bomb = loss' },
+  territory: { id:'territory', name:'Territory', desc:'Big board · claim land · bomb = freeze + tile' }
 };
+
+function dimsFor(config){
+  const s = STYLES[config.style] || STYLES.square;
+  if (config.mode === 'territory') return { cols:s.terrCols, rows:s.terrRows, mines:s.terrMines };
+  return { cols:s.cols, rows:s.rows, mines:s.mines };
+}
 
 /* ══════════════════════════════════════════════════════════════
    UTILS
@@ -549,13 +587,14 @@ function makeCode(){
   for (let i = 0; i < 4; i++) s += chars[Math.floor(Math.random() * chars.length)];
   return s;
 }
+function newSeed(){ return (Math.random() * 0xFFFFFFFF) >>> 0; }
+
 const clamp = (v,a,b) => v < a ? a : v > b ? b : v;
 const easeOutCubic = t => 1 - Math.pow(1 - t, 3);
 const easeOutBack  = t => {
   const c1 = 1.70158, c3 = c1 + 1;
   return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
 };
-const fmtTime = ms => (ms / 1000).toFixed(1) + 's';
 
 const SQ3 = Math.sqrt(3);
 const HEX_DIRS = [
@@ -600,13 +639,15 @@ function fallbackCopy(text){
     ta.style.top = '0'; ta.style.left = '0';
     ta.style.opacity = '0'; ta.style.pointerEvents = 'none';
     document.body.appendChild(ta);
-    ta.focus();
-    ta.select();
+    ta.focus(); ta.select();
     ta.setSelectionRange(0, text.length);
     const ok = document.execCommand('copy');
     document.body.removeChild(ta);
     return ok;
   } catch(e){ return false; }
+}
+function vibrate(ms){
+  if (navigator.vibrate){ try { navigator.vibrate(ms); } catch(e){} }
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -651,7 +692,7 @@ function genBoard(seed, style, cols, rows, mineCount, starts){
 
   for (let i = pool.length - 1; i > 0; i--){
     const j = Math.floor(rnd() * (i + 1));
-    [pool[i], pool[j]] = [pool[j], pool[i]];
+    const t = pool[i]; pool[i] = pool[j]; pool[j] = t;
   }
 
   const mines = new Set();
@@ -697,6 +738,7 @@ function makeBoardState(rows, cols){
     revealAt: Array.from({length: rows}, () => new Array(cols).fill(0)),
     flagAt:   Array.from({length: rows}, () => new Array(cols).fill(0)),
     count: 0,
+    safeRevealed: 0,
     flagCount: 0
   };
 }
@@ -711,11 +753,11 @@ function makePlayerState(start){
 }
 
 const G = {
-  config: null,
+  config: { mode:'duel', style:'square' },
   board: null,
   seed: 0,
-  role: 'none',
-  state: 'lobby',
+  role: 'none',          /* none | host | guest | solo */
+  state: 'lobby',        /* lobby | waiting | countdown | playing | over */
   myOwner: 1,
   theirOwner: 2,
   me: null,
@@ -726,19 +768,20 @@ const G = {
   viewThem: null,
   panelMe: null,
   panelThem: null,
-  cdEnd: 0,
-  cdLabel: '',
   peer: null,
   conn: null,
   startTime: 0,
-  endTime: 0,
-  lossPending: false
+  lossPending: false,
+  winSent: false,
+  opponentGone: false,
+  touchForced: false
 };
 
 /* ══════════════════════════════════════════════════════════════
    DOM
    ══════════════════════════════════════════════════════════════ */
 const overlay    = document.getElementById('overlay');
+const modal      = document.getElementById('modal');
 const statusbar  = document.getElementById('statusbar');
 const statusText = document.getElementById('statusText');
 const arena      = document.getElementById('arena');
@@ -750,9 +793,64 @@ function setStatus(text, cls){
   statusText.textContent = text;
   statusbar.className = cls || '';
 }
+function setText(el, v){
+  if (!el) return;
+  const s = String(v);
+  if (el.textContent !== s) el.textContent = s;
+}
+function showOverlay(html){
+  overlay.innerHTML = html;
+  overlay.classList.remove('hidden');
+}
+function hideOverlay(){
+  overlay.classList.add('hidden');
+  overlay.innerHTML = '';
+}
 
 /* ══════════════════════════════════════════════════════════════
-   FULLSCREEN
+   CONFIRM DIALOG
+   ══════════════════════════════════════════════════════════════ */
+let confirmOpen = false;
+function confirmDialog(opts){
+  const o = opts || {};
+  return new Promise(resolve => {
+    if (confirmOpen){ resolve(false); return; }
+    confirmOpen = true;
+
+    modal.innerHTML =
+      '<div class="ovbox confirm">' +
+        '<h2>' + (o.title || 'ARE YOU SURE?') + '</h2>' +
+        '<p>' + (o.message || '') + '</p>' +
+        '<div class="ovbtns">' +
+          '<button class="ghost" data-cf="no">' + (o.cancel || 'CANCEL') + '</button>' +
+          '<button class="danger" data-cf="yes">' + (o.ok || 'CONFIRM') + '</button>' +
+        '</div>' +
+      '</div>';
+    modal.classList.remove('hidden');
+
+    let settled = false;
+    const finish = v => {
+      if (settled) return;
+      settled = true;
+      confirmOpen = false;
+      modal.classList.add('hidden');
+      modal.innerHTML = '';
+      document.removeEventListener('keydown', onKey);
+      resolve(v);
+    };
+    const onKey = e => {
+      if (e.key === 'Escape') finish(false);
+      if (e.key === 'Enter')  finish(true);
+    };
+    modal.querySelector('[data-cf="yes"]').onclick = () => finish(true);
+    modal.querySelector('[data-cf="no"]').onclick  = () => finish(false);
+    modal.addEventListener('click', e => { if (e.target === modal) finish(false); });
+    document.addEventListener('keydown', onKey);
+  });
+}
+
+/* ══════════════════════════════════════════════════════════════
+   FULLSCREEN  (button always reachable — header is sticky)
    ══════════════════════════════════════════════════════════════ */
 const FS_ENTER_SVG =
   '<polyline points="4,9 4,4 9,4"/>' +
@@ -771,22 +869,36 @@ function isFullscreen(){
 function refreshFsIcon(){
   fsIcon.innerHTML = isFullscreen() ? FS_EXIT_SVG : FS_ENTER_SVG;
   fsBtn.title = isFullscreen() ? 'Exit fullscreen' : 'Enter fullscreen';
+  fsBtn.setAttribute('aria-label', fsBtn.title);
 }
-function toggleFullscreen(){
+function enterFs(){
   const el = document.documentElement;
-  if (!isFullscreen()){
-    const p = el.requestFullscreen ? el.requestFullscreen()
-            : el.webkitRequestFullscreen ? el.webkitRequestFullscreen()
-            : null;
-    if (p && p.catch) p.catch(()=>{});
+  const p = el.requestFullscreen ? el.requestFullscreen()
+          : el.webkitRequestFullscreen ? el.webkitRequestFullscreen()
+          : null;
+  if (p && p.catch) p.catch(()=>{});
+}
+function exitFs(){
+  const p = document.exitFullscreen ? document.exitFullscreen()
+          : document.webkitExitFullscreen ? document.webkitExitFullscreen()
+          : null;
+  if (p && p.catch) p.catch(()=>{});
+}
+async function onFsClick(){
+  /* exiting fullscreen is confirmed first */
+  if (isFullscreen()){
+    const ok = await confirmDialog({
+      title:'EXIT FULLSCREEN?',
+      message:'You will return to the normal browser view.',
+      ok:'EXIT',
+      cancel:'STAY'
+    });
+    if (ok) exitFs();
   } else {
-    const p = document.exitFullscreen ? document.exitFullscreen()
-            : document.webkitExitFullscreen ? document.webkitExitFullscreen()
-            : null;
-    if (p && p.catch) p.catch(()=>{});
+    enterFs();
   }
 }
-fsBtn.addEventListener('click', toggleFullscreen);
+fsBtn.addEventListener('click', onFsClick);
 document.addEventListener('fullscreenchange', refreshFsIcon);
 document.addEventListener('webkitfullscreenchange', refreshFsIcon);
 refreshFsIcon();
@@ -821,10 +933,12 @@ class BoardView {
     this.resize();
   }
   computeLayout(config){
+    const small = Math.min(window.innerWidth, window.innerHeight) < 720;
     const isDuel = config.mode === 'duel';
     const isTerr = config.mode === 'territory';
     if (config.style === 'hex'){
-      const size = isDuel ? 22 : (isTerr ? 20 : 30);
+      let size = isDuel ? 22 : (isTerr ? 20 : 30);
+      if (small) size = isDuel ? 15 : (isTerr ? 14 : 22);
       const pad  = isDuel ? 16 : (isTerr ? 16 : 24);
       const HW = SQ3 * size;
       return {
@@ -833,8 +947,9 @@ class BoardView {
         H: Math.round(size * 1.5 * (config.rows - 1) + size * 2 + pad * 2)
       };
     }
-    const cell = isDuel ? 42 : (isTerr ? 32 : 54);
-    const gap  = isDuel ? 4  : (isTerr ? 3  : 6);
+    let cell = isDuel ? 42 : (isTerr ? 32 : 54);
+    if (small) cell = isDuel ? 28 : (isTerr ? 22 : 36);
+    const gap  = isDuel ? 4 : (isTerr ? 3 : 6);
     const pad  = isDuel ? 16 : (isTerr ? 16 : 22);
     return {
       style: 'square', cell, gap, pad,
@@ -844,13 +959,14 @@ class BoardView {
   }
   resize(){
     const { W, H } = this.layout;
-    this.canvas.width  = W * this.dpr;
-    this.canvas.height = H * this.dpr;
+    this.canvas.width  = Math.round(W * this.dpr);
+    this.canvas.height = Math.round(H * this.dpr);
     this.canvas.style.maxWidth = W + 'px';
     this.canvas.style.aspectRatio = W + ' / ' + H;
     this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
   }
   hitTest(clientX, clientY){
+    if (!this.layout) return null;
     const rect = this.canvas.getBoundingClientRect();
     const { W, H } = this.layout;
     const px = (clientX - rect.left) * (W / rect.width);
@@ -884,12 +1000,12 @@ class BoardView {
     const { rows, cols } = this.config;
     let best = null, bestDist = Infinity;
     for (let r = 0; r < rows; r++){
-      const { y } = this.hexCenter(r, 0);
+      const y = this.hexCenter(r, 0).y;
       if (Math.abs(py - y) > size * 1.3) continue;
       for (let c = 0; c < cols; c++){
-        const { x } = this.hexCenter(r, c);
+        const x = this.hexCenter(r, c).x;
         const d = Math.hypot(px - x, py - y);
-        if (d < bestDist) { bestDist = d; best = { r, c }; }
+        if (d < bestDist){ bestDist = d; best = { r, c }; }
       }
     }
     return (best && bestDist < size * 0.98) ? best : null;
@@ -956,7 +1072,6 @@ class BoardView {
     const { cell, gap, W, H } = this.layout;
     const { board, boardState, cursors } = state;
     const { rows, cols } = board;
-
     const useOwner = this.config.mode === 'territory';
 
     const totalW = cell * cols + gap * (cols - 1);
@@ -966,7 +1081,6 @@ class BoardView {
 
     const NUM_COLORS = ['', '#4dd8ff', '#5dff9e', '#ffd166', '#ff7ad9',
                         '#b98cff', '#ff5c5c', '#ff9f43', '#7ef9ff'];
-
     const radius = Math.max(3, Math.floor(cell * 0.16));
 
     for (let r = 0; r < rows; r++){
@@ -994,7 +1108,6 @@ class BoardView {
           this.roundRect(ctx, 0, 0, cell, cell, radius);
           ctx.fill();
 
-          /* Ownership tint — applies to both safe tiles and claimed mines. */
           if (own){
             ctx.fillStyle = isMine ? this.ownerTintMine[own] : this.ownerTint[own];
             this.roundRect(ctx, 0, 0, cell, cell, radius);
@@ -1100,7 +1213,6 @@ class BoardView {
     const { size } = this.layout;
     const { board, boardState, cursors } = state;
     const { rows, cols } = board;
-
     const useOwner = this.config.mode === 'territory';
 
     const NUM_COLORS = ['', '#4dd8ff', '#5dff9e', '#ffd166', '#ff7ad9',
@@ -1108,7 +1220,8 @@ class BoardView {
 
     for (let r = 0; r < rows; r++){
       for (let c = 0; c < cols; c++){
-        const { x, y } = this.hexCenter(r, c);
+        const p = this.hexCenter(r, c);
+        const x = p.x, y = p.y;
         const rev = boardState.revealed[r][c];
         const flg = boardState.flagged[r][c];
         const isMine = board.mines.has(r + ',' + c);
@@ -1223,13 +1336,13 @@ class BoardView {
     }
 
     for (const cur of cursors){
-      const { x, y } = this.hexCenter(cur.r, cur.c);
+      const p = this.hexCenter(cur.r, cur.c);
       ctx.save();
       ctx.shadowColor = cur.color;
       ctx.shadowBlur = 20;
       ctx.strokeStyle = cur.color;
       ctx.lineWidth = 3;
-      this.hexPath(x, y, size - 3);
+      this.hexPath(p.x, p.y, size - 3);
       ctx.stroke();
       ctx.restore();
     }
@@ -1321,8 +1434,15 @@ function makeTerritoryPanel(){
   return panel;
 }
 
+function viewConfig(){
+  const d = dimsFor(G.config);
+  return { mode: G.config.mode, style: G.config.style, cols: d.cols, rows: d.rows };
+}
+
 function buildArena(){
   arena.innerHTML = '';
+  G.viewMe = null; G.viewThem = null; G.panelMe = null; G.panelThem = null;
+
   const mode = G.config.mode;
 
   arena.classList.toggle('solo', mode === 'solo');
@@ -1337,8 +1457,8 @@ function buildArena(){
   const panelA = makePanel('me', isSolo ? 'SOLO' : 'YOU', '#4dd8ff');
   arena.appendChild(panelA);
   G.viewMe = new BoardView(panelA.querySelector('canvas'));
-  G.viewMe.setConfig(G.config);
-  bindCanvasInput(G.viewMe.canvas);
+  G.viewMe.setConfig(viewConfig());
+  bindCanvasInput(G.viewMe);
   panelA._els = {
     mines: panelA.querySelector('[data-mines]'),
     time:  panelA.querySelector('[data-time]'),
@@ -1348,19 +1468,15 @@ function buildArena(){
     keys:  panelA.querySelector('.pkeys'),
     panel: panelA
   };
-  if (isSolo){
-    panelA._els.keys.textContent = 'WASD · SPACE · F';
-  } else if (isCoop){
-    panelA._els.keys.textContent = 'SHARED BOARD · WASD · SPACE · F';
-  } else {
-    panelA._els.keys.textContent = 'WASD · SPACE · F';
-  }
+  if (isSolo)      panelA._els.keys.textContent = 'WASD · SPACE · F';
+  else if (isCoop) panelA._els.keys.textContent = 'SHARED BOARD · WASD · SPACE · F';
+  else             panelA._els.keys.textContent = 'WASD · SPACE · F';
 
   if (mode === 'duel'){
     const panelB = makePanel('them', 'OPPONENT', '#ff3d81');
     arena.appendChild(panelB);
     G.viewThem = new BoardView(panelB.querySelector('canvas'));
-    G.viewThem.setConfig(G.config);
+    G.viewThem.setConfig(viewConfig());
     panelB._els = {
       mines: panelB.querySelector('[data-mines]'),
       time:  panelB.querySelector('[data-time]'),
@@ -1372,9 +1488,6 @@ function buildArena(){
     };
     panelB._els.keys.textContent = 'LIVE VIEW';
     G.panelThem = panelB;
-  } else {
-    G.viewThem = null;
-    G.panelThem = null;
   }
   G.panelMe = panelA;
 }
@@ -1384,7 +1497,7 @@ function buildTerritoryArena(){
   arena.appendChild(panel);
 
   G.viewMe = new BoardView(panel.querySelector('canvas'));
-  G.viewMe.setConfig(G.config);
+  G.viewMe.setConfig(viewConfig());
 
   const CYAN = {
     tint: 'rgba(77,216,255,.17)',
@@ -1398,9 +1511,10 @@ function buildTerritoryArena(){
     edge: 'rgba(255,61,129,.72)',
     solid: '#ff3d81'
   };
+  /* You are always cyan, opponent always pink. */
   G.viewMe.setOwnerPalette(G.myOwner === 1 ? { 1: CYAN, 2: PINK } : { 1: PINK, 2: CYAN });
 
-  bindCanvasInput(G.viewMe.canvas);
+  bindCanvasInput(G.viewMe);
 
   panel._els = {
     myLand:    panel.querySelector('[data-myland]'),
@@ -1413,8 +1527,155 @@ function buildTerritoryArena(){
     panel:     panel
   };
   G.panelMe = panel;
-  G.panelThem = null;
-  G.viewThem = null;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   INPUT — canvas (mouse + touch)
+   ══════════════════════════════════════════════════════════════ */
+function interactive(){
+  return G.state === 'playing' && G.me && !G.me.done;
+}
+
+function bindCanvasInput(view){
+  const canvas = view.canvas;
+  let touchPress = null;
+
+  const cellAt = e => view.hitTest(e.clientX, e.clientY);
+
+  canvas.addEventListener('contextmenu', e => e.preventDefault());
+
+  canvas.addEventListener('pointerdown', e => {
+    if (!interactive()) return;
+
+    if (e.pointerType === 'touch' || e.pointerType === 'pen'){
+      e.preventDefault();
+      const cell = cellAt(e);
+      if (!cell) return;
+      G.me.cursor = { r: cell.r, c: cell.c };
+      touchPress = {
+        cell, x: e.clientX, y: e.clientY, longFired: false, timer: null
+      };
+      touchPress.timer = setTimeout(() => {
+        if (!touchPress) return;
+        touchPress.longFired = true;
+        localFlagAt(cell.r, cell.c);
+        vibrate(20);
+      }, 400);
+      return;
+    }
+
+    /* mouse */
+    const cell = cellAt(e);
+    if (!cell) return;
+    e.preventDefault();
+    if (e.button === 0){
+      if (e.shiftKey) localChordAt(cell.r, cell.c);
+      else localDigAt(cell.r, cell.c);
+    } else if (e.button === 2){
+      localFlagAt(cell.r, cell.c);
+    } else if (e.button === 1){
+      localChordAt(cell.r, cell.c);
+    }
+  });
+
+  canvas.addEventListener('pointerup', e => {
+    if (e.pointerType !== 'touch' && e.pointerType !== 'pen') return;
+    const st = touchPress;
+    touchPress = null;
+    if (!st) return;
+    clearTimeout(st.timer);
+    if (st.longFired) return;
+    if (Math.hypot(e.clientX - st.x, e.clientY - st.y) > 14) return;
+    if (!interactive()) return;
+    localDigAt(st.cell.r, st.cell.c);
+  });
+
+  const cancelTouch = () => {
+    if (touchPress){ clearTimeout(touchPress.timer); touchPress = null; }
+  };
+  canvas.addEventListener('pointercancel', cancelTouch);
+  canvas.addEventListener('pointerleave', () => {
+    /* only cancel for touch — mouse leave is harmless */
+    if (touchPress) return;
+  });
+}
+
+/* ══════════════════════════════════════════════════════════════
+   INPUT — keyboard
+   ══════════════════════════════════════════════════════════════ */
+window.addEventListener('keydown', e => {
+  if (G.state !== 'playing' || !G.me) return;
+  const tag = (e.target && e.target.tagName) || '';
+  if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+
+  const k = e.key.toLowerCase();
+  let handled = true;
+
+  switch (k){
+    case 'w': case 'arrowup':    moveCursor(-1, 0); break;
+    case 's': case 'arrowdown':  moveCursor(1, 0);  break;
+    case 'a': case 'arrowleft':  moveCursor(0, -1); break;
+    case 'd': case 'arrowright': moveCursor(0, 1);  break;
+    case ' ':
+      if (!e.repeat) localDig();
+      break;
+    case 'f':
+      if (!e.repeat) localFlag();
+      break;
+    case 'e': case 'q':
+      if (!e.repeat) localChord();
+      break;
+    default:
+      handled = false;
+  }
+  if (handled) e.preventDefault();
+}, { passive:false });
+
+/* ══════════════════════════════════════════════════════════════
+   INPUT — touch pad
+   ══════════════════════════════════════════════════════════════ */
+function holdButton(btn, fn, delay){
+  let t1 = null, t2 = null;
+  const start = e => {
+    e.preventDefault();
+    if (!interactive()) return;
+    fn();
+    t1 = setTimeout(() => { t2 = setInterval(() => { if (interactive()) fn(); }, 110); }, 320);
+  };
+  const stop = () => { clearTimeout(t1); clearInterval(t2); t1 = t2 = null; };
+  btn.addEventListener('pointerdown', start);
+  btn.addEventListener('pointerup', stop);
+  btn.addEventListener('pointerleave', stop);
+  btn.addEventListener('pointercancel', stop);
+}
+
+function buildTouchpad(){
+  const pad = document.createElement('div');
+  pad.className = 'touchpad' + (G.touchForced ? ' force' : '');
+  pad.innerHTML =
+    '<div class="dpad">' +
+      '<button class="u ghost" data-mv="up">▲</button>' +
+      '<button class="l ghost" data-mv="left">◀</button>' +
+      '<button class="r ghost" data-mv="right">▶</button>' +
+      '<button class="dn ghost" data-mv="down">▼</button>' +
+    '</div>' +
+    '<div class="tp-actions">' +
+      '<button class="primary" data-act="dig">DIG ⛏</button>' +
+      '<button data-act="flag">FLAG ⚑</button>' +
+      '<button data-act="chord">CHORD ✦</button>' +
+    '</div>';
+
+  const map = {
+    up:    () => moveCursor(-1, 0),
+    down:  () => moveCursor(1, 0),
+    left:  () => moveCursor(0, -1),
+    right: () => moveCursor(0, 1)
+  };
+  pad.querySelectorAll('[data-mv]').forEach(b => holdButton(b, map[b.dataset.mv]));
+  pad.querySelector('[data-act="dig"]').addEventListener('click', () => localDig());
+  pad.querySelector('[data-act="flag"]').addEventListener('click', () => localFlag());
+  pad.querySelector('[data-act="chord"]').addEventListener('click', () => localChord());
+  return pad;
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -1422,7 +1683,6 @@ function buildTerritoryArena(){
    ══════════════════════════════════════════════════════════════ */
 function applyReveal(boardState, board, r, c, owner){
   owner = owner || 0;
-
   if (boardState.revealed[r][c]) return null;
 
   if (boardState.flagged[r][c]){
@@ -1437,12 +1697,15 @@ function applyReveal(boardState, board, r, c, owner){
     boardState.count++;
     return { type: 'mine', tiles: [[r, c]] };
   }
+
   const now = performance.now();
   const queue = [[r, c, 0]];
   const seen = new Set([r + ',' + c]);
   const tiles = [];
+
   while (queue.length){
-    const [cr, cc, d] = queue.shift();
+    const item = queue.shift();
+    const cr = item[0], cc = item[1], d = item[2];
     if (boardState.revealed[cr][cc]) continue;
     if (boardState.flagged[cr][cc]){
       boardState.flagged[cr][cc] = false;
@@ -1452,9 +1715,12 @@ function applyReveal(boardState, board, r, c, owner){
     if (owner && boardState.owner) boardState.owner[cr][cc] = owner;
     boardState.revealAt[cr][cc] = now + Math.min(d, 14) * 24;
     boardState.count++;
+    boardState.safeRevealed++;
     tiles.push([cr, cc]);
+
     if (board.adj[cr][cc] === 0){
-      for (const [nr, nc] of board.neighbors(cr, cc, board.rows, board.cols)){
+      for (const nb of board.neighbors(cr, cc, board.rows, board.cols)){
+        const nr = nb[0], nc = nb[1];
         const k = nr + ',' + nc;
         if (!seen.has(k) && !boardState.revealed[nr][nc]){
           seen.add(k);
@@ -1469,26 +1735,31 @@ function applyReveal(boardState, board, r, c, owner){
 function applyChord(boardState, board, r, c, owner){
   if (!boardState.revealed[r][c]) return null;
   if (board.adj[r][c] <= 0) return null;
+
   const nbs = board.neighbors(r, c, board.rows, board.cols);
   let flags = 0;
-  for (const [nr, nc] of nbs){
+  for (const nb of nbs){
+    const nr = nb[0], nc = nb[1];
     if (boardState.flagged[nr][nc]) flags++;
     else if (boardState.revealed[nr][nc] && board.mines.has(nr + ',' + nc)) flags++;
   }
   if (flags !== board.adj[r][c]) return null;
 
-  for (const [nr, nc] of nbs){
+  for (const nb of nbs){
+    const nr = nb[0], nc = nb[1];
     if (boardState.flagged[nr][nc] || boardState.revealed[nr][nc]) continue;
     if (board.mines.has(nr + ',' + nc)){
       const res = applyReveal(boardState, board, nr, nc, owner);
       return { type: 'mine', tiles: res ? res.tiles : [[nr, nc]] };
     }
   }
+
   const allTiles = [];
-  for (const [nr, nc] of nbs){
+  for (const nb of nbs){
+    const nr = nb[0], nc = nb[1];
     if (boardState.flagged[nr][nc] || boardState.revealed[nr][nc]) continue;
     const res = applyReveal(boardState, board, nr, nc, owner);
-    if (res && res.tiles) allTiles.push(...res.tiles);
+    if (res && res.tiles) allTiles.push.apply(allTiles, res.tiles);
   }
   return { type: 'ok', tiles: allTiles };
 }
@@ -1508,7 +1779,7 @@ function revealAllMines(boardState, board, originR, originC){
 }
 
 function checkWin(boardState, board){
-  return boardState.count >= board.safeCount;
+  return boardState.safeRevealed >= board.safeCount;
 }
 
 function countLand(boardState, owner){
@@ -1526,14 +1797,28 @@ function countLand(boardState, owner){
 function canAct(){
   return G.state === 'playing' && G.me && !G.me.done && performance.now() >= G.me.stunUntil;
 }
+function isFrozen(){
+  return G.me && performance.now() < G.me.stunUntil;
+}
+
+let lastCursorSent = 0;
+function sendCursor(){
+  if (G.role === 'solo' || !G.conn) return;
+  const now = performance.now();
+  if (now - lastCursorSent < 110) return;
+  lastCursorSent = now;
+  send({ t:'cur', r: G.me.cursor.r, c: G.me.cursor.c });
+}
 
 function moveCursor(dr, dc){
   if (G.state !== 'playing' || !G.me || G.me.done) return;
-  const { rows, cols } = G.board;
+  if (isFrozen()) return;
+  const rows = G.board.rows, cols = G.board.cols;
   const nr = clamp(G.me.cursor.r + dr, 0, rows - 1);
   const nc = clamp(G.me.cursor.c + dc, 0, cols - 1);
   if (nr === G.me.cursor.r && nc === G.me.cursor.c) return;
   G.me.cursor = { r: nr, c: nc };
+  sendCursor();
 }
 
 function localDigAt(r, c){
@@ -1541,21 +1826,51 @@ function localDigAt(r, c){
   G.me.cursor = { r, c };
   localDig();
 }
+function localFlagAt(r, c){
+  if (!canAct()) return;
+  G.me.cursor = { r, c };
+  localFlag();
+}
+function localChordAt(r, c){
+  if (!canAct()) return;
+  G.me.cursor = { r, c };
+  localChord();
+}
 
 function localDig(){
   if (!canAct()) return;
-  const { r, c } = G.me.cursor;
-  const bs = G.myBoard;
+  const r = G.me.cursor.r, c = G.me.cursor.c;
   const mode = G.config.mode;
 
+  /* ── Shared boards: host is authoritative ── */
   if (mode === 'coop' || mode === 'territory'){
     if (G.role === 'host') hostApplyDig(r, c, G.myOwner);
-    else send({ t: 'dig', r, c });
+    else send({ t:'dig', r, c });
     return;
   }
 
-  /* Solo */
-  const res = applyReveal(bs, G.board, r, c);
+  /* ── Duel: local board + broadcast progress to the opponent ── */
+  if (mode === 'duel'){
+    const bs = G.myBoard;
+    const res = applyReveal(bs, G.board, r, c, 0);
+    if (!res) return;
+
+    if (res.type === 'mine'){
+      G.me.hits++;
+      send({ t:'hit' });
+      duelFreeze(r, c);
+      return;
+    }
+
+    send({ t:'rev', tiles: res.tiles });
+    afterRevealFeedback(res);
+    if (checkWin(bs, G.board)) duelWin();
+    return;
+  }
+
+  /* ── Solo ── */
+  const bs = G.myBoard;
+  const res = applyReveal(bs, G.board, r, c, 0);
   if (!res) return;
 
   if (res.type === 'mine'){
@@ -1574,15 +1889,16 @@ function localDig(){
 
 function afterRevealFeedback(res){
   if (!res || !res.tiles || res.tiles.length === 0) return;
-  const [r0, c0] = res.tiles[0];
+  const r0 = res.tiles[0][0], c0 = res.tiles[0][1];
   const val = G.board.adj[r0][c0];
-  beep(500 + Math.min(Math.max(val, 0), 8) * 60, 0.04, 'square', 0.025);
+  beep(500 + Math.min(Math.max(val, 0), 8) * 60, 0.04, 'square', 0.02);
 }
 
 function hexOrSqCenter(view, r, c){
   if (view.layout.style === 'hex') return view.hexCenter(r, c);
-  const { cell, gap, W, H } = view.layout;
-  const { rows, cols } = view.config;
+  const cell = view.layout.cell, gap = view.layout.gap;
+  const W = view.layout.W, H = view.layout.H;
+  const rows = view.config.rows, cols = view.config.cols;
   const totalW = cell * cols + gap * (cols - 1);
   const totalH = cell * rows + gap * (rows - 1);
   const ox = (W - totalW) / 2;
@@ -1595,12 +1911,15 @@ function handleLoss(r, c, view, bs, board){
   G.lossPending = true;
   G.me.done = true;
 
-  view.triggerShake();
-  const p = hexOrSqCenter(view, r, c);
-  view.boom(p.x, p.y, '#ff4d6d', 50, 320);
-  view.boom(p.x, p.y, '#ffd166', 24, 180);
+  if (view){
+    view.triggerShake();
+    const p = hexOrSqCenter(view, r, c);
+    view.boom(p.x, p.y, '#ff4d6d', 50, 320);
+    view.boom(p.x, p.y, '#ffd166', 24, 180);
+  }
   beep(90, 0.5, 'sawtooth', 0.09);
   setTimeout(() => beep(60, 0.9, 'sawtooth', 0.07), 100);
+  vibrate(180);
 
   revealAllMines(bs, board, r, c);
 
@@ -1611,7 +1930,7 @@ function handleLoss(r, c, view, bs, board){
   }, 1000);
 }
 
-function handleCoopLoss(r, c){
+function handleCoopLoss(r, c, broadcast){
   if (G.lossPending) return;
   G.lossPending = true;
   if (G.me) G.me.done = true;
@@ -1619,15 +1938,18 @@ function handleCoopLoss(r, c){
   const bs = G.myBoard;
   const view = G.viewMe;
 
-  view.triggerShake();
-  const p = hexOrSqCenter(view, r, c);
-  view.boom(p.x, p.y, '#ff4d6d', 50, 320);
-  view.boom(p.x, p.y, '#ffd166', 24, 180);
+  if (view){
+    view.triggerShake();
+    const p = hexOrSqCenter(view, r, c);
+    view.boom(p.x, p.y, '#ff4d6d', 50, 320);
+    view.boom(p.x, p.y, '#ffd166', 24, 180);
+  }
   beep(90, 0.5, 'sawtooth', 0.09);
+  vibrate(180);
 
   revealAllMines(bs, G.board, r, c);
 
-  send({ t: 'delta', rev: [], lose: true, r, c });
+  if (broadcast) send({ t:'delta', lose:true, r, c });
 
   const elapsed = performance.now() - G.startTime;
   setTimeout(() => {
@@ -1636,17 +1958,44 @@ function handleCoopLoss(r, c){
   }, 1000);
 }
 
+/* ── Duel: 10 second freeze instead of a loss ── */
+function duelFreeze(r, c){
+  const now = performance.now();
+  G.me.stunUntil = now + STUN_MS;
+  G.me.wasStunned = true;
+
+  const view = G.viewMe;
+  if (view){
+    view.triggerShake();
+    const p = hexOrSqCenter(view, r, c);
+    view.boom(p.x, p.y, '#ff4d6d', 46, 300);
+    view.boom(p.x, p.y, '#ffd166', 20, 160);
+  }
+  beep(90, 0.5, 'sawtooth', 0.09);
+  vibrate(160);
+}
+
+function duelWin(){
+  if (G.winSent) return;
+  G.winSent = true;
+  G.me.done = true;
+  send({ t:'win' });
+  const elapsed = performance.now() - G.startTime;
+  endGame('win', '🏆', 'VICTORY!', 'You cleared your field first.', elapsed);
+}
+
 function applyPenalty(ownerId){
+  const now = performance.now();
   if (ownerId === G.myOwner){
     G.me.hits++;
-    G.me.stunUntil = performance.now() + STUN_MS;
+    G.me.stunUntil = now + STUN_MS;
     G.me.wasStunned = true;
-  } else {
+  } else if (G.them){
     G.them.hits++;
-    G.them.stunUntil = performance.now() + STUN_MS;
+    G.them.stunUntil = now + STUN_MS;
     G.them.wasStunned = true;
   }
-  send({ t: 'stun', who: ownerId });
+  send({ t:'stun', who: ownerId });
 }
 
 /* Territory: digging a bomb → penalty + claim the bomb tile for the clicker. */
@@ -1664,14 +2013,15 @@ function handleTerritoryBoom(r, c, owner){
     view.boom(p.x, p.y, '#ffd166', 24, 180);
   }
   beep(90, 0.5, 'sawtooth', 0.09);
+  vibrate(160);
 
-  send({ t: 'delta', mine: [r, c], own: owner });
+  send({ t:'delta', mine:[r, c], own: owner });
 }
 
 function afterSharedReveal(){
   if (G.config.mode === 'coop'){
     if (checkWin(G.myBoard, G.board)){
-      send({ t: 'win' });
+      send({ t:'win' });
       endGame('win', '🎉', 'FIELD CLEARED!', 'Together you swept every safe tile.', performance.now() - G.startTime);
     }
   } else if (G.config.mode === 'territory'){
@@ -1707,56 +2057,64 @@ function finishTerritory(){
   endGame(result, icon, title, sub, performance.now() - G.startTime, cards);
 }
 
-function localFlagAt(r, c){
-  if (!canAct()) return;
-  G.me.cursor = { r, c };
-  localFlag();
-}
-
 function localFlag(){
   if (!canAct()) return;
-  const { r, c } = G.me.cursor;
+  const r = G.me.cursor.r, c = G.me.cursor.c;
   const bs = G.myBoard;
   if (bs.revealed[r][c]) return;
   const mode = G.config.mode;
 
   if (mode === 'territory'){
     if (G.role === 'host') hostApplyTerritoryFlag(r, c, G.myOwner);
-    else send({ t: 'flag', r, c });
+    else send({ t:'flag', r, c });
     return;
   }
 
   if (mode === 'coop'){
     if (G.role === 'host') hostApplyFlag(r, c);
-    else send({ t: 'flag', r, c });
+    else send({ t:'flag', r, c });
     return;
   }
 
-  bs.flagged[r][c] = !bs.flagged[r][c];
+  /* duel + solo: local toggle */
+  const on = bs.flagged[r][c] ? 0 : 1;
+  bs.flagged[r][c] = !!on;
   bs.flagAt[r][c] = performance.now();
-  bs.flagCount += bs.flagged[r][c] ? 1 : -1;
-  beep(bs.flagged[r][c] ? 900 : 600, 0.05, 'triangle', 0.03);
-}
+  bs.flagCount += on ? 1 : -1;
+  beep(on ? 900 : 600, 0.05, 'triangle', 0.03);
 
-function localChordAt(r, c){
-  if (!canAct()) return;
-  G.me.cursor = { r, c };
-  localChord();
+  if (mode === 'duel') send({ t:'flag', r, c, on });
 }
 
 function localChord(){
   if (!canAct()) return;
-  const { r, c } = G.me.cursor;
-  const bs = G.myBoard;
+  const r = G.me.cursor.r, c = G.me.cursor.c;
   const mode = G.config.mode;
 
   if (mode === 'coop' || mode === 'territory'){
     if (G.role === 'host') hostApplyChord(r, c, G.myOwner);
-    else send({ t: 'chord', r, c });
+    else send({ t:'chord', r, c });
     return;
   }
 
-  const res = applyChord(bs, G.board, r, c);
+  if (mode === 'duel'){
+    const bs = G.myBoard;
+    const res = applyChord(bs, G.board, r, c, 0);
+    if (!res) return;
+    if (res.type === 'mine'){
+      G.me.hits++;
+      send({ t:'hit' });
+      duelFreeze(res.tiles[0][0], res.tiles[0][1]);
+      return;
+    }
+    send({ t:'rev', tiles: res.tiles });
+    afterRevealFeedback(res);
+    if (checkWin(bs, G.board)) duelWin();
+    return;
+  }
+
+  const bs = G.myBoard;
+  const res = applyChord(bs, G.board, r, c, 0);
   if (!res) return;
   if (res.type === 'mine'){
     G.me.hits++;
@@ -1780,12 +2138,12 @@ function hostApplyDig(r, c, owner){
   if (!res) return;
 
   if (res.type === 'mine'){
-    if (G.config.mode === 'coop') handleCoopLoss(r, c);
+    if (G.config.mode === 'coop') handleCoopLoss(r, c, true);
     else handleTerritoryBoom(r, c, owner);
     return;
   }
 
-  send({ t: 'delta', rev: res.tiles, own: owner });
+  send({ t:'delta', rev: res.tiles, own: owner });
   afterRevealFeedback(res);
   afterSharedReveal();
 }
@@ -1797,7 +2155,7 @@ function hostApplyFlag(r, c){
   bs.flagged[r][c] = !!on;
   bs.flagAt[r][c] = performance.now();
   bs.flagCount += on ? 1 : -1;
-  send({ t: 'delta', flg: [[r, c, on]] });
+  send({ t:'delta', flg: [[r, c, on]] });
 }
 
 function hostApplyTerritoryFlag(r, c, owner){
@@ -1813,7 +2171,7 @@ function hostApplyTerritoryFlag(r, c, owner){
     bs.flagAt[r][c] = performance.now();
     bs.flagCount++;
     if (bs.owner) bs.owner[r][c] = owner;
-    send({ t: 'delta', flg: [[r, c, 1]], own: owner });
+    send({ t:'delta', flg: [[r, c, 1]], own: owner });
     beep(920, 0.06, 'triangle', 0.035);
   } else {
     /* Wrong flag → reveal just that tile (neutral) + 10s stun. */
@@ -1821,19 +2179,16 @@ function hostApplyTerritoryFlag(r, c, owner){
     bs.revealAt[r][c] = performance.now();
     if (bs.owner) bs.owner[r][c] = 0;
     bs.count++;
+    bs.safeRevealed++;
 
-    send({ t: 'delta', rev: [[r, c]], own: 0 });
+    send({ t:'delta', rev: [[r, c]], own: 0 });
     applyPenalty(owner);
 
-    if (owner === G.myOwner){
-      if (G.viewMe){
-        G.viewMe.triggerShake();
-        const p = hexOrSqCenter(G.viewMe, r, c);
-        G.viewMe.boom(p.x, p.y, '#ff4d6d', 28, 220);
-      }
-    } else {
-      const p = hexOrSqCenter(G.viewMe, r, c);
-      G.viewMe.boom(p.x, p.y, '#ff4d6d', 28, 220);
+    const view = G.viewMe;
+    if (view){
+      const p = hexOrSqCenter(view, r, c);
+      if (owner === G.myOwner) view.triggerShake();
+      view.boom(p.x, p.y, '#ff4d6d', 28, 220);
     }
     beep(180, 0.3, 'sawtooth', 0.06);
 
@@ -1847,12 +2202,12 @@ function hostApplyChord(r, c, owner){
   if (!res) return;
 
   if (res.type === 'mine'){
-    if (G.config.mode === 'coop') handleCoopLoss(res.tiles[0][0], res.tiles[0][1]);
+    if (G.config.mode === 'coop') handleCoopLoss(res.tiles[0][0], res.tiles[0][1], true);
     else handleTerritoryBoom(res.tiles[0][0], res.tiles[0][1], owner);
     return;
   }
 
-  send({ t: 'delta', rev: res.tiles, own: owner });
+  send({ t:'delta', rev: res.tiles, own: owner });
   afterRevealFeedback(res);
   afterSharedReveal();
 }
@@ -1870,6 +2225,7 @@ function attachConn(c){
   G.conn = c;
   c.on('data', handleMessage);
   c.on('close', () => {
+    G.opponentGone = true;
     if (G.state === 'playing' || G.state === 'countdown'){
       endGame('disconnect', '🔌', 'DISCONNECTED', 'Your partner left the match.', 0);
     } else {
@@ -1882,47 +2238,81 @@ function attachConn(c){
 
 function handleMessage(msg){
   if (!msg || typeof msg !== 'object') return;
+
   switch (msg.t){
 
     case 'seed':
-      G.seed = msg.seed;
-      G.config = msg.config;
-      startMatch(msg.seed, false);
+      G.config = msg.config || G.config;
+      startMatch(msg.seed, 'guest');
+      break;
+
+    case 'cur':
+      if (G.them) G.them.cursor = { r: msg.r, c: msg.c };
+      break;
+
+    case 'dig':
+      if (G.role !== 'host') break;
+      if (G.config.mode !== 'coop' && G.config.mode !== 'territory') break;
+      if (performance.now() < G.them.stunUntil) break;
+      hostApplyDig(msg.r, msg.c, G.theirOwner);
       break;
 
     case 'flag':
       if (G.config.mode === 'coop'){
         if (G.role !== 'host') break;
+        if (performance.now() < G.them.stunUntil) break;
         hostApplyFlag(msg.r, msg.c);
       } else if (G.config.mode === 'territory'){
         if (G.role !== 'host') break;
         if (performance.now() < G.them.stunUntil) break;
         hostApplyTerritoryFlag(msg.r, msg.c, G.theirOwner);
       } else if (G.config.mode === 'duel'){
-        G.theirBoard.flagged[msg.r][msg.c] = !!msg.on;
-        G.theirBoard.flagAt[msg.r][msg.c] = performance.now();
-        G.theirBoard.flagCount += msg.on ? 1 : -1;
-      }
-      break;
-
-    case 'rev':
-      for (const [r, c] of msg.tiles){
-        if (!G.theirBoard.revealed[r][c]){
-          G.theirBoard.revealed[r][c] = true;
-          G.theirBoard.revealAt[r][c] = performance.now() + Math.random() * 80;
-          G.theirBoard.count++;
+        if (!G.theirBoard) break;
+        const on = msg.on ? 1 : 0;
+        if (G.theirBoard.flagged[msg.r][msg.c] !== !!on){
+          G.theirBoard.flagged[msg.r][msg.c] = !!on;
+          G.theirBoard.flagAt[msg.r][msg.c] = performance.now();
+          G.theirBoard.flagCount += on ? 1 : -1;
         }
       }
       break;
 
+    case 'chord':
+      if (G.role !== 'host') break;
+      if (G.config.mode !== 'coop' && G.config.mode !== 'territory') break;
+      if (performance.now() < G.them.stunUntil) break;
+      hostApplyChord(msg.r, msg.c, G.theirOwner);
+      break;
+
+    /* duel: opponent's own progress */
+    case 'rev':
+      if (!G.theirBoard) break;
+      {
+        const now = performance.now();
+        for (const pair of (msg.tiles || [])){
+          const r = pair[0], c = pair[1];
+          if (G.theirBoard.revealed[r][c]) continue;
+          G.theirBoard.revealed[r][c] = true;
+          G.theirBoard.revealAt[r][c] = now + Math.random() * 80;
+          G.theirBoard.count++;
+          if (!G.board.mines.has(r + ',' + c)) G.theirBoard.safeRevealed++;
+        }
+      }
+      break;
+
+    /* duel: opponent hit a mine → they are frozen for 10s */
     case 'hit':
       if (G.them){
         G.them.hits++;
         G.them.stunUntil = performance.now() + STUN_MS;
         G.them.wasStunned = true;
-        if (G.viewThem) G.viewThem.triggerShake();
-        beep(70, 0.25, 'sawtooth', 0.05);
       }
+      if (G.viewThem) G.viewThem.triggerShake();
+      beep(70, 0.25, 'sawtooth', 0.045);
+      break;
+
+    case 'delta':
+      applyDelta(msg);
       break;
 
     case 'stun': {
@@ -1931,7 +2321,8 @@ function handleMessage(msg){
         G.me.hits++;
         G.me.stunUntil = now + STUN_MS;
         G.me.wasStunned = true;
-      } else {
+        vibrate(140);
+      } else if (G.them){
         G.them.hits++;
         G.them.stunUntil = now + STUN_MS;
         G.them.wasStunned = true;
@@ -1940,824 +2331,623 @@ function handleMessage(msg){
     }
 
     case 'win':
-      if (G.them) G.them.done = true;
-      endGame('lose', '💀', 'YOU LOSE', 'Your opponent cleared their field first.', 0);
+      if (G.state === 'playing' || G.state === 'countdown'){
+        endGame('lose', '💀', 'DEFEATED',
+          'Your opponent cleared their field first.',
+          performance.now() - G.startTime);
+      }
       break;
 
-    case 'dig': {
-      if (G.role !== 'host') break;
-      if (G.config.mode !== 'coop' && G.config.mode !== 'territory') break;
-      if (G.config.mode === 'territory' && performance.now() < G.them.stunUntil) break;
-      hostApplyDig(msg.r, msg.c, G.theirOwner);
+    case 'lose':
+      if (G.state === 'playing' || G.state === 'countdown'){
+        endGame('win', '🏆', 'VICTORY!',
+          'Your opponent triggered a mine.',
+          performance.now() - G.startTime);
+      }
       break;
-    }
-    case 'chord': {
-      if (G.role !== 'host') break;
-      if (G.config.mode !== 'coop' && G.config.mode !== 'territory') break;
-      if (G.config.mode === 'territory' && performance.now() < G.them.stunUntil) break;
-      hostApplyChord(msg.r, msg.c, G.theirOwner);
-      break;
-    }
-    case 'delta': {
-      if (G.role !== 'guest') break;
-      if (G.config.mode !== 'coop' && G.config.mode !== 'territory') break;
-
-      const bs = G.myBoard;
-      const now = performance.now();
-
-      if (msg.rev){
-        for (const [r, c] of msg.rev){
-          if (!bs.revealed[r][c]){
-            bs.revealed[r][c] = true;
-            bs.revealAt[r][c] = now;
-            if (bs.owner && msg.own !== undefined) bs.owner[r][c] = msg.own;
-            bs.count++;
-          }
-        }
-      }
-      if (msg.flg){
-        for (const [r, c, on] of msg.flg){
-          const prev = bs.flagged[r][c];
-          bs.flagged[r][c] = !!on;
-          bs.flagAt[r][c] = now;
-          if (bs.owner && msg.own !== undefined) bs.owner[r][c] = msg.own;
-          if (prev !== !!on) bs.flagCount += on ? 1 : -1;
-        }
-      }
-      if (msg.mine){
-        const [r, c] = msg.mine;
-        bs.revealed[r][c] = true;
-        /* Ownership comes from msg.own — the digger claims the bomb tile. */
-        if (bs.owner) bs.owner[r][c] = (msg.own !== undefined ? msg.own : 0);
-        bs.revealAt[r][c] = now;
-
-        if (G.viewMe){
-          G.viewMe.triggerShake();
-          const p = hexOrSqCenter(G.viewMe, r, c);
-          G.viewMe.boom(p.x, p.y, '#ff4d6d', 50, 320);
-          G.viewMe.boom(p.x, p.y, '#ffd166', 24, 180);
-        }
-        beep(90, 0.5, 'sawtooth', 0.09);
-      }
-      if (msg.lose){
-        if (G.lossPending) break;
-        G.lossPending = true;
-        if (G.me) G.me.done = true;
-        revealAllMines(bs, G.board, msg.r || 0, msg.c || 0);
-        G.viewMe.triggerShake();
-        if (msg.r != null && msg.c != null){
-          const p = hexOrSqCenter(G.viewMe, msg.r, msg.c);
-          G.viewMe.boom(p.x, p.y, '#ff4d6d', 50, 320);
-          G.viewMe.boom(p.x, p.y, '#ffd166', 24, 180);
-        }
-        beep(90, 0.5, 'sawtooth', 0.09);
-        const elapsed = performance.now() - G.startTime;
-        setTimeout(() => {
-          endGame('lose', '💥', 'BOOM!', 'A mine was triggered. The field is lost.', elapsed);
-          G.lossPending = false;
-        }, 1000);
-      }
-
-      if (G.config.mode === 'territory' && checkWin(bs, G.board)) finishTerritory();
-      break;
-    }
   }
 }
 
-/* ══════════════════════════════════════════════════════════════
-   HOST / JOIN
-   ══════════════════════════════════════════════════════════════ */
-function buildConfig(styleId, modeId){
-  const style = STYLES[styleId];
-  const mode  = MODES[modeId];
-  const isTerr = mode.id === 'territory';
-  return {
-    style: style.id, mode: mode.id,
-    cols: isTerr ? style.terrCols : style.cols,
-    rows: isTerr ? style.terrRows : style.rows,
-    mines: isTerr ? style.terrMines : style.mines,
-    styleName: style.name, modeName: mode.name
-  };
-}
+function applyDelta(msg){
+  const bs = G.myBoard;
+  if (!bs || !G.board) return;
+  const now = performance.now();
 
-function hostGame(styleId, modeId){
-  const code = makeCode();
-  G.role = 'host';
-  G.myOwner = 1;
-  G.theirOwner = 2;
-  setStatus('CREATING ROOM…', 'warn');
-
-  showOverlay(
-    '<h2>CREATING<span>…</span></h2>' +
-    '<p><span class="spin"></span>Contacting matchmaking server</p>' +
-    '<div class="err" id="errBox"></div>' +
-    '<div class="ovbtns" style="margin-top:20px"><button id="cancelBtn" class="ghost">Cancel</button></div>'
-  );
-  document.getElementById('cancelBtn').onclick = () => { cleanupNet(); idleOverlay(); };
-
-  try {
-    G.peer = new Peer(PREFIX + code, { debug: 0 });
-  } catch(e){
-    showErr('PeerJS unavailable'); return;
+  if (msg.rev){
+    for (const pair of msg.rev){
+      const r = pair[0], c = pair[1];
+      if (bs.revealed[r][c]) continue;
+      bs.revealed[r][c] = true;
+      bs.revealAt[r][c] = now + Math.random() * 70;
+      bs.count++;
+      if (!G.board.mines.has(r + ',' + c)) bs.safeRevealed++;
+      if (msg.own !== undefined && bs.owner) bs.owner[r][c] = msg.own ? msg.own : 0;
+    }
   }
 
-  G.peer.on('open', () => {
-    G.state = 'waiting';
-    setStatus('WAITING FOR OPPONENT', 'warn');
-    showWaiting(code, styleId, modeId);
-  });
-
-  G.peer.on('connection', c => {
-    if (G.conn){ try { c.close(); } catch(e){} return; }
-    attachConn(c);
-    c.on('open', () => {
-      const seed = (Math.random() * 1e9) | 0;
-      G.config = buildConfig(styleId, modeId);
-      c.send({ t: 'seed', seed, config: G.config });
-      startMatch(seed, true);
-    });
-  });
-
-  G.peer.on('error', err => {
-    if (err.type === 'unavailable-id'){
-      try { G.peer.destroy(); } catch(e){}
-      G.peer = null;
-      hostGame(styleId, modeId);
-    } else {
-      showErr(err.type || 'connection error');
-      setStatus('ERROR', 'bad');
+  if (msg.flg){
+    for (const tri of msg.flg){
+      const r = tri[0], c = tri[1], on = tri[2];
+      const wasOn = bs.flagged[r][c] ? 1 : 0;
+      bs.flagged[r][c] = !!on;
+      bs.flagAt[r][c] = now;
+      bs.flagCount += on - wasOn;
+      if (on && msg.own !== undefined && bs.owner) bs.owner[r][c] = msg.own;
     }
-  });
-}
-
-function joinGame(code){
-  code = (code || '').trim().toUpperCase();
-  if (code.length < 4){ showErr('Enter a 4-character code'); return; }
-
-  G.role = 'guest';
-  G.myOwner = 2;
-  G.theirOwner = 1;
-  setStatus('CONNECTING…', 'warn');
-  showOverlay(
-    '<h2>JOINING<span>…</span></h2>' +
-    '<p><span class="spin"></span>Looking for room <b style="color:#4dd8ff">' + code + '</b></p>' +
-    '<div class="err" id="errBox"></div>' +
-    '<div class="ovbtns" style="margin-top:20px"><button id="cancelBtn" class="ghost">Cancel</button></div>'
-  );
-  document.getElementById('cancelBtn').onclick = () => { cleanupNet(); idleOverlay(); };
-
-  try {
-    G.peer = new Peer({ debug: 0 });
-  } catch(e){
-    showErr('PeerJS unavailable'); return;
   }
 
-  G.peer.on('open', () => {
-    const c = G.peer.connect(PREFIX + code, { reliable: true });
-    attachConn(c);
+  if (msg.mine && bs.owner){
+    const r = msg.mine[0], c = msg.mine[1];
+    bs.owner[r][c] = (msg.own !== undefined) ? msg.own : 0;
+  }
 
-    c.on('open', () => {
-      setStatus('CONNECTED — WAITING FOR BOARD', 'live');
-      showOverlay(
-        '<h2>CONNECTED<span>!</span></h2>' +
-        '<p><span class="spin"></span>Receiving game settings…</p>'
-      );
-    });
-
-    setTimeout(() => {
-      if (!G.conn || !G.conn.open){
-        showErr('Room not found or host offline');
-        setStatus('FAILED', 'bad');
-      }
-    }, 8000);
-  });
-
-  G.peer.on('error', err => {
-    if (err.type === 'peer-unavailable'){
-      showErr('Room not found — check the code');
-      setStatus('FAILED', 'bad');
-    }
-  });
+  if (msg.lose){
+    /* Co-op loss is applied identically on both clients. */
+    handleCoopLoss(msg.r, msg.c, false);
+  }
 }
 
 function cleanupNet(){
-  try { if (G.conn) G.conn.close(); } catch(e){}
-  try { if (G.peer) G.peer.destroy(); } catch(e){}
-  G.conn = null; G.peer = null;
+  if (G.conn){ try { G.conn.close(); } catch(e){} G.conn = null; }
+  if (G.peer){ try { G.peer.destroy(); } catch(e){} G.peer = null; }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   LOBBY / MENU
+   ══════════════════════════════════════════════════════════════ */
+let menuError = '';
+
+function menuHTML(err){
+  const cfg = G.config;
+
+  const modeBtns = Object.keys(MODES).map(k => {
+    const m = MODES[k];
+    return '<button class="opt' + (cfg.mode === m.id ? ' active' : '') + '" data-mode="' + m.id + '">' +
+      '<div class="opt-name">' + m.name + '</div>' +
+      '<div class="opt-desc">' + m.desc + '</div>' +
+    '</button>';
+  }).join('');
+
+  const styleBtns = Object.keys(STYLES).map(k => {
+    const s = STYLES[k];
+    return '<button class="opt' + (cfg.style === s.id ? ' active' : '') + '" data-style="' + s.id + '">' +
+      '<div class="opt-name">' + s.name + '</div>' +
+      '<div class="opt-desc">' + styleDesc(s, cfg.mode === 'territory') + '</div>' +
+    '</button>';
+  }).join('');
+
+  const solo = cfg.mode === 'solo';
+  const actions = solo
+    ? '<div class="ovbtns"><button class="primary" id="btnStart">START SOLO</button></div>'
+    : '<div class="ovbtns">' +
+        '<button class="primary" id="btnHost">CREATE MATCH</button>' +
+        '<button id="btnJoin">JOIN MATCH</button>' +
+      '</div>' +
+      '<div class="joinrow hidden" id="joinRow">' +
+        '<input id="joinInput" maxlength="4" placeholder="CODE" autocomplete="off" spellcheck="false" inputmode="latin">' +
+        '<button class="primary" id="btnJoinGo">GO</button>' +
+      '</div>';
+
+  return '<div class="ovbox">' +
+    '<div class="big">💣</div>' +
+    '<h2>MINE<span>DUEL</span></h2>' +
+    '<p>Race, co-operate or claim territory.<br>Same board, same seed — may the best sweeper win.</p>' +
+    '<div class="config-section"><div class="config-label">MODE</div><div class="config-options">' + modeBtns + '</div></div>' +
+    '<div class="config-section"><div class="config-label">BOARD</div><div class="config-options">' + styleBtns + '</div></div>' +
+    actions +
+    '<div class="err" id="menuErr">' + (err || '') + '</div>' +
+  '</div>';
+}
+
+function renderMenu(err){
+  if (err !== undefined) menuError = err;
+  showOverlay(menuHTML(menuError));
+
+  overlay.querySelectorAll('[data-mode]').forEach(b => {
+    b.onclick = () => { G.config.mode = b.dataset.mode; menuError = ''; renderMenu(); };
+  });
+  overlay.querySelectorAll('[data-style]').forEach(b => {
+    b.onclick = () => { G.config.style = b.dataset.style; menuError = ''; renderMenu(); };
+  });
+
+  const btnStart = overlay.querySelector('#btnStart');
+  if (btnStart) btnStart.onclick = () => { menuError = ''; startMatch(newSeed(), 'solo'); };
+
+  const btnHost = overlay.querySelector('#btnHost');
+  if (btnHost) btnHost.onclick = () => { menuError = ''; hostGame(); };
+
+  const btnJoin = overlay.querySelector('#btnJoin');
+  const joinRow = overlay.querySelector('#joinRow');
+  const input   = overlay.querySelector('#joinInput');
+  const btnGo   = overlay.querySelector('#btnJoinGo');
+
+  if (btnJoin) btnJoin.onclick = () => {
+    joinRow.classList.toggle('hidden');
+    if (!joinRow.classList.contains('hidden') && input) input.focus();
+  };
+  if (btnGo) btnGo.onclick = () => {
+    const code = (input.value || '').trim().toUpperCase();
+    if (code.length !== 4){ menuError = 'Enter the 4-character room code.'; renderMenu(); return; }
+    menuError = ''; joinGame(code);
+  };
+  if (input) input.onkeydown = e => { if (e.key === 'Enter') btnGo.click(); };
+}
+
+function idleOverlay(){
+  G.state = 'lobby';
+  G.role = 'none';
+  G.board = null; G.myBoard = null; G.theirBoard = null;
+  G.me = null; G.them = null;
+  G.viewMe = null; G.viewThem = null;
+  G.panelMe = null; G.panelThem = null;
+  G.lossPending = false;
+  G.winSent = false;
+  G.opponentGone = false;
+  arena.innerHTML = '';
+  controls.innerHTML = '';
+  cleanupNet();
+  setStatus('OFFLINE', '');
+  renderMenu('');
+}
+
+function waitHTML(icon, title, body){
+  return '<div class="ovbox">' +
+    '<div class="big">' + icon + '</div>' +
+    '<h2>' + title + '</h2>' +
+    '<p>' + body + '</p>' +
+    '<div class="ovbtns"><button class="ghost" id="btnCancel">CANCEL</button></div>' +
+  '</div>';
+}
+
+function wireCancel(){
+  const b = overlay.querySelector('#btnCancel');
+  if (b) b.onclick = () => { cleanupNet(); idleOverlay(); };
+}
+
+function hostGame(){
+  setStatus('CONNECTING', 'warn');
+  showOverlay(waitHTML('📡', 'CREATING ROOM', '<span class="spin"></span>Setting up a peer connection…'));
+  wireCancel();
+
+  const code = makeCode();
+  let peer;
+  try {
+    peer = new Peer(PREFIX + code, { debug: 0 });
+  } catch(e){
+    renderMenu('Could not start peer connection.');
+    return;
+  }
+  G.peer = peer;
+
+  let started = false;
+
+  peer.on('open', () => {
+    if (G.peer !== peer) return;
+    showCodeScreen(code);
+    wireCancel();
+  });
+
+  peer.on('connection', c => {
+    if (G.conn){ try { c.close(); } catch(e){} return; }
+    attachConn(c);
+
+    const begin = () => {
+      if (started) return;
+      started = true;
+      const seed = newSeed();
+      send({ t:'seed', seed, config: G.config });
+      startMatch(seed, 'host');
+    };
+    c.on('open', begin);
+    if (c.open) begin();
+  });
+
+  peer.on('error', err => {
+    if (G.peer !== peer) return;
+    cleanupNet();
+    const t = err && err.type;
+    if (t === 'unavailable-id') renderMenu('Room code collision — please try again.');
+    else renderMenu('Connection error: ' + (t || 'unknown'));
+  });
+}
+
+function showCodeScreen(code){
+  setStatus('WAITING', 'warn');
+  showOverlay(
+    '<div class="ovbox">' +
+      '<div class="big">🎮</div>' +
+      '<h2>ROOM <span>READY</span></h2>' +
+      '<p>Share this code with your opponent.<br>Tap the code to copy it.</p>' +
+      '<div class="codebox"><div class="codeval" id="codeVal">' + code + '</div></div>' +
+      '<p style="margin-top:16px"><span class="spin"></span>Waiting for opponent…</p>' +
+      '<div class="ovbtns"><button class="ghost" id="btnCancel">CANCEL</button></div>' +
+    '</div>'
+  );
+  const cv = overlay.querySelector('#codeVal');
+  cv.onclick = () => {
+    copyToClipboard(code).then(ok => {
+      cv.textContent = ok ? 'COPIED' : code;
+      setTimeout(() => { cv.textContent = code; }, 900);
+    });
+  };
+  wireCancel();
+}
+
+function joinGame(code){
+  setStatus('CONNECTING', 'warn');
+  showOverlay(waitHTML('🔎', 'JOINING ' + code, '<span class="spin"></span>Looking for the room…'));
+  wireCancel();
+
+  let peer;
+  try {
+    peer = new Peer({ debug: 0 });
+  } catch(e){
+    renderMenu('Could not start peer connection.');
+    return;
+  }
+  G.peer = peer;
+
+  let joined = false;
+
+  peer.on('open', () => {
+    if (G.peer !== peer) return;
+    const c = peer.connect(PREFIX + code, { reliable: true });
+    attachConn(c);
+
+    c.on('open', () => {
+      if (joined) return;
+      joined = true;
+      G.role = 'guest';
+      setStatus('WAITING', 'warn');
+      showOverlay(waitHTML('✅', 'CONNECTED', '<span class="spin"></span>Waiting for the host to start…'));
+      wireCancel();
+    });
+  });
+
+  peer.on('error', err => {
+    if (G.peer !== peer) return;
+    cleanupNet();
+    const t = err && err.type;
+    if (t === 'peer-unavailable') renderMenu('Room "' + code + '" was not found.');
+    else renderMenu('Connection error: ' + (t || 'unknown'));
+  });
 }
 
 /* ══════════════════════════════════════════════════════════════
    MATCH FLOW
    ══════════════════════════════════════════════════════════════ */
-function startSolo(styleId){
-  G.role = 'solo';
-  G.myOwner = 1;
-  G.theirOwner = 2;
-  const style = STYLES[styleId || 'square'];
-  G.config = {
-    style: style.id, mode: 'solo',
-    cols: style.cols, rows: style.rows, mines: style.mines,
-    styleName: style.name, modeName: 'Solo'
-  };
-  const seed = (Math.random() * 1e9) | 0;
-  startMatch(seed, true);
-}
-
-function startMatch(seed, isHost){
-  G.seed = seed;
-  const cfg = G.config;
-  const isTerr = cfg.mode === 'territory';
-
-  const starts = isTerr
-    ? territoryStarts(cfg.rows, cfg.cols)
-    : [{ r: Math.floor(cfg.rows / 2), c: Math.floor(cfg.cols / 2) }];
-
-  G.board = genBoard(seed, cfg.style, cfg.cols, cfg.rows, cfg.mines, starts);
-
-  G.myBoard = makeBoardState(cfg.rows, cfg.cols);
-  if (cfg.mode === 'coop' || isTerr){
-    G.theirBoard = G.myBoard;
-  } else if (cfg.mode === 'duel'){
-    G.theirBoard = makeBoardState(cfg.rows, cfg.cols);
-  } else {
-    G.theirBoard = null;
-  }
-
-  const myStart    = isTerr ? (G.myOwner === 1 ? starts[0] : starts[1]) : G.board.start;
-  const theirStart = isTerr ? (G.myOwner === 1 ? starts[1] : starts[0]) : G.board.start;
-
-  G.me   = makePlayerState(myStart);
-  G.them = makePlayerState(theirStart);
+function startMatch(seed, role){
+  G.role = role;
+  G.seed = seed >>> 0;
+  G.myOwner = (role === 'guest') ? 2 : 1;
+  G.theirOwner = (role === 'guest') ? 1 : 2;
   G.lossPending = false;
+  G.winSent = false;
+  G.opponentGone = false;
 
-  if (isTerr){
-    applyReveal(G.myBoard, G.board, starts[0].r, starts[0].c, 1);
-    applyReveal(G.myBoard, G.board, starts[1].r, starts[1].c, 2);
-  } else {
-    applyReveal(G.myBoard, G.board, G.board.start.r, G.board.start.c);
-    if (cfg.mode === 'duel'){
-      applyReveal(G.theirBoard, G.board, G.board.start.r, G.board.start.c);
-    }
-  }
+  const d = dimsFor(G.config);
+  const mode = G.config.mode;
+
+  let starts = [{ r: (d.rows >> 1), c: (d.cols >> 1) }];
+  if (mode === 'territory') starts = territoryStarts(d.rows, d.cols);
+
+  G.board = genBoard(G.seed, G.config.style, d.cols, d.rows, d.mines, starts);
+  G.myBoard = makeBoardState(d.rows, d.cols);
+  G.theirBoard = makeBoardState(d.rows, d.cols);
+
+  const myStart = starts.length > 1 ? starts[G.myOwner - 1] : starts[0];
+  const theirStart = starts.length > 1 ? starts[G.theirOwner - 1] : starts[0];
+
+  G.me = makePlayerState(myStart);
+  G.them = (role === 'solo') ? null : makePlayerState(theirStart);
 
   buildArena();
+  buildControls();
+  hideOverlay();
 
-  controls.innerHTML = '';
-  const exitBtn = document.createElement('button');
-  exitBtn.className = 'ghost danger';
-  exitBtn.textContent = '✖ Exit';
-  exitBtn.onclick = () => { cleanupNet(); idleOverlay(); };
-  controls.appendChild(exitBtn);
-
-  if (G.role === 'solo'){
-    const newBtn = document.createElement('button');
-    newBtn.className = 'ghost';
-    newBtn.textContent = '↺ New Solo';
-    newBtn.onclick = () => startSolo(G.config.style);
-    controls.appendChild(newBtn);
-  }
-
-  G.cdEnd = performance.now() + 3300;
-  G.cdLabel = '';
   G.state = 'countdown';
-  beep(440, 0.08, 'sine', 0.03);
+  countdown(() => {
+    G.state = 'playing';
+    G.startTime = performance.now();
+    lastCursorSent = 0;
+    setStatus(role === 'solo' ? 'SOLO' : 'LIVE', 'live');
+    beep(880, 0.08, 'square', 0.03);
+  });
 }
 
-function endGame(result, icon, title, sub, elapsedMs, extraCards){
+function countdown(done){
+  let n = 3;
+  const step = () => {
+    if (n > 0){
+      showOverlay('<div class="ovbox"><h2>GET <span>READY</span></h2><div class="cd">' + n + '</div></div>');
+      beep(520 + (3 - n) * 130, 0.12, 'square', 0.04);
+      n--;
+      setTimeout(step, 750);
+    } else {
+      showOverlay('<div class="ovbox"><div class="cd" style="color:#5dff9e;text-shadow:0 0 34px #5dff9e,0 0 80px #5dff9e">GO!</div></div>');
+      beep(1200, 0.22, 'square', 0.05);
+      setTimeout(() => { hideOverlay(); done(); }, 550);
+    }
+  };
+  step();
+}
+
+function buildControls(){
+  controls.innerHTML = '';
+
+  const row = document.createElement('div');
+  row.style.cssText = 'display:flex;gap:12px;flex-wrap:wrap;justify-content:center;width:100%';
+
+  const leave = document.createElement('button');
+  leave.className = 'danger';
+  leave.textContent = 'LEAVE MATCH';
+  leave.onclick = onLeaveClick;
+  row.appendChild(leave);
+
+  const rematch = document.createElement('button');
+  rematch.className = 'ghost';
+  rematch.textContent = 'REMATCH';
+  rematch.onclick = onRematchClick;
+  if (G.role === 'guest'){ rematch.disabled = true; rematch.style.opacity = '.4'; rematch.style.cursor = 'not-allowed'; }
+  row.appendChild(rematch);
+
+  const padToggle = document.createElement('button');
+  padToggle.className = 'ghost';
+  padToggle.textContent = 'TOUCH PAD';
+  padToggle.onclick = () => {
+    G.touchForced = !G.touchForced;
+    const pad = controls.querySelector('.touchpad');
+    if (pad) pad.classList.toggle('force', G.touchForced);
+  };
+  row.appendChild(padToggle);
+
+  controls.appendChild(row);
+  controls.appendChild(buildTouchpad());
+}
+
+async function onLeaveClick(){
+  if (G.state === 'playing' || G.state === 'countdown'){
+    const ok = await confirmDialog({
+      title: 'LEAVE MATCH?',
+      message: 'Your current match will be abandoned and your opponent will be disconnected.',
+      ok: 'LEAVE',
+      cancel: 'STAY'
+    });
+    if (!ok) return;
+  }
+  if (G.conn && (G.state === 'playing' || G.state === 'countdown')){
+    send({ t:'lose' });
+  }
+  cleanupNet();
+  idleOverlay();
+}
+
+function onRematchClick(){
+  if (G.state !== 'over' && G.state !== 'playing') return;
+  if (G.role === 'solo'){ startMatch(newSeed(), 'solo'); return; }
+  if (G.role !== 'host') return;
+  if (G.opponentGone){ idleOverlay(); return; }
+  const seed = newSeed();
+  send({ t:'seed', seed, config: G.config });
+  startMatch(seed, 'host');
+}
+
+/* ══════════════════════════════════════════════════════════════
+   END GAME
+   ══════════════════════════════════════════════════════════════ */
+function endGame(result, icon, title, sub, elapsed, cards){
   if (G.state === 'over') return;
   G.state = 'over';
-  G.endTime = performance.now();
-  G.lossPending = false;
+  if (G.me) G.me.done = true;
 
-  if (G.config.mode === 'duel'){
-    if (result === 'win' && G.panelThem) G.panelThem.classList.add('lost');
-    if (result === 'lose' && G.panelMe) G.panelMe.classList.add('lost');
-    if (result === 'win' && G.panelMe) G.panelMe.classList.add('won');
-  } else if (G.config.mode === 'territory'){
-    if (result === 'win' && G.panelMe) G.panelMe.classList.add('won');
-    if (result === 'lose' && G.panelMe) G.panelMe.classList.add('lost');
-  }
+  const statusMap = {
+    win:        ['VICTORY', 'live'],
+    lose:       ['DEFEAT', 'bad'],
+    draw:       ['DRAW', 'warn'],
+    disconnect: ['DISCONNECTED', 'bad']
+  };
+  const s = statusMap[result] || ['MATCH OVER', 'warn'];
+  setStatus(s[0], s[1]);
 
-  if (result === 'win' && G.viewMe){
-    let i = 0;
-    for (let r = 0; r < G.board.rows; r++){
-      for (let c = 0; c < G.board.cols; c++){
-        if (!G.board.mines.has(r + ',' + c)) continue;
-        const p = hexOrSqCenter(G.viewMe, r, c);
-        const col = ['#4dd8ff', '#8affc1', '#ffd166', '#ff7ad9'][i++ % 4];
-        G.viewMe.boom(p.x, p.y, col, 10, 110);
-      }
+  const secs = Math.max(0, elapsed) / 1000;
+
+  let cardsHtml = cards;
+  if (!cardsHtml){
+    cardsHtml =
+      '<div class="statcard"><div class="slabel">TIME</div><div class="sval">' + secs.toFixed(1) + '</div></div>' +
+      '<div class="statcard"><div class="slabel">YOUR HITS</div><div class="sval">' + (G.me ? G.me.hits : 0) + '</div></div>';
+    if (G.them){
+      cardsHtml += '<div class="statcard lose"><div class="slabel">THEIR HITS</div><div class="sval">' + G.them.hits + '</div></div>';
     }
   }
 
-  const isWin  = result === 'win';
-  const isDraw = result === 'draw';
-  beep(isWin ? 880 : isDraw ? 620 : 200, isWin ? 0.12 : 0.4, isWin ? 'sine' : 'sawtooth', 0.05);
-  if (isWin) setTimeout(() => beep(1180, 0.18, 'sine', 0.05), 140);
-
-  let statsHtml = '';
-  if (elapsedMs != null && elapsedMs > 0){
-    statsHtml +=
-      '<div class="statcard ' + (isWin ? 'win' : isDraw ? '' : 'lose') + '">' +
-        '<div class="slabel">TIME</div>' +
-        '<div class="sval">' + fmtTime(elapsedMs) + '</div>' +
-      '</div>';
-  }
-  if (G.me){
-    statsHtml +=
-      '<div class="statcard ' + (G.me.hits > 0 ? 'lose' : '') + '">' +
-        '<div class="slabel">BOMBS HIT</div>' +
-        '<div class="sval">' + G.me.hits + '</div>' +
-      '</div>';
-  }
-  if (extraCards) statsHtml += extraCards;
+  const canRematch = (G.role === 'solo') || (G.role === 'host' && !G.opponentGone);
 
   showOverlay(
-    '<div class="big">' + icon + '</div>' +
-    '<h2>' + title + '</h2>' +
-    '<p>' + sub + '</p>' +
-    (statsHtml ? '<div class="statrow">' + statsHtml + '</div>' : '') +
-    '<div class="ovbtns" style="margin-top:24px">' +
-      '<button id="ovRematch" class="primary">🔄 ' + (G.role === 'solo' ? 'Play Again' : 'Rematch') + '</button>' +
-      '<button id="ovMenu" class="ghost">🏠 Menu</button>' +
+    '<div class="ovbox">' +
+      '<div class="big">' + icon + '</div>' +
+      '<h2>' + title + '</h2>' +
+      '<p>' + sub + '</p>' +
+      '<div class="statrow">' + cardsHtml + '</div>' +
+      '<div class="ovbtns">' +
+        (canRematch ? '<button class="primary" id="btnAgain">REMATCH</button>' : '') +
+        '<button class="ghost" id="btnMenu">MAIN MENU</button>' +
+      '</div>' +
+      (G.role === 'guest' && !G.opponentGone ? '<div class="err">Waiting for the host to start a rematch…</div>' : '') +
+      (G.opponentGone ? '<div class="err">Opponent disconnected.</div>' : '') +
     '</div>'
   );
 
-  const rm = document.getElementById('ovRematch');
-  if (rm) rm.onclick = () => {
-    if (G.role === 'host'){
-      const seed = (Math.random() * 1e9) | 0;
-      send({ t: 'seed', seed, config: G.config });
-      startMatch(seed, true);
-    } else if (G.role === 'guest'){
-      showOverlay('<h2>WAITING<span>…</span></h2><p><span class="spin"></span>Host is preparing a new board</p>');
-    } else {
-      startSolo(G.config.style);
-    }
-  };
-  const mn = document.getElementById('ovMenu');
-  if (mn) mn.onclick = () => { cleanupNet(); idleOverlay(); };
-}
-
-/* ══════════════════════════════════════════════════════════════
-   OVERLAYS
-   ══════════════════════════════════════════════════════════════ */
-function showOverlay(html){
-  overlay.innerHTML = '<div class="ovbox">' + html + '</div>';
-  overlay.classList.remove('hidden');
-}
-function hideOverlay(){ overlay.classList.add('hidden'); }
-function showErr(msg){
-  const el = document.getElementById('errBox');
-  if (el) el.textContent = '⚠ ' + msg;
-}
-
-function idleOverlay(){
-  cleanupNet();
-  G.state = 'lobby';
-  G.role = 'none';
-  G.lossPending = false;
-  arena.innerHTML = '';
-  arena.classList.remove('solo','coop','territory');
-  controls.innerHTML = '';
-  G.viewMe = null; G.viewThem = null;
-  G.panelMe = null; G.panelThem = null;
-  setStatus('OFFLINE');
-
-  showOverlay(
-    '<h2>MINE<span>DUEL</span></h2>' +
-    '<p>' +
-      '<b style="color:#4dd8ff">Duel</b> — race to clear your own board. Bomb hit = 10s freeze.<br>' +
-      '<b style="color:#ff3d81">Co-op</b> — one shared board. Bomb hit = instant loss.<br>' +
-      '<b style="color:#ffd166">Territory</b> — larger board. Claim land.<br>' +
-      '&nbsp;&nbsp;&nbsp;&nbsp;Bomb = 10s freeze + you still claim the tile.<br>' +
-      '<b style="color:#8affc1">Solo</b> — practise. Bomb hit = instant loss.<br>' +
-      'Every board: 1 bomb per ' + TILES_PER_BOMB + ' tiles.' +
-    '</p>' +
-    '<div class="ovbtns">' +
-      '<button id="btnHost" class="primary">🌐 Create Online Room</button>' +
-      '<button id="btnSolo" class="ghost">🎯 Solo</button>' +
-      '<button id="btnHow" class="ghost">❓ How to Play</button>' +
-    '</div>' +
-    '<div class="joinrow">' +
-      '<input id="joinCode" maxlength="4" placeholder="CODE" autocomplete="off" spellcheck="false">' +
-      '<button id="btnJoin">Join</button>' +
-    '</div>' +
-    '<div class="err" id="errBox"></div>'
-  );
-
-  document.getElementById('btnHost').onclick = hostConfigOverlay;
-  document.getElementById('btnSolo').onclick = soloConfigOverlay;
-  document.getElementById('btnHow').onclick = howToPlayOverlay;
-  const inp = document.getElementById('joinCode');
-  const doJoin = () => joinGame(inp.value);
-  document.getElementById('btnJoin').onclick = doJoin;
-  inp.addEventListener('keydown', e => { if (e.key === 'Enter') doJoin(); });
-  setTimeout(() => inp.focus(), 80);
-}
-
-function howToPlayOverlay(){
-  showOverlay(
-    '<h2>HOW TO <span>PLAY</span></h2>' +
-    '<div style="text-align:left;color:#cfe4ff;font-size:15px;line-height:1.9;letter-spacing:.04em;margin:22px 0 26px">' +
-      '<p style="margin-bottom:20px;display:flex;gap:12px;align-items:flex-start">' +
-        '<span style="color:#4dd8ff;font-size:20px;line-height:1.4">🔢</span>' +
-        '<span><b style="color:#4dd8ff">Numbers</b> tell you how many bombs sit in the tiles <b>next to</b> that tile.</span>' +
-      '</p>' +
-      '<p style="margin-bottom:20px;display:flex;gap:12px;align-items:flex-start">' +
-        '<span style="color:#4dd8ff;font-size:20px;line-height:1.4">🖱️</span>' +
-        '<span><b style="color:#4dd8ff">Left click</b> a tile you think is <i>not</i> a bomb to reveal it.</span>' +
-      '</p>' +
-      '<p style="margin-bottom:20px;display:flex;gap:12px;align-items:flex-start">' +
-        '<span style="color:#ff3d81;font-size:20px;line-height:1.4">🚩</span>' +
-        '<span><b style="color:#ff3d81">Right click</b> a tile you think <i>is</i> a bomb to mark it with a flag.</span>' +
-      '</p>' +
-      '<p style="margin-top:24px;color:#6b7a94;font-size:12.5px;letter-spacing:.14em;text-align:center;border-top:1px solid rgba(255,255,255,.08);padding-top:18px">' +
-        '⌨️ WASD / ARROWS TO MOVE · SPACE TO DIG · F TO FLAG' +
-      '</p>' +
-      '<p style="margin-top:12px;color:#6b7a94;font-size:12px;letter-spacing:.14em;text-align:center">' +
-        '💣 EVERY BOARD HAS 1 BOMB PER ' + TILES_PER_BOMB + ' TILES' +
-      '</p>' +
-      '<p style="margin-top:12px;color:#ffd166;font-size:12px;letter-spacing:.14em;text-align:center">' +
-        '🗺️ TERRITORY: HIT A BOMB → 10s FREEZE + YOU CLAIM THAT TILE' +
-      '</p>' +
-    '</div>' +
-    '<div class="ovbtns">' +
-      '<button id="htpBack" class="primary">Got it</button>' +
-    '</div>'
-  );
-  document.getElementById('htpBack').onclick = idleOverlay;
-}
-
-function hostConfigOverlay(){
-  let styleId = 'square';
-  let modeId  = 'duel';
-
-  function render(){
-    const terr = modeId === 'territory';
-    showOverlay(
-      '<h2>CREATE <span>ROOM</span></h2>' +
-      '<p>Pick what you and your friend will play.</p>' +
-      '<div class="config-section">' +
-        '<div class="config-label">BOARD STYLE</div>' +
-        '<div class="config-options">' +
-          '<button class="opt ' + (styleId==='square'?'active':'') + '" data-style="square">' +
-            '<div class="opt-name">Classic</div>' +
-            '<div class="opt-desc">' + styleDesc(STYLES.square, terr) + '</div>' +
-          '</button>' +
-          '<button class="opt ' + (styleId==='hex'?'active':'') + '" data-style="hex">' +
-            '<div class="opt-name">Neon Hex</div>' +
-            '<div class="opt-desc">' + styleDesc(STYLES.hex, terr) + '</div>' +
-          '</button>' +
-        '</div>' +
-      '</div>' +
-      '<div class="config-section">' +
-        '<div class="config-label">GAME MODE</div>' +
-        '<div class="config-options">' +
-          '<button class="opt ' + (modeId==='duel'?'active':'') + '" data-mode="duel">' +
-            '<div class="opt-name">Duel</div>' +
-            '<div class="opt-desc">Race · 10s freeze on bomb</div>' +
-          '</button>' +
-          '<button class="opt ' + (modeId==='coop'?'active':'') + '" data-mode="coop">' +
-            '<div class="opt-name">Co-op</div>' +
-            '<div class="opt-desc">Shared board · Bomb = loss</div>' +
-          '</button>' +
-          '<button class="opt ' + (modeId==='territory'?'active':'') + '" data-mode="territory">' +
-            '<div class="opt-name">Territory</div>' +
-            '<div class="opt-desc">Larger board · Claim land<br>Bomb = 10s freeze + claim tile</div>' +
-          '</button>' +
-        '</div>' +
-      '</div>' +
-      '<div class="ovbtns" style="margin-top:24px">' +
-        '<button id="createBtn" class="primary">🌐 Create Room</button>' +
-        '<button id="backBtn" class="ghost">Back</button>' +
-      '</div>' +
-      '<div class="err" id="errBox"></div>'
-    );
-    overlay.querySelectorAll('[data-style]').forEach(b => {
-      b.onclick = () => { styleId = b.dataset.style; render(); };
-    });
-    overlay.querySelectorAll('[data-mode]').forEach(b => {
-      b.onclick = () => { modeId = b.dataset.mode; render(); };
-    });
-    document.getElementById('createBtn').onclick = () => hostGame(styleId, modeId);
-    document.getElementById('backBtn').onclick = idleOverlay;
-  }
-  render();
-}
-
-function soloConfigOverlay(){
-  let styleId = 'square';
-
-  function render(){
-    showOverlay(
-      '<h2>SOLO <span>PRACTICE</span></h2>' +
-      '<p>Clear the field at your own pace.<br>' +
-      '<b style="color:#ff6b8a">One bomb ends the run.</b></p>' +
-      '<div class="config-section">' +
-        '<div class="config-label">BOARD STYLE</div>' +
-        '<div class="config-options">' +
-          '<button class="opt ' + (styleId==='square'?'active':'') + '" data-style="square">' +
-            '<div class="opt-name">Classic</div>' +
-            '<div class="opt-desc">' + styleDesc(STYLES.square, false) + '</div>' +
-          '</button>' +
-          '<button class="opt ' + (styleId==='hex'?'active':'') + '" data-style="hex">' +
-            '<div class="opt-name">Neon Hex</div>' +
-            '<div class="opt-desc">' + styleDesc(STYLES.hex, false) + '</div>' +
-          '</button>' +
-        '</div>' +
-      '</div>' +
-      '<div class="ovbtns" style="margin-top:24px">' +
-        '<button id="startBtn" class="primary">▶ Start Solo</button>' +
-        '<button id="backBtn" class="ghost">Back</button>' +
-      '</div>'
-    );
-    overlay.querySelectorAll('[data-style]').forEach(b => {
-      b.onclick = () => { styleId = b.dataset.style; render(); };
-    });
-    document.getElementById('startBtn').onclick = () => startSolo(styleId);
-    document.getElementById('backBtn').onclick = idleOverlay;
-  }
-  render();
-}
-
-function showWaiting(code, styleId, modeId){
-  const style = STYLES[styleId];
-  const mode  = MODES[modeId];
-  const terr = modeId === 'territory';
-  showOverlay(
-    '<h2>ROOM <span>READY</span></h2>' +
-    '<p>Share this code with your friend.<br>They join from their own device.</p>' +
-    '<div class="codebox">' +
-      '<div class="codeval" id="codeVal" title="Click to copy">' + code + '</div>' +
-    '</div>' +
-    '<p style="font-size:13px;margin-top:4px">' +
-      '<b style="color:#4dd8ff">' + style.name + '</b>' +
-      ' <span style="opacity:.5">·</span> ' +
-      '<b style="color:#ff3d81">' + mode.name + '</b>' +
-      ' <span style="opacity:.5">·</span> ' +
-      '<span>' + styleDesc(style, terr) + '</span>' +
-    '</p>' +
-    '<div class="ovbtns" style="margin-top:16px">' +
-      '<button id="copyBtn">📋 Copy Code</button>' +
-      '<button id="cancelBtn" class="ghost">Cancel</button>' +
-    '</div>' +
-    '<div class="err" id="errBox"></div>' +
-    '<p style="margin-top:24px;font-size:13px">' +
-      '<span class="spin"></span>Waiting for opponent to connect…' +
-    '</p>'
-  );
-
-  const codeEl = document.getElementById('codeVal');
-  const copyBtn = document.getElementById('copyBtn');
-
-  const doCopy = () => {
-    copyToClipboard(code).then(ok => {
-      if (ok){
-        copyBtn.textContent = '✅ Copied!';
-        copyBtn.style.borderColor = '#34d399';
-        copyBtn.style.color = '#a7f3d0';
-        setTimeout(() => {
-          copyBtn.textContent = '📋 Copy Code';
-          copyBtn.style.borderColor = '';
-          copyBtn.style.color = '';
-        }, 1500);
-      } else {
-        copyBtn.textContent = '⚠ Select the code manually';
-        codeEl.focus();
-        setTimeout(() => { copyBtn.textContent = '📋 Copy Code'; }, 2200);
-      }
-    });
+  const again = overlay.querySelector('#btnAgain');
+  if (again) again.onclick = () => {
+    if (G.role === 'solo'){ startMatch(newSeed(), 'solo'); return; }
+    const seed = newSeed();
+    send({ t:'seed', seed, config: G.config });
+    startMatch(seed, 'host');
   };
 
-  copyBtn.onclick = doCopy;
-  codeEl.onclick = doCopy;
+  overlay.querySelector('#btnMenu').onclick = () => {
+    cleanupNet();
+    idleOverlay();
+  };
 
-  document.getElementById('cancelBtn').onclick = () => { cleanupNet(); idleOverlay(); };
+  if (result === 'win'){ beep(880, 0.12, 'square', 0.05); setTimeout(()=>beep(1180, 0.2, 'square', 0.05), 140); }
+  else if (result === 'lose' || result === 'disconnect'){ beep(200, 0.35, 'sawtooth', 0.06); }
 }
 
 /* ══════════════════════════════════════════════════════════════
-   INPUT
+   RENDER LOOP + HUD
    ══════════════════════════════════════════════════════════════ */
-const MOVE_KEYS = {
-  w: [-1, 0], s: [1, 0], a: [0, -1], d: [0, 1],
-  arrowup: [-1, 0], arrowdown: [1, 0], arrowleft: [0, -1], arrowright: [0, 1]
-};
+function renderAll(now){
+  if (!G.viewMe || !G.myBoard || !G.board || !G.me) return;
 
-window.addEventListener('keydown', e => {
-  const k = e.key.toLowerCase();
-  if ([' ', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(k)) e.preventDefault();
-  if (G.state !== 'playing') return;
-  if (!canAct()) return;
+  const mode = G.config.mode;
+  const shared = (mode === 'coop' || mode === 'territory');
 
-  const m = MOVE_KEYS[k];
-  if (m){ moveCursor(m[0], m[1]); return; }
-  if (k === ' ' || k === 'enter'){ localDig(); return; }
-  if (k === 'f' || k === '.'){ localFlag(); return; }
-});
+  const myColor = '#4dd8ff';
+  const theirColor = '#ff3d81';
 
-function bindCanvasInput(canvas){
-  let touchTimer = null, touchCell = null, longFired = false, touchMoved = false;
-
-  canvas.addEventListener('mousedown', e => {
-    e.preventDefault();
-    if (G.state !== 'playing') return;
-    if (canvas !== (G.viewMe && G.viewMe.canvas)) return;
-    const hit = G.viewMe.hitTest(e.clientX, e.clientY);
-    if (!hit) return;
-
-    if (e.button === 2){
-      localFlagAt(hit.r, hit.c);
-    } else if (e.button === 0){
-      if (G.myBoard.revealed[hit.r][hit.c]) localChordAt(hit.r, hit.c);
-      else localDigAt(hit.r, hit.c);
-    }
-  });
-  canvas.addEventListener('contextmenu', e => e.preventDefault());
-
-  canvas.addEventListener('touchstart', e => {
-    e.preventDefault();
-    if (e.touches.length !== 1) return;
-    if (G.state !== 'playing') return;
-    if (canvas !== (G.viewMe && G.viewMe.canvas)) return;
-    const t = e.touches[0];
-    const hit = G.viewMe.hitTest(t.clientX, t.clientY);
-    touchCell = hit;
-    longFired = false;
-    touchMoved = false;
-    if (!hit) return;
-    touchTimer = setTimeout(() => {
-      longFired = true;
-      localFlagAt(hit.r, hit.c);
-      if (navigator.vibrate) navigator.vibrate(18);
-    }, 380);
-  }, { passive: false });
-
-  canvas.addEventListener('touchmove', e => {
-    e.preventDefault();
-    touchMoved = true;
-    if (touchTimer) { clearTimeout(touchTimer); touchTimer = null; }
-  }, { passive: false });
-
-  canvas.addEventListener('touchend', e => {
-    e.preventDefault();
-    if (touchTimer) { clearTimeout(touchTimer); touchTimer = null; }
-    if (!longFired && !touchMoved && touchCell){
-      if (G.myBoard.revealed[touchCell.r][touchCell.c]) localChordAt(touchCell.r, touchCell.c);
-      else localDigAt(touchCell.r, touchCell.c);
-    }
-    touchCell = null;
-  }, { passive: false });
-}
-
-/* ══════════════════════════════════════════════════════════════
-   HUD UPDATE
-   ══════════════════════════════════════════════════════════════ */
-function updateHUD(){
-  if (!G.panelMe || !G.board) return;
-
-  const elapsed = (G.state === 'playing' || G.state === 'over')
-    ? ((G.state === 'over' ? G.endTime : performance.now()) - G.startTime)
-    : 0;
-
-  if (G.config.mode === 'territory'){
-    const els = G.panelMe._els;
-    const mine   = countLand(G.myBoard, G.myOwner);
-    const theirs = countLand(G.myBoard, G.theirOwner);
-    const total  = Math.max(1, G.board.safeCount);
-    els.myLand.textContent    = mine;
-    els.theirLand.textContent = theirs;
-    els.time.textContent      = fmtTime(Math.max(0, elapsed));
-    els.myBar.style.width     = (mine   / total * 100) + '%';
-    els.theirBar.style.width  = (theirs / total * 100) + '%';
-    return;
+  const cursors = [{ r: G.me.cursor.r, c: G.me.cursor.c, color: myColor }];
+  if (shared && G.them){
+    cursors.push({ r: G.them.cursor.r, c: G.them.cursor.c, color: theirColor });
   }
 
-  const safe = G.board.safeCount;
-  const minesLeft = Math.max(0, G.board.mineCount - G.myBoard.flagCount);
+  G.viewMe.render(now, { board: G.board, boardState: G.myBoard, cursors });
 
-  G.panelMe._els.mines.textContent = String(minesLeft).padStart(2, '0');
-  G.panelMe._els.time.textContent  = fmtTime(Math.max(0, elapsed));
-  G.panelMe._els.hits.textContent  = G.me ? G.me.hits : 0;
-  G.panelMe._els.hits.classList.toggle('danger', G.me && G.me.hits > 0);
-  G.panelMe._els.bar.style.width = (G.myBoard.count / safe * 100) + '%';
-
-  if (G.panelThem && G.theirBoard){
-    const theirMinesLeft = Math.max(0, G.board.mineCount - G.theirBoard.flagCount);
-    G.panelThem._els.mines.textContent = String(theirMinesLeft).padStart(2, '0');
-    G.panelThem._els.time.textContent  = fmtTime(Math.max(0, elapsed));
-    G.panelThem._els.hits.textContent  = G.them ? G.them.hits : 0;
-    G.panelThem._els.hits.classList.toggle('danger', G.them && G.them.hits > 0);
-    G.panelThem._els.bar.style.width = (G.theirBoard.count / safe * 100) + '%';
-  }
-}
-
-/* ══════════════════════════════════════════════════════════════
-   MAIN LOOP
-   ══════════════════════════════════════════════════════════════ */
-let lastHud = 0;
-function loop(now){
-  if (G.state === 'countdown'){
-    const left = G.cdEnd - now;
-    if (left <= 0){
-      G.state = 'playing';
-      G.startTime = performance.now();
-      hideOverlay();
-      setStatus(
-        G.config.mode === 'coop' ? 'CO-OP — GO!' :
-        G.config.mode === 'solo' ? 'SOLO — GO!' :
-        G.config.mode === 'territory' ? 'LAND GRAB — GO!' : 'LIVE MATCH',
-        'live'
-      );
-      beep(880, 0.12, 'sine', 0.045);
-    } else {
-      const label = left > 2400 ? '3' : left > 1600 ? '2' : left > 800 ? '1' : 'GO!';
-      if (label !== G.cdLabel){
-        G.cdLabel = label;
-        showOverlay('<div class="cd">' + label + '</div>');
-        beep(label === 'GO!' ? 1000 : 500, 0.07, 'sine', 0.04);
-      }
-    }
-  }
-
-  if (G.viewMe && G.board && G.myBoard && G.me){
-    const cursors = [{ r: G.me.cursor.r, c: G.me.cursor.c, color: '#4dd8ff' }];
-    G.viewMe.render(now, { board: G.board, boardState: G.myBoard, cursors });
-  }
-
-  if (G.viewThem && G.board && G.theirBoard && G.them){
+  if (G.viewThem && G.theirBoard){
     G.viewThem.render(now, {
       board: G.board,
       boardState: G.theirBoard,
-      cursors: []
+      cursors: G.them ? [{ r: G.them.cursor.r, c: G.them.cursor.c, color: theirColor }] : []
     });
   }
 
-  const stunModes = G.config && (G.config.mode === 'duel' || G.config.mode === 'territory');
-
-  if (G.panelMe && G.me && stunModes && G.panelMe._els && G.panelMe._els.stun){
-    const tEl = G.panelMe._els.stun.querySelector('[data-timer]');
-    if (G.me.stunUntil > now){
-      G.panelMe._els.stun.classList.add('on');
-      if (tEl) tEl.textContent = ((G.me.stunUntil - now) / 1000).toFixed(1);
-    } else if (G.me.wasStunned){
-      G.me.wasStunned = false;
-      G.panelMe._els.stun.classList.remove('on');
-    }
-  }
-  if (G.panelThem && G.them && G.config.mode === 'duel'){
-    const tEl = G.panelThem._els.stun.querySelector('[data-timer]');
-    if (G.them.stunUntil > now){
-      G.panelThem._els.stun.classList.add('on');
-      if (tEl) tEl.textContent = ((G.them.stunUntil - now) / 1000).toFixed(1);
-    } else if (G.them.wasStunned){
-      G.them.wasStunned = false;
-      G.panelThem._els.stun.classList.remove('on');
-    }
-  }
-  if (G.config && G.config.mode === 'territory' && G.panelMe && G.panelMe._els.oppStun && G.them){
-    if (G.them.stunUntil > now){
-      G.panelMe._els.oppStun.classList.add('on');
-      G.panelMe._els.oppStun.querySelector('b').textContent = ((G.them.stunUntil - now) / 1000).toFixed(1);
-    } else if (G.them.wasStunned){
-      G.them.wasStunned = false;
-      G.panelMe._els.oppStun.classList.remove('on');
-    }
-  }
-
-  if (now - lastHud > 100){
-    lastHud = now;
-    updateHUD();
-  }
-
-  requestAnimationFrame(loop);
+  updateHUD(now);
 }
+
+function updateHUD(now){
+  if (!G.board || !G.myBoard || !G.me) return;
+
+  const mode = G.config.mode;
+  const bs = G.myBoard;
+  const elapsed = (G.state === 'playing' || G.state === 'over')
+    ? Math.max(0, now - G.startTime) : 0;
+
+  const els = G.panelMe && G.panelMe._els;
+  if (els){
+    if (mode === 'territory'){
+      const mine   = countLand(bs, G.myOwner);
+      const theirs = countLand(bs, G.theirOwner);
+      const total  = Math.max(1, mine + theirs);
+      setText(els.myLand, mine);
+      setText(els.theirLand, theirs);
+      setText(els.time, (elapsed / 1000).toFixed(1));
+      if (els.myBar)    els.myBar.style.width    = (mine / total * 100).toFixed(1) + '%';
+      if (els.theirBar) els.theirBar.style.width = (theirs / total * 100).toFixed(1) + '%';
+    } else {
+      setText(els.mines, Math.max(0, G.board.mineCount - bs.flagCount));
+      setText(els.time, (elapsed / 1000).toFixed(1));
+      setText(els.hits, G.me.hits);
+      if (els.bar) els.bar.style.width = (bs.safeRevealed / G.board.safeCount * 100).toFixed(1) + '%';
+    }
+
+    /* my freeze overlay */
+    if (els.stun){
+      const rem = G.me.stunUntil - now;
+      if (rem > 0 && G.state === 'playing'){
+        els.stun.classList.add('on');
+        setText(els.stun.querySelector('[data-timer]'), (rem / 1000).toFixed(1));
+      } else {
+        els.stun.classList.remove('on');
+      }
+    }
+
+    /* territory: opponent freeze badge */
+    if (els.oppStun){
+      const rem = G.them ? (G.them.stunUntil - now) : 0;
+      if (rem > 0 && G.state === 'playing'){
+        els.oppStun.classList.add('on');
+        setText(els.oppStun.querySelector('b'), (rem / 1000).toFixed(1));
+      } else {
+        els.oppStun.classList.remove('on');
+      }
+    }
+  }
+
+  /* duel opponent panel */
+  if (G.panelThem && G.panelThem._els && G.theirBoard){
+    const te = G.panelThem._els;
+    setText(te.mines, Math.max(0, G.board.mineCount - G.theirBoard.flagCount));
+    setText(te.time, (elapsed / 1000).toFixed(1));
+    setText(te.hits, G.them ? G.them.hits : 0);
+    if (te.bar) te.bar.style.width = (G.theirBoard.safeRevealed / G.board.safeCount * 100).toFixed(1) + '%';
+
+    if (te.stun){
+      const rem = G.them ? (G.them.stunUntil - now) : 0;
+      if (rem > 0 && G.state === 'playing'){
+        te.stun.classList.add('on');
+        setText(te.stun.querySelector('[data-timer]'), (rem / 1000).toFixed(1));
+      } else {
+        te.stun.classList.remove('on');
+      }
+    }
+  }
+}
+
+function loop(now){
+  requestAnimationFrame(loop);
+  try { renderAll(now); } catch(e){}
+}
+requestAnimationFrame(loop);
+
+/* ══════════════════════════════════════════════════════════════
+   WINDOW EVENTS
+   ══════════════════════════════════════════════════════════════ */
+let resizeTimer = null;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    if (!G.viewMe) return;
+    const vc = viewConfig();
+    try {
+      G.viewMe.setConfig(vc);
+      if (G.viewThem) G.viewThem.setConfig(vc);
+    } catch(e){}
+  }, 180);
+});
+
+window.addEventListener('orientationchange', () => {
+  setTimeout(() => window.dispatchEvent(new Event('resize')), 260);
+});
+
+/* stop iOS double-tap zoom / pinch */
+document.addEventListener('gesturestart', e => e.preventDefault());
+document.addEventListener('dblclick', e => {
+  if (e.target && e.target.tagName === 'CANVAS') e.preventDefault();
+}, { passive:false });
+
+/* unlock audio on first interaction (mobile) */
+window.addEventListener('pointerdown', function unlock(){
+  try {
+    if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === 'suspended') actx.resume();
+  } catch(e){}
+  window.removeEventListener('pointerdown', unlock);
+}, { once:true });
+
+/* leave confirmation on tab close while playing */
+window.addEventListener('beforeunload', e => {
+  if (G.state === 'playing' || G.state === 'countdown'){
+    e.preventDefault();
+    e.returnValue = '';
+    return '';
+  }
+});
 
 /* ══════════════════════════════════════════════════════════════
    BOOT
    ══════════════════════════════════════════════════════════════ */
-try {
-  if (typeof Peer === 'undefined'){
-    showOverlay(
-      '<h2>OFFLINE</h2>' +
-      '<p>The multiplayer library failed to load.<br>Check your connection and refresh.</p>' +
-      '<div class="ovbtns"><button id="retry" class="primary">🔄 Retry</button></div>'
-    );
-    const r = document.getElementById('retry');
-    if (r) r.onclick = () => location.reload();
-  } else {
-    idleOverlay();
-  }
-  requestAnimationFrame(loop);
-} catch (err) {
-  overlay.classList.remove('hidden');
-  overlay.innerHTML = '<div class="ovbox">' +
-    '<h2>ERROR</h2>' +
-    '<p>' + (err && err.message ? err.message : 'Failed to start.') + '</p>' +
-    '<div class="ovbtns"><button class="primary" onclick="location.reload()">🔄 Reload</button></div>' +
-  '</div>';
-  console.error(err);
-}
+idleOverlay();
 
 })();
 </script>

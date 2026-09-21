@@ -46,7 +46,6 @@
     padding-top:calc(env(safe-area-inset-top,0px));
   }
 
-  /* ── HEADER (sticky so the fullscreen button is ALWAYS visible) ── */
   header{
     position:sticky;top:0;z-index:30;
     display:flex;align-items:center;justify-content:space-between;
@@ -102,7 +101,6 @@
     stroke-linecap:round;stroke-linejoin:round;
   }
 
-  /* ── ARENA ── */
   #arena{
     display:flex;gap:20px;justify-content:center;align-items:stretch;
     flex-wrap:wrap;width:100%;
@@ -202,7 +200,6 @@
     box-shadow:0 10px 40px -20px #000, inset 0 0 0 1px rgba(255,255,255,.03);
   }
 
-  /* ── FREEZE OVERLAY ── */
   .stun{
     position:absolute;inset:0;display:none;flex-direction:column;
     align-items:center;justify-content:center;gap:6px;border-radius:16px;
@@ -239,10 +236,26 @@
     font-size:10.5px;letter-spacing:.34em;color:#ffb1c7;font-weight:800;
     margin-top:4px;padding-left:.34em;
   }
+  .stun.ice{
+    background:
+      radial-gradient(circle at 50% 45%, rgba(56,189,248,.62), rgba(56,189,248,.30) 55%, rgba(10,40,72,.6));
+    border-color:rgba(140,220,255,.6);
+    box-shadow:
+      inset 0 0 80px rgba(56,189,248,.35),
+      0 0 60px rgba(56,189,248,.35);
+  }
+  .stun.ice .stun-emoji{animation:stunshineIce 1.4s ease-in-out infinite}
+  .stun.ice .stun-title{text-shadow:0 0 16px #38bdf8,0 0 32px #38bdf8}
+  .stun.ice .stun-timer{text-shadow:0 0 18px #38bdf8,0 0 36px #38bdf8,0 0 70px #38bdf8}
+  .stun.ice .stun-sub{color:#a5e8ff}
   @keyframes stunpop{from{transform:scale(.9);opacity:0}to{transform:scale(1);opacity:1}}
   @keyframes stunshine{
     0%,100%{filter:drop-shadow(0 0 14px #ef4444);transform:scale(1)}
     50%{filter:drop-shadow(0 0 34px #ef4444);transform:scale(1.08)}
+  }
+  @keyframes stunshineIce{
+    0%,100%{filter:drop-shadow(0 0 14px #38bdf8);transform:scale(1)}
+    50%{filter:drop-shadow(0 0 34px #38bdf8);transform:scale(1.08)}
   }
 
   .oppstun{
@@ -256,8 +269,8 @@
   }
   .oppstun.on{display:block}
   .oppstun b{color:#fff;font-size:13px}
+  .oppstun.ice{background:rgba(56,189,248,.22);border-color:rgba(140,220,255,.6);color:#a5e8ff}
 
-  /* ── CONTROLS ── */
   .controls{display:flex;flex-direction:column;gap:14px;width:100%;align-items:center}
 
   button{
@@ -299,13 +312,11 @@
     box-shadow:0 0 30px -8px #ff3d81,inset 0 1px 0 rgba(255,255,255,.12);
   }
 
-  /* ── MOBILE TOUCH PAD ── */
   .touchpad{
     display:none;gap:20px;justify-content:center;align-items:center;
     flex-wrap:wrap;width:100%;
   }
   @media (pointer:coarse){ .touchpad{display:flex} }
-  .touchpad.force{display:flex}
   .dpad{
     --tb:60px;
     display:grid;
@@ -325,7 +336,6 @@
   .tp-actions{display:flex;flex-direction:column;gap:10px;min-width:150px}
   .tp-actions button{width:100%;padding:16px 18px;font-size:13px}
 
-  /* ── OVERLAYS ── */
   .overlay{
     position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;
     background:rgba(3,6,12,.87);
@@ -476,7 +486,6 @@
   .opt-name{font-size:16px;font-weight:900;letter-spacing:.14em;color:#e6edf7;margin-bottom:6px}
   .opt-desc{font-size:12px;color:#7c8aa5;letter-spacing:.05em;line-height:1.6}
 
-  /* confirm dialog */
   #modal{z-index:70}
   .confirm{padding:36px 32px;max-width:460px}
   .confirm h2{font-size:clamp(20px,4vw,28px);margin-bottom:10px}
@@ -529,9 +538,12 @@
 /* ══════════════════════════════════════════════════════════════
    CONFIG
    ══════════════════════════════════════════════════════════════ */
-const STUN_MS = 10000;            /* 10s freeze (Duel + Territory) */
+const STUN_MS = 10000;
 const PREFIX  = 'mineduel-v5-';
 const TILES_PER_BOMB = 5;
+
+const HEARTBEAT_MS      = 1500;
+const HEARTBEAT_TIMEOUT = 5500;
 
 function bombsFor(rows, cols){
   return Math.max(1, Math.floor((rows * cols) / TILES_PER_BOMB));
@@ -558,10 +570,10 @@ function styleDesc(s, terr){
 }
 
 const MODES = {
-  duel:      { id:'duel',      name:'Duel',      desc:'Race · bomb = 10s freeze' },
-  coop:      { id:'coop',      name:'Co-op',     desc:'Shared board · bomb = loss' },
-  solo:      { id:'solo',      name:'Solo',      desc:'Practise · bomb = loss' },
-  territory: { id:'territory', name:'Territory', desc:'Big board · claim land · bomb = freeze + tile' }
+  duel:      { id:'duel',      name:'Duel',        desc:'Race · bomb = 10s freeze' },
+  coop:      { id:'coop',      name:'Co-op',       desc:'Shared board · bomb = loss' },
+  solo:      { id:'solo',      name:'Solo',        desc:'Practise · bomb = loss' },
+  territory: { id:'territory', name:'Territorial', desc:'Claim land · adjacent only · bomb = freeze' }
 };
 
 function dimsFor(config){
@@ -651,7 +663,7 @@ function vibrate(ms){
 }
 
 /* ══════════════════════════════════════════════════════════════
-   AUDIO
+   AUDIO — one shared palette used by every game mode.
    ══════════════════════════════════════════════════════════════ */
 let actx = null;
 function beep(freq, dur, type, vol){
@@ -667,6 +679,36 @@ function beep(freq, dur, type, vol){
     o.start(); o.stop(actx.currentTime + dur);
   } catch(e){}
 }
+
+const SFX = {
+  reveal(val){
+    const v = clamp(val || 0, 0, 8);
+    beep(500 + v * 60, 0.04, 'square', 0.02);
+  },
+  flag(){ beep(900, 0.05, 'triangle', 0.03); },
+  unflag(){ beep(600, 0.05, 'triangle', 0.03); },
+  mine(){
+    beep(90, 0.5, 'sawtooth', 0.09);
+    setTimeout(() => beep(60, 0.9, 'sawtooth', 0.07), 100);
+  },
+  freeze(){
+    beep(540, 0.09, 'square', 0.04);
+    setTimeout(() => beep(380, 0.13, 'square', 0.035), 90);
+    setTimeout(() => beep(230, 0.26, 'square', 0.03), 210);
+  },
+  oppStun(){
+    beep(780, 0.07, 'triangle', 0.05);
+    setTimeout(() => beep(560, 0.09, 'triangle', 0.05), 70);
+    setTimeout(() => beep(300, 0.26, 'sawtooth', 0.05), 160);
+  },
+  win(){
+    beep(880, 0.12, 'square', 0.05);
+    setTimeout(() => beep(1180, 0.2, 'square', 0.05), 140);
+  },
+  lose(){ beep(200, 0.35, 'sawtooth', 0.06); },
+  countdown(n){ beep(520 + (3 - n) * 130, 0.12, 'square', 0.04); },
+  go(){ beep(1200, 0.22, 'square', 0.05); }
+};
 
 /* ══════════════════════════════════════════════════════════════
    BOARD GENERATION
@@ -726,6 +768,188 @@ function territoryStarts(rows, cols){
   ];
 }
 
+function placeholderBoard(style, rows, cols){
+  const adj = Array.from({length: rows}, () => new Array(cols).fill(0));
+  return {
+    style, cols, rows,
+    mines: new Set(), adj,
+    neighbors: neighborsFor(style),
+    mineCount: 0, safeCount: rows * cols,
+    start: null, starts: [], pending: true
+  };
+}
+
+/* Click-based safe zone ensuring the click is 0-adjacency AND at
+   least one neighbour is also 0-adjacency, so the natural BFS
+   opening always opens a wide connected area. */
+function openingSafeZone(rows, cols, neighbors, clickR, clickC){
+  const safe = new Set();
+  const add = (r, c) => {
+    if (r >= 0 && r < rows && c >= 0 && c < cols) safe.add(r + ',' + c);
+  };
+  add(clickR, clickC);
+  const nbs = neighbors(clickR, clickC, rows, cols);
+  for (const [nr, nc] of nbs) add(nr, nc);
+  if (nbs.length > 0){
+    const [er, ec] = nbs[0];
+    add(er, ec);
+    for (const [nr, nc] of neighbors(er, ec, rows, cols)) add(nr, nc);
+  }
+  return safe;
+}
+
+function genBoardDeferred(seed, style, cols, rows, mineCount, clickR, clickC, starts){
+  const rnd = mulberry32(seed);
+  const neighbors = neighborsFor(style);
+  const safe = new Set();
+  const addSafe = (r, c) => {
+    if (r >= 0 && r < rows && c >= 0 && c < cols) safe.add(r + ',' + c);
+  };
+  for (const s of starts){
+    addSafe(s.r, s.c);
+    const sn = neighbors(s.r, s.c, rows, cols);
+    for (const [nr, nc] of sn) addSafe(nr, nc);
+    if (sn.length > 0){
+      const [er, ec] = sn[0];
+      addSafe(er, ec);
+      for (const [nr, nc] of neighbors(er, ec, rows, cols)) addSafe(nr, nc);
+    }
+  }
+  if (clickR !== undefined && clickC !== undefined){
+    const z = openingSafeZone(rows, cols, neighbors, clickR, clickC);
+    for (const k of z) safe.add(k);
+  }
+  const pool = [];
+  for (let r = 0; r < rows; r++)
+    for (let c = 0; c < cols; c++)
+      if (!safe.has(r + ',' + c)) pool.push([r, c]);
+  for (let i = pool.length - 1; i > 0; i--){
+    const j = Math.floor(rnd() * (i + 1));
+    const t = pool[i]; pool[i] = pool[j]; pool[j] = t;
+  }
+  const mines = new Set();
+  const n = Math.min(mineCount, pool.length);
+  for (let i = 0; i < n; i++) mines.add(pool[i][0] + ',' + pool[i][1]);
+  const adj = Array.from({length: rows}, () => new Array(cols).fill(0));
+  for (let r = 0; r < rows; r++)
+    for (let c = 0; c < cols; c++){
+      if (mines.has(r + ',' + c)) { adj[r][c] = -1; continue; }
+      let k = 0;
+      for (const [nr, nc] of neighbors(r, c, rows, cols))
+        if (mines.has(nr + ',' + nc)) k++;
+      adj[r][c] = k;
+    }
+  return {
+    style, cols, rows, mines, adj, neighbors,
+    mineCount: mines.size,
+    safeCount: rows * cols - mines.size,
+    start: starts[0],
+    starts
+  };
+}
+
+/* ──────────────────────────────────────────────────────────────
+   SOLVER — pure constraint propagation, exactly mirroring the
+   game's auto-flood rule (a revealed 0 tile opens every hidden
+   neighbour). Returns every tile a perfect player could open
+   without ever having to guess.
+   ────────────────────────────────────────────────────────────── */
+function solveBoard(board, opening){
+  const rows = board.rows, cols = board.cols;
+  const revealed = new Set();
+  const flagged  = new Set();
+
+  for (let i = 0; i < opening.length; i++){
+    revealed.add(opening[i][0] + ',' + opening[i][1]);
+  }
+
+  let changed = true, iter = 0;
+  while (changed && iter < 4000){
+    changed = false;
+    iter++;
+    for (let r = 0; r < rows; r++){
+      for (let c = 0; c < cols; c++){
+        const k = r + ',' + c;
+        if (!revealed.has(k)) continue;
+        const a = board.adj[r][c];
+        if (a < 0) continue;
+
+        const nbs = board.neighbors(r, c, rows, cols);
+        let flags = 0;
+        const hidden = [];
+        for (let i = 0; i < nbs.length; i++){
+          const nk = nbs[i][0] + ',' + nbs[i][1];
+          if (flagged.has(nk)) flags++;
+          else if (!revealed.has(nk)) hidden.push(nbs[i]);
+        }
+        if (!hidden.length) continue;
+
+        if (flags === a){
+          /* every remaining hidden neighbour is safe — open them
+             (this is also the 0-tile auto-flood rule). */
+          for (let i = 0; i < hidden.length; i++){
+            revealed.add(hidden[i][0] + ',' + hidden[i][1]);
+            changed = true;
+          }
+        } else if (flags + hidden.length === a){
+          for (let i = 0; i < hidden.length; i++){
+            flagged.add(hidden[i][0] + ',' + hidden[i][1]);
+            changed = true;
+          }
+        }
+      }
+    }
+  }
+  return revealed;
+}
+
+function isSolvable(board, opening){
+  return solveBoard(board, opening).size >= board.safeCount;
+}
+
+/* Generate a board that can always be finished without guessing.
+   Retries with shifted seeds and keeps the furthest-reaching board
+   as a fallback, so every mode always hands the player at least
+   one logically forced move. */
+function generateSolvableBoard(seed, style, cols, rows, mineCount,
+                               clickR, clickC, starts, opening){
+  const MAX_ATTEMPTS = 400;
+  const BUDGET_MS    = 320;
+  const t0 = performance.now();
+
+  let best = null, bestSeed = seed, bestScore = -1;
+
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++){
+    const s = (seed + Math.imul(attempt, 0x9E3779B9)) >>> 0;
+    const b = genBoardDeferred(s, style, cols, rows, mineCount, clickR, clickC, starts);
+    const score = solveBoard(b, opening).size;
+
+    if (score > bestScore){ bestScore = score; best = b; bestSeed = s; }
+    if (score >= b.safeCount) return { board: b, seed: s };
+
+    if (attempt >= 3 && (performance.now() - t0) > BUDGET_MS) break;
+  }
+  return { board: best, seed: bestSeed };
+}
+
+/* Generate the real board on the first dig. */
+function ensureBoardReady(clickR, clickC){
+  if (!G.boardPending) return;
+  const d = dimsFor(G.config);
+  const mode = G.config.mode;
+  let starts = [{ r: (d.rows >> 1), c: (d.cols >> 1) }];
+  if (mode === 'territory') starts = territoryStarts(d.rows, d.cols);
+
+  const res = generateSolvableBoard(
+    G.seed, G.config.style, d.cols, d.rows, d.mines,
+    clickR, clickC, starts, [[clickR, clickC]]
+  );
+
+  G.board = res.board;
+  G.boardSeed = res.seed;
+  G.boardPending = false;
+}
+
 /* ══════════════════════════════════════════════════════════════
    STATE
    ══════════════════════════════════════════════════════════════ */
@@ -747,6 +971,7 @@ function makePlayerState(start){
     cursor: { r: start.r, c: start.c },
     hits: 0,
     stunUntil: 0,
+    stunReason: 'bomb',
     done: false,
     wasStunned: false
   };
@@ -756,8 +981,11 @@ const G = {
   config: { mode:'duel', style:'square' },
   board: null,
   seed: 0,
-  role: 'none',          /* none | host | guest | solo */
-  state: 'lobby',        /* lobby | waiting | countdown | playing | over */
+  boardSeed: 0,
+  boardPending: false,
+  pendingDig: null,
+  role: 'none',
+  state: 'lobby',
   myOwner: 1,
   theirOwner: 2,
   me: null,
@@ -774,7 +1002,7 @@ const G = {
   lossPending: false,
   winSent: false,
   opponentGone: false,
-  touchForced: false
+  lastRecv: 0
 };
 
 /* ══════════════════════════════════════════════════════════════
@@ -850,7 +1078,7 @@ function confirmDialog(opts){
 }
 
 /* ══════════════════════════════════════════════════════════════
-   FULLSCREEN  (button always reachable — header is sticky)
+   FULLSCREEN
    ══════════════════════════════════════════════════════════════ */
 const FS_ENTER_SVG =
   '<polyline points="4,9 4,4 9,4"/>' +
@@ -885,7 +1113,6 @@ function exitFs(){
   if (p && p.catch) p.catch(()=>{});
 }
 async function onFsClick(){
-  /* exiting fullscreen is confirmed first */
   if (isFullscreen()){
     const ok = await confirmDialog({
       title:'EXIT FULLSCREEN?',
@@ -1381,6 +1608,18 @@ const STUN_HTML =
     '<div class="stun-sub">BOMB TRIGGERED</div>' +
   '</div>';
 
+function setStunFace(el, reason){
+  if (!el) return;
+  const ice = (reason === 'flag');
+  if (el._reason === reason) return;
+  el._reason = reason;
+  el.classList.toggle('ice', ice);
+  const emo = el.querySelector('.stun-emoji');
+  const sub = el.querySelector('.stun-sub');
+  if (emo) emo.textContent = ice ? '❄️' : '💥';
+  if (sub) sub.textContent = ice ? 'WRONG FLAG' : 'BOMB TRIGGERED';
+}
+
 function makePanel(cls, name, color){
   const panel = document.createElement('div');
   panel.className = 'panel ' + cls;
@@ -1429,7 +1668,7 @@ function makeTerritoryPanel(){
     '<div class="boardwrap">' +
       '<canvas></canvas>' +
       STUN_HTML +
-      '<div class="oppstun">OPPONENT FROZEN <b>10.0</b></div>' +
+      '<div class="oppstun"><span data-oemoji>💥</span> OPPONENT FROZEN <b>10.0</b></div>' +
     '</div>';
   return panel;
 }
@@ -1511,7 +1750,6 @@ function buildTerritoryArena(){
     edge: 'rgba(255,61,129,.72)',
     solid: '#ff3d81'
   };
-  /* You are always cyan, opponent always pink. */
   G.viewMe.setOwnerPalette(G.myOwner === 1 ? { 1: CYAN, 2: PINK } : { 1: PINK, 2: CYAN });
 
   bindCanvasInput(G.viewMe);
@@ -1530,7 +1768,7 @@ function buildTerritoryArena(){
 }
 
 /* ══════════════════════════════════════════════════════════════
-   INPUT — canvas (mouse + touch)
+   INPUT — canvas
    ══════════════════════════════════════════════════════════════ */
 function interactive(){
   return G.state === 'playing' && G.me && !G.me.done;
@@ -1564,7 +1802,6 @@ function bindCanvasInput(view){
       return;
     }
 
-    /* mouse */
     const cell = cellAt(e);
     if (!cell) return;
     e.preventDefault();
@@ -1595,7 +1832,6 @@ function bindCanvasInput(view){
   };
   canvas.addEventListener('pointercancel', cancelTouch);
   canvas.addEventListener('pointerleave', () => {
-    /* only cancel for touch — mouse leave is harmless */
     if (touchPress) return;
   });
 }
@@ -1632,7 +1868,7 @@ window.addEventListener('keydown', e => {
 }, { passive:false });
 
 /* ══════════════════════════════════════════════════════════════
-   INPUT — touch pad
+   INPUT — touch pad (mobile only: move / dig / flag)
    ══════════════════════════════════════════════════════════════ */
 function holdButton(btn, fn, delay){
   let t1 = null, t2 = null;
@@ -1651,7 +1887,7 @@ function holdButton(btn, fn, delay){
 
 function buildTouchpad(){
   const pad = document.createElement('div');
-  pad.className = 'touchpad' + (G.touchForced ? ' force' : '');
+  pad.className = 'touchpad';
   pad.innerHTML =
     '<div class="dpad">' +
       '<button class="u ghost" data-mv="up">▲</button>' +
@@ -1662,7 +1898,6 @@ function buildTouchpad(){
     '<div class="tp-actions">' +
       '<button class="primary" data-act="dig">DIG ⛏</button>' +
       '<button data-act="flag">FLAG ⚑</button>' +
-      '<button data-act="chord">CHORD ✦</button>' +
     '</div>';
 
   const map = {
@@ -1674,7 +1909,6 @@ function buildTouchpad(){
   pad.querySelectorAll('[data-mv]').forEach(b => holdButton(b, map[b.dataset.mv]));
   pad.querySelector('[data-act="dig"]').addEventListener('click', () => localDig());
   pad.querySelector('[data-act="flag"]').addEventListener('click', () => localFlag());
-  pad.querySelector('[data-act="chord"]').addEventListener('click', () => localChord());
   return pad;
 }
 
@@ -1791,6 +2025,17 @@ function countLand(boardState, owner){
   return n;
 }
 
+/* Territorial rule: you may only interact with a tile that is your
+   own territory or directly adjacent to a tile you own. */
+function canTouchTerritory(boardState, board, r, c, owner){
+  if (!boardState || !boardState.owner || !board) return true;
+  if (boardState.owner[r][c] === owner) return true;
+  for (const [nr, nc] of board.neighbors(r, c, board.rows, board.cols)){
+    if (boardState.owner[nr][nc] === owner) return true;
+  }
+  return false;
+}
+
 /* ══════════════════════════════════════════════════════════════
    LOCAL ACTIONS
    ══════════════════════════════════════════════════════════════ */
@@ -1842,45 +2087,80 @@ function localDig(){
   const r = G.me.cursor.r, c = G.me.cursor.c;
   const mode = G.config.mode;
 
-  /* ── Shared boards: host is authoritative ── */
+  /* Flagged tile: left-click only removes the flag, never digs. */
+  if (G.myBoard.flagged[r][c]){
+    localFlag();
+    return;
+  }
+
+  /* Territorial: may only act on tiles adjacent to your own land. */
+  if (mode === 'territory' && !canTouchTerritory(G.myBoard, G.board, r, c, G.myOwner)){
+    return;
+  }
+
+  /* ── deferred board generation on the very first dig ── */
+  if (G.boardPending){
+    if (mode === 'solo'){
+      ensureBoardReady(r, c);
+    } else if (mode === 'duel'){
+      if (G.role === 'host'){
+        ensureBoardReady(r, c);
+        send({ t:'board', seed: G.boardSeed, clickR: r, clickC: c });
+      } else {
+        send({ t:'dig', r, c });
+        G.pendingDig = { r, c };
+        return;
+      }
+    } else { /* coop */
+      if (G.role === 'host'){
+        ensureBoardReady(r, c);
+        send({ t:'board', seed: G.boardSeed, clickR: r, clickC: c });
+      } else {
+        send({ t:'dig', r, c });
+        return;
+      }
+    }
+  }
+
+  doLocalDig(r, c);
+}
+
+/* Apply a dig assuming the board is already generated. */
+function doLocalDig(r, c){
+  const mode = G.config.mode;
+
   if (mode === 'coop' || mode === 'territory'){
     if (G.role === 'host') hostApplyDig(r, c, G.myOwner);
     else send({ t:'dig', r, c });
     return;
   }
 
-  /* ── Duel: local board + broadcast progress to the opponent ── */
   if (mode === 'duel'){
     const bs = G.myBoard;
     const res = applyReveal(bs, G.board, r, c, 0);
     if (!res) return;
-
     if (res.type === 'mine'){
       G.me.hits++;
-      send({ t:'hit' });
+      send({ t:'hit', r, c });
       duelFreeze(r, c);
       return;
     }
-
     send({ t:'rev', tiles: res.tiles });
     afterRevealFeedback(res);
     if (checkWin(bs, G.board)) duelWin();
     return;
   }
 
-  /* ── Solo ── */
+  /* solo */
   const bs = G.myBoard;
   const res = applyReveal(bs, G.board, r, c, 0);
   if (!res) return;
-
   if (res.type === 'mine'){
     G.me.hits++;
     handleLoss(r, c, G.viewMe, bs, G.board);
     return;
   }
-
   afterRevealFeedback(res);
-
   if (checkWin(bs, G.board)){
     G.me.done = true;
     endGame('win', '✨', 'CLEARED!', 'You swept every safe tile.', performance.now() - G.startTime);
@@ -1891,7 +2171,7 @@ function afterRevealFeedback(res){
   if (!res || !res.tiles || res.tiles.length === 0) return;
   const r0 = res.tiles[0][0], c0 = res.tiles[0][1];
   const val = G.board.adj[r0][c0];
-  beep(500 + Math.min(Math.max(val, 0), 8) * 60, 0.04, 'square', 0.02);
+  SFX.reveal(val);
 }
 
 function hexOrSqCenter(view, r, c){
@@ -1917,8 +2197,7 @@ function handleLoss(r, c, view, bs, board){
     view.boom(p.x, p.y, '#ff4d6d', 50, 320);
     view.boom(p.x, p.y, '#ffd166', 24, 180);
   }
-  beep(90, 0.5, 'sawtooth', 0.09);
-  setTimeout(() => beep(60, 0.9, 'sawtooth', 0.07), 100);
+  SFX.mine();
   vibrate(180);
 
   revealAllMines(bs, board, r, c);
@@ -1930,7 +2209,8 @@ function handleLoss(r, c, view, bs, board){
   }, 1000);
 }
 
-function handleCoopLoss(r, c, broadcast){
+function handleCoopLoss(r, c, broadcast, iTriggered){
+  if (iTriggered === undefined) iTriggered = true;
   if (G.lossPending) return;
   G.lossPending = true;
   if (G.me) G.me.done = true;
@@ -1939,17 +2219,23 @@ function handleCoopLoss(r, c, broadcast){
   const view = G.viewMe;
 
   if (view){
-    view.triggerShake();
+    if (iTriggered) view.triggerShake();
     const p = hexOrSqCenter(view, r, c);
     view.boom(p.x, p.y, '#ff4d6d', 50, 320);
     view.boom(p.x, p.y, '#ffd166', 24, 180);
   }
-  beep(90, 0.5, 'sawtooth', 0.09);
-  vibrate(180);
+
+  if (iTriggered){ SFX.mine(); vibrate(180); }
+  else { SFX.oppStun(); }
 
   revealAllMines(bs, G.board, r, c);
 
-  if (broadcast) send({ t:'delta', lose:true, r, c });
+  if (broadcast){
+    send({
+      t:'delta', lose:true, r, c,
+      by: iTriggered ? G.myOwner : G.theirOwner
+    });
+  }
 
   const elapsed = performance.now() - G.startTime;
   setTimeout(() => {
@@ -1958,11 +2244,11 @@ function handleCoopLoss(r, c, broadcast){
   }, 1000);
 }
 
-/* ── Duel: 10 second freeze instead of a loss ── */
 function duelFreeze(r, c){
   const now = performance.now();
   G.me.stunUntil = now + STUN_MS;
   G.me.wasStunned = true;
+  G.me.stunReason = 'bomb';
 
   const view = G.viewMe;
   if (view){
@@ -1971,7 +2257,8 @@ function duelFreeze(r, c){
     view.boom(p.x, p.y, '#ff4d6d', 46, 300);
     view.boom(p.x, p.y, '#ffd166', 20, 160);
   }
-  beep(90, 0.5, 'sawtooth', 0.09);
+  SFX.mine();
+  setTimeout(() => SFX.freeze(), 150);
   vibrate(160);
 }
 
@@ -1984,38 +2271,55 @@ function duelWin(){
   endGame('win', '🏆', 'VICTORY!', 'You cleared your field first.', elapsed);
 }
 
-function applyPenalty(ownerId){
+function applyPenalty(ownerId, reason){
   const now = performance.now();
+  const r = reason || 'bomb';
+
   if (ownerId === G.myOwner){
     G.me.hits++;
     G.me.stunUntil = now + STUN_MS;
     G.me.wasStunned = true;
+    G.me.stunReason = r;
+    if (r === 'flag'){ SFX.freeze(); }
+    else { SFX.mine(); setTimeout(() => SFX.freeze(), 150); }
+    vibrate(160);
   } else if (G.them){
     G.them.hits++;
     G.them.stunUntil = now + STUN_MS;
     G.them.wasStunned = true;
+    G.them.stunReason = r;
+    SFX.oppStun();
   }
-  send({ t:'stun', who: ownerId });
+
+  send({ t:'stun', who: ownerId, reason: r });
 }
 
-/* Territory: digging a bomb → penalty + claim the bomb tile for the clicker. */
+/* Territorial: a bomb tile is revealed for BOTH players and claimed
+   by the clicker; the clicker takes the 10s freeze. */
 function handleTerritoryBoom(r, c, owner){
   const bs = G.myBoard;
-  if (bs && bs.owner) bs.owner[r][c] = owner;
+  const iTriggered = (owner === G.myOwner);
 
-  applyPenalty(owner);
+  if (bs){
+    if (bs.owner) bs.owner[r][c] = owner;
+    if (!bs.revealed[r][c]){
+      bs.revealed[r][c] = true;
+      bs.revealAt[r][c] = performance.now();
+      bs.count++;
+    }
+  }
+
+  applyPenalty(owner, 'bomb');
 
   const view = G.viewMe;
   if (view){
-    view.triggerShake();
+    if (iTriggered) view.triggerShake();
     const p = hexOrSqCenter(view, r, c);
-    view.boom(p.x, p.y, '#ff4d6d', 50, 320);
-    view.boom(p.x, p.y, '#ffd166', 24, 180);
+    view.boom(p.x, p.y, '#ff4d6d', iTriggered ? 50 : 30, iTriggered ? 320 : 200);
+    view.boom(p.x, p.y, '#ffd166', iTriggered ? 24 : 14, 160);
   }
-  beep(90, 0.5, 'sawtooth', 0.09);
-  vibrate(160);
 
-  send({ t:'delta', mine:[r, c], own: owner });
+  send({ t:'delta', mine:[r, c], own: owner, rev: [[r, c]] });
 }
 
 function afterSharedReveal(){
@@ -2065,23 +2369,29 @@ function localFlag(){
   const mode = G.config.mode;
 
   if (mode === 'territory'){
+    if (!canTouchTerritory(bs, G.board, r, c, G.myOwner)) return;
     if (G.role === 'host') hostApplyTerritoryFlag(r, c, G.myOwner);
-    else send({ t:'flag', r, c });
+    else {
+      bs.flagged[r][c] ? SFX.unflag() : SFX.flag();
+      send({ t:'flag', r, c });
+    }
     return;
   }
 
   if (mode === 'coop'){
     if (G.role === 'host') hostApplyFlag(r, c);
-    else send({ t:'flag', r, c });
+    else {
+      bs.flagged[r][c] ? SFX.unflag() : SFX.flag();
+      send({ t:'flag', r, c });
+    }
     return;
   }
 
-  /* duel + solo: local toggle */
   const on = bs.flagged[r][c] ? 0 : 1;
   bs.flagged[r][c] = !!on;
   bs.flagAt[r][c] = performance.now();
   bs.flagCount += on ? 1 : -1;
-  beep(on ? 900 : 600, 0.05, 'triangle', 0.03);
+  on ? SFX.flag() : SFX.unflag();
 
   if (mode === 'duel') send({ t:'flag', r, c, on });
 }
@@ -2092,6 +2402,7 @@ function localChord(){
   const mode = G.config.mode;
 
   if (mode === 'coop' || mode === 'territory'){
+    if (mode === 'territory' && !canTouchTerritory(G.myBoard, G.board, r, c, G.myOwner)) return;
     if (G.role === 'host') hostApplyChord(r, c, G.myOwner);
     else send({ t:'chord', r, c });
     return;
@@ -2103,8 +2414,9 @@ function localChord(){
     if (!res) return;
     if (res.type === 'mine'){
       G.me.hits++;
-      send({ t:'hit' });
-      duelFreeze(res.tiles[0][0], res.tiles[0][1]);
+      const mr = res.tiles[0][0], mc = res.tiles[0][1];
+      send({ t:'hit', r: mr, c: mc });
+      duelFreeze(mr, mc);
       return;
     }
     send({ t:'rev', tiles: res.tiles });
@@ -2134,11 +2446,18 @@ function localChord(){
    ══════════════════════════════════════════════════════════════ */
 function hostApplyDig(r, c, owner){
   const bs = G.myBoard;
+
+  if (bs.flagged[r][c]){
+    if (G.config.mode === 'territory') hostApplyTerritoryFlag(r, c, owner);
+    else hostApplyFlag(r, c);
+    return;
+  }
+
   const res = applyReveal(bs, G.board, r, c, owner);
   if (!res) return;
 
   if (res.type === 'mine'){
-    if (G.config.mode === 'coop') handleCoopLoss(r, c, true);
+    if (G.config.mode === 'coop') handleCoopLoss(r, c, true, owner === G.myOwner);
     else handleTerritoryBoom(r, c, owner);
     return;
   }
@@ -2156,41 +2475,50 @@ function hostApplyFlag(r, c){
   bs.flagAt[r][c] = performance.now();
   bs.flagCount += on ? 1 : -1;
   send({ t:'delta', flg: [[r, c, on]] });
+  on ? SFX.flag() : SFX.unflag();
 }
 
 function hostApplyTerritoryFlag(r, c, owner){
   const bs = G.myBoard;
   if (bs.revealed[r][c]) return;
-  if (bs.flagged[r][c]) return;
+
+  /* removing an existing flag */
+  if (bs.flagged[r][c]){
+    bs.flagged[r][c] = false;
+    bs.flagAt[r][c] = performance.now();
+    bs.flagCount = Math.max(0, bs.flagCount - 1);
+    if (bs.owner && bs.owner[r][c] === owner) bs.owner[r][c] = 0;
+    send({ t:'delta', flg: [[r, c, 0]], own: 0 });
+    SFX.unflag();
+    return;
+  }
 
   const isMine = G.board.mines.has(r + ',' + c);
 
   if (isMine){
-    /* Correct flag → claim the tile for the marker. */
     bs.flagged[r][c] = true;
     bs.flagAt[r][c] = performance.now();
     bs.flagCount++;
     if (bs.owner) bs.owner[r][c] = owner;
     send({ t:'delta', flg: [[r, c, 1]], own: owner });
-    beep(920, 0.06, 'triangle', 0.035);
+    SFX.flag();
   } else {
-    /* Wrong flag → reveal just that tile (neutral) + 10s stun. */
     bs.revealed[r][c] = true;
     bs.revealAt[r][c] = performance.now();
-    if (bs.owner) bs.owner[r][c] = 0;
+    if (bs.owner) bs.owner[r][c] = owner;
     bs.count++;
     bs.safeRevealed++;
 
-    send({ t:'delta', rev: [[r, c]], own: 0 });
-    applyPenalty(owner);
+    send({ t:'delta', rev: [[r, c]], own: owner });
 
     const view = G.viewMe;
     if (view){
       const p = hexOrSqCenter(view, r, c);
       if (owner === G.myOwner) view.triggerShake();
-      view.boom(p.x, p.y, '#ff4d6d', 28, 220);
+      view.boom(p.x, p.y, '#7fd8ff', 22, 190);
     }
-    beep(180, 0.3, 'sawtooth', 0.06);
+
+    applyPenalty(owner, 'flag');
 
     if (checkWin(bs, G.board)) finishTerritory();
   }
@@ -2202,8 +2530,9 @@ function hostApplyChord(r, c, owner){
   if (!res) return;
 
   if (res.type === 'mine'){
-    if (G.config.mode === 'coop') handleCoopLoss(res.tiles[0][0], res.tiles[0][1], true);
-    else handleTerritoryBoom(res.tiles[0][0], res.tiles[0][1], owner);
+    const mr = res.tiles[0][0], mc = res.tiles[0][1];
+    if (G.config.mode === 'coop') handleCoopLoss(mr, mc, true, owner === G.myOwner);
+    else handleTerritoryBoom(mr, mc, owner);
     return;
   }
 
@@ -2221,25 +2550,69 @@ function send(msg){
   }
 }
 
+/* ── heartbeat: guarantees we notice an opponent who vanishes
+   (closed the tab, lost signal) instead of hanging forever. ── */
+let hbTimer = null;
+
+function startHeartbeat(){
+  stopHeartbeat();
+  hbTimer = setInterval(() => {
+    if (G.state === 'lobby' && !G.conn) return;
+    if (!G.conn || !G.conn.open){ onConnClosed(); return; }
+    if (G.lastRecv && (performance.now() - G.lastRecv) > HEARTBEAT_TIMEOUT){
+      onConnClosed();
+      return;
+    }
+    send({ t:'ping' });
+  }, HEARTBEAT_MS);
+}
+function stopHeartbeat(){
+  if (hbTimer){ clearInterval(hbTimer); hbTimer = null; }
+}
+
+/* Single funnel for "the other side is gone". */
+function onConnClosed(){
+  stopHeartbeat();
+  if (G.opponentGone) return;
+  G.opponentGone = true;
+
+  if (G.state === 'playing' || G.state === 'countdown'){
+    endGame('disconnect', '🔌', 'OPPONENT DISCONNECTED',
+            'Your opponent left the match.', performance.now() - G.startTime);
+  } else if (G.state === 'over'){
+    cleanupNet();
+  } else {
+    cleanupNet();
+    idleOverlay();
+  }
+}
+
 function attachConn(c){
   G.conn = c;
-  c.on('data', handleMessage);
-  c.on('close', () => {
-    G.opponentGone = true;
-    if (G.state === 'playing' || G.state === 'countdown'){
-      endGame('disconnect', '🔌', 'DISCONNECTED', 'Your partner left the match.', 0);
-    } else {
-      cleanupNet();
-      idleOverlay();
-    }
+  G.lastRecv = performance.now();
+  G.opponentGone = false;
+
+  c.on('data', msg => {
+    G.lastRecv = performance.now();
+    handleMessage(msg);
   });
+  c.on('close', onConnClosed);
   c.on('error', () => {});
+
+  startHeartbeat();
 }
 
 function handleMessage(msg){
   if (!msg || typeof msg !== 'object') return;
 
   switch (msg.t){
+
+    case 'ping':
+      break;
+
+    case 'bye':
+      onConnClosed();
+      break;
 
     case 'seed':
       G.config = msg.config || G.config;
@@ -2250,12 +2623,48 @@ function handleMessage(msg){
       if (G.them) G.them.cursor = { r: msg.r, c: msg.c };
       break;
 
-    case 'dig':
+    case 'board': {
+      if (!G.boardPending) break;
+      const d = dimsFor(G.config);
+      const mode = G.config.mode;
+      let starts = [{ r: (d.rows >> 1), c: (d.cols >> 1) }];
+      if (mode === 'territory') starts = territoryStarts(d.rows, d.cols);
+      G.board = genBoardDeferred(msg.seed, G.config.style, d.cols, d.rows, d.mines,
+                                 msg.clickR, msg.clickC, starts);
+      G.boardSeed = msg.seed;
+      G.boardPending = false;
+      if (G.pendingDig){
+        const pd = G.pendingDig;
+        G.pendingDig = null;
+        G.me.cursor = { r: pd.r, c: pd.c };
+        setTimeout(() => { if (G.state === 'playing') doLocalDig(pd.r, pd.c); }, 0);
+      }
+      break;
+    }
+
+    case 'dig': {
       if (G.role !== 'host') break;
+      if (G.config.mode === 'duel'){
+        if (G.boardPending){
+          ensureBoardReady(msg.r, msg.c);
+          send({ t:'board', seed: G.boardSeed, clickR: msg.r, clickC: msg.c });
+        }
+        break;
+      }
       if (G.config.mode !== 'coop' && G.config.mode !== 'territory') break;
       if (performance.now() < G.them.stunUntil) break;
+
+      /* Territorial: enforce adjacency-to-your-land rule. */
+      if (G.config.mode === 'territory' &&
+          !canTouchTerritory(G.myBoard, G.board, msg.r, msg.c, G.theirOwner)) break;
+
+      if (G.boardPending){
+        ensureBoardReady(msg.r, msg.c);
+        send({ t:'board', seed: G.boardSeed, clickR: msg.r, clickC: msg.c });
+      }
       hostApplyDig(msg.r, msg.c, G.theirOwner);
       break;
+    }
 
     case 'flag':
       if (G.config.mode === 'coop'){
@@ -2265,6 +2674,7 @@ function handleMessage(msg){
       } else if (G.config.mode === 'territory'){
         if (G.role !== 'host') break;
         if (performance.now() < G.them.stunUntil) break;
+        if (!canTouchTerritory(G.myBoard, G.board, msg.r, msg.c, G.theirOwner)) break;
         hostApplyTerritoryFlag(msg.r, msg.c, G.theirOwner);
       } else if (G.config.mode === 'duel'){
         if (!G.theirBoard) break;
@@ -2281,10 +2691,15 @@ function handleMessage(msg){
       if (G.role !== 'host') break;
       if (G.config.mode !== 'coop' && G.config.mode !== 'territory') break;
       if (performance.now() < G.them.stunUntil) break;
+      if (G.config.mode === 'territory' &&
+          !canTouchTerritory(G.myBoard, G.board, msg.r, msg.c, G.theirOwner)) break;
+      if (G.boardPending){
+        ensureBoardReady(msg.r, msg.c);
+        send({ t:'board', seed: G.boardSeed, clickR: msg.r, clickC: msg.c });
+      }
       hostApplyChord(msg.r, msg.c, G.theirOwner);
       break;
 
-    /* duel: opponent's own progress */
     case 'rev':
       if (!G.theirBoard) break;
       {
@@ -2295,20 +2710,28 @@ function handleMessage(msg){
           G.theirBoard.revealed[r][c] = true;
           G.theirBoard.revealAt[r][c] = now + Math.random() * 80;
           G.theirBoard.count++;
-          if (!G.board.mines.has(r + ',' + c)) G.theirBoard.safeRevealed++;
+          if (G.board && !G.board.mines.has(r + ',' + c)) G.theirBoard.safeRevealed++;
         }
       }
       break;
 
-    /* duel: opponent hit a mine → they are frozen for 10s */
     case 'hit':
       if (G.them){
         G.them.hits++;
         G.them.stunUntil = performance.now() + STUN_MS;
         G.them.wasStunned = true;
+        G.them.stunReason = 'bomb';
+      }
+      if (G.theirBoard && msg.r !== undefined && msg.c !== undefined){
+        const now = performance.now();
+        if (!G.theirBoard.revealed[msg.r][msg.c]){
+          G.theirBoard.revealed[msg.r][msg.c] = true;
+          G.theirBoard.revealAt[msg.r][msg.c] = now;
+          G.theirBoard.count++;
+        }
       }
       if (G.viewThem) G.viewThem.triggerShake();
-      beep(70, 0.25, 'sawtooth', 0.045);
+      SFX.oppStun();
       break;
 
     case 'delta':
@@ -2317,15 +2740,21 @@ function handleMessage(msg){
 
     case 'stun': {
       const now = performance.now();
+      const reason = msg.reason || 'bomb';
       if (msg.who === G.myOwner){
         G.me.hits++;
         G.me.stunUntil = now + STUN_MS;
         G.me.wasStunned = true;
-        vibrate(140);
+        G.me.stunReason = reason;
+        if (reason === 'flag'){ SFX.freeze(); }
+        else { SFX.mine(); setTimeout(() => SFX.freeze(), 150); }
+        vibrate(160);
       } else if (G.them){
         G.them.hits++;
         G.them.stunUntil = now + STUN_MS;
         G.them.wasStunned = true;
+        G.them.stunReason = reason;
+        SFX.oppStun();
       }
       break;
     }
@@ -2372,7 +2801,10 @@ function applyDelta(msg){
       bs.flagged[r][c] = !!on;
       bs.flagAt[r][c] = now;
       bs.flagCount += on - wasOn;
-      if (on && msg.own !== undefined && bs.owner) bs.owner[r][c] = msg.own;
+      if (bs.owner){
+        if (on && msg.own !== undefined) bs.owner[r][c] = msg.own ? msg.own : 0;
+        else if (!on) bs.owner[r][c] = 0;
+      }
     }
   }
 
@@ -2382,12 +2814,12 @@ function applyDelta(msg){
   }
 
   if (msg.lose){
-    /* Co-op loss is applied identically on both clients. */
-    handleCoopLoss(msg.r, msg.c, false);
+    handleCoopLoss(msg.r, msg.c, false, msg.by === G.myOwner);
   }
 }
 
 function cleanupNet(){
+  stopHeartbeat();
   if (G.conn){ try { G.conn.close(); } catch(e){} G.conn = null; }
   if (G.peer){ try { G.peer.destroy(); } catch(e){} G.peer = null; }
 }
@@ -2477,12 +2909,15 @@ function idleOverlay(){
   G.state = 'lobby';
   G.role = 'none';
   G.board = null; G.myBoard = null; G.theirBoard = null;
+  G.boardPending = false;
+  G.pendingDig = null;
   G.me = null; G.them = null;
   G.viewMe = null; G.viewThem = null;
   G.panelMe = null; G.panelThem = null;
   G.lossPending = false;
   G.winSent = false;
   G.opponentGone = false;
+  G.lastRecv = 0;
   arena.innerHTML = '';
   controls.innerHTML = '';
   cleanupNet();
@@ -2619,11 +3054,14 @@ function joinGame(code){
 function startMatch(seed, role){
   G.role = role;
   G.seed = seed >>> 0;
+  G.boardSeed = G.seed;
   G.myOwner = (role === 'guest') ? 2 : 1;
   G.theirOwner = (role === 'guest') ? 1 : 2;
   G.lossPending = false;
   G.winSent = false;
   G.opponentGone = false;
+  G.pendingDig = null;
+  G.lastRecv = performance.now();
 
   const d = dimsFor(G.config);
   const mode = G.config.mode;
@@ -2631,7 +3069,23 @@ function startMatch(seed, role){
   let starts = [{ r: (d.rows >> 1), c: (d.cols >> 1) }];
   if (mode === 'territory') starts = territoryStarts(d.rows, d.cols);
 
-  G.board = genBoard(G.seed, G.config.style, d.cols, d.rows, d.mines, starts);
+  if (mode === 'territory'){
+    /* Territorial: the board is generated up-front (no click-based
+       deferral), because both spawn areas are revealed from the
+       start. Guaranteed to be finishable without guessing. */
+    const opening = starts.map(s => [s.r, s.c]);
+    const res = generateSolvableBoard(
+      G.seed, G.config.style, d.cols, d.rows, d.mines,
+      undefined, undefined, starts, opening
+    );
+    G.board = res.board;
+    G.boardSeed = res.seed;
+    G.boardPending = false;
+  } else {
+    G.board = placeholderBoard(G.config.style, d.rows, d.cols);
+    G.boardPending = true;
+  }
+
   G.myBoard = makeBoardState(d.rows, d.cols);
   G.theirBoard = makeBoardState(d.rows, d.cols);
 
@@ -2651,8 +3105,22 @@ function startMatch(seed, role){
     G.startTime = performance.now();
     lastCursorSent = 0;
     setStatus(role === 'solo' ? 'SOLO' : 'LIVE', 'live');
-    beep(880, 0.08, 'square', 0.03);
+    SFX.go();
+    if (mode === 'territory') revealTerritoryStart();
   });
+}
+
+function revealTerritoryStart(){
+  if (!G.board || !G.myBoard) return;
+  const d = dimsFor(G.config);
+  const starts = territoryStarts(d.rows, d.cols);
+  const myS = starts[G.myOwner - 1];
+  const theirS = starts[G.theirOwner - 1];
+  /* Natural BFS flood-fill from each spawn — the safe zone around
+     each start guarantees a wide connected opening. Both clients
+     compute this identically from the same seed + starts. */
+  applyReveal(G.myBoard, G.board, myS.r, myS.c, G.myOwner);
+  applyReveal(G.myBoard, G.board, theirS.r, theirS.c, G.theirOwner);
 }
 
 function countdown(done){
@@ -2660,12 +3128,12 @@ function countdown(done){
   const step = () => {
     if (n > 0){
       showOverlay('<div class="ovbox"><h2>GET <span>READY</span></h2><div class="cd">' + n + '</div></div>');
-      beep(520 + (3 - n) * 130, 0.12, 'square', 0.04);
+      SFX.countdown(n);
       n--;
       setTimeout(step, 750);
     } else {
       showOverlay('<div class="ovbox"><div class="cd" style="color:#5dff9e;text-shadow:0 0 34px #5dff9e,0 0 80px #5dff9e">GO!</div></div>');
-      beep(1200, 0.22, 'square', 0.05);
+      SFX.go();
       setTimeout(() => { hideOverlay(); done(); }, 550);
     }
   };
@@ -2691,16 +3159,6 @@ function buildControls(){
   if (G.role === 'guest'){ rematch.disabled = true; rematch.style.opacity = '.4'; rematch.style.cursor = 'not-allowed'; }
   row.appendChild(rematch);
 
-  const padToggle = document.createElement('button');
-  padToggle.className = 'ghost';
-  padToggle.textContent = 'TOUCH PAD';
-  padToggle.onclick = () => {
-    G.touchForced = !G.touchForced;
-    const pad = controls.querySelector('.touchpad');
-    if (pad) pad.classList.toggle('force', G.touchForced);
-  };
-  row.appendChild(padToggle);
-
   controls.appendChild(row);
   controls.appendChild(buildTouchpad());
 }
@@ -2715,11 +3173,11 @@ async function onLeaveClick(){
     });
     if (!ok) return;
   }
-  if (G.conn && (G.state === 'playing' || G.state === 'countdown')){
-    send({ t:'lose' });
+
+  if (G.conn && G.conn.open && G.state !== 'lobby'){
+    try { G.conn.send({ t:'bye' }); } catch(e){}
   }
-  cleanupNet();
-  idleOverlay();
+  setTimeout(() => { cleanupNet(); idleOverlay(); }, 160);
 }
 
 function onRematchClick(){
@@ -2791,8 +3249,8 @@ function endGame(result, icon, title, sub, elapsed, cards){
     idleOverlay();
   };
 
-  if (result === 'win'){ beep(880, 0.12, 'square', 0.05); setTimeout(()=>beep(1180, 0.2, 'square', 0.05), 140); }
-  else if (result === 'lose' || result === 'disconnect'){ beep(200, 0.35, 'sawtooth', 0.06); }
+  if (result === 'win') SFX.win();
+  else if (result === 'lose' || result === 'disconnect') SFX.lose();
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -2801,16 +3259,10 @@ function endGame(result, icon, title, sub, elapsed, cards){
 function renderAll(now){
   if (!G.viewMe || !G.myBoard || !G.board || !G.me) return;
 
-  const mode = G.config.mode;
-  const shared = (mode === 'coop' || mode === 'territory');
-
   const myColor = '#4dd8ff';
-  const theirColor = '#ff3d81';
 
+  /* Only your own cursor is rendered — opponent highlight hidden. */
   const cursors = [{ r: G.me.cursor.r, c: G.me.cursor.c, color: myColor }];
-  if (shared && G.them){
-    cursors.push({ r: G.them.cursor.r, c: G.them.cursor.c, color: theirColor });
-  }
 
   G.viewMe.render(now, { board: G.board, boardState: G.myBoard, cursors });
 
@@ -2818,7 +3270,7 @@ function renderAll(now){
     G.viewThem.render(now, {
       board: G.board,
       boardState: G.theirBoard,
-      cursors: G.them ? [{ r: G.them.cursor.r, c: G.them.cursor.c, color: theirColor }] : []
+      cursors: []
     });
   }
 
@@ -2851,22 +3303,25 @@ function updateHUD(now){
       if (els.bar) els.bar.style.width = (bs.safeRevealed / G.board.safeCount * 100).toFixed(1) + '%';
     }
 
-    /* my freeze overlay */
     if (els.stun){
       const rem = G.me.stunUntil - now;
       if (rem > 0 && G.state === 'playing'){
         els.stun.classList.add('on');
+        setStunFace(els.stun, G.me.stunReason);
         setText(els.stun.querySelector('[data-timer]'), (rem / 1000).toFixed(1));
       } else {
         els.stun.classList.remove('on');
       }
     }
 
-    /* territory: opponent freeze badge */
     if (els.oppStun){
       const rem = G.them ? (G.them.stunUntil - now) : 0;
       if (rem > 0 && G.state === 'playing'){
+        const ice = G.them && G.them.stunReason === 'flag';
         els.oppStun.classList.add('on');
+        els.oppStun.classList.toggle('ice', !!ice);
+        const oe = els.oppStun.querySelector('[data-oemoji]');
+        if (oe) setText(oe, ice ? '❄️' : '💥');
         setText(els.oppStun.querySelector('b'), (rem / 1000).toFixed(1));
       } else {
         els.oppStun.classList.remove('on');
@@ -2874,7 +3329,6 @@ function updateHUD(now){
     }
   }
 
-  /* duel opponent panel */
   if (G.panelThem && G.panelThem._els && G.theirBoard){
     const te = G.panelThem._els;
     setText(te.mines, Math.max(0, G.board.mineCount - G.theirBoard.flagCount));
@@ -2886,6 +3340,7 @@ function updateHUD(now){
       const rem = G.them ? (G.them.stunUntil - now) : 0;
       if (rem > 0 && G.state === 'playing'){
         te.stun.classList.add('on');
+        setStunFace(te.stun, G.them ? G.them.stunReason : 'bomb');
         setText(te.stun.querySelector('[data-timer]'), (rem / 1000).toFixed(1));
       } else {
         te.stun.classList.remove('on');
@@ -2920,13 +3375,11 @@ window.addEventListener('orientationchange', () => {
   setTimeout(() => window.dispatchEvent(new Event('resize')), 260);
 });
 
-/* stop iOS double-tap zoom / pinch */
 document.addEventListener('gesturestart', e => e.preventDefault());
 document.addEventListener('dblclick', e => {
   if (e.target && e.target.tagName === 'CANVAS') e.preventDefault();
 }, { passive:false });
 
-/* unlock audio on first interaction (mobile) */
 window.addEventListener('pointerdown', function unlock(){
   try {
     if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
@@ -2935,12 +3388,20 @@ window.addEventListener('pointerdown', function unlock(){
   window.removeEventListener('pointerdown', unlock);
 }, { once:true });
 
-/* leave confirmation on tab close while playing */
 window.addEventListener('beforeunload', e => {
+  if (G.conn && G.conn.open && G.state !== 'lobby'){
+    try { G.conn.send({ t:'bye' }); } catch(err){}
+  }
   if (G.state === 'playing' || G.state === 'countdown'){
     e.preventDefault();
     e.returnValue = '';
     return '';
+  }
+});
+
+window.addEventListener('pagehide', () => {
+  if (G.conn && G.conn.open && G.state !== 'lobby'){
+    try { G.conn.send({ t:'bye' }); } catch(err){}
   }
 });
 

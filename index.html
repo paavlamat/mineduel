@@ -9,8 +9,8 @@
 <title>MINE DUEL — Online Co-op &amp; Duel</title>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
-  html,body{height:100%}
-  html{-webkit-text-size-adjust:100%}
+  html,body{height:100%;overflow:hidden}
+  html{-webkit-text-size-adjust:100%;overscroll-behavior:none}
   body{
     background:#04050a;
     background-image:
@@ -19,9 +19,8 @@
       radial-gradient(1200px 800px at 10% 100%, rgba(120,80,255,.09), transparent 60%);
     color:#cfe4ff;
     font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace;
-    display:flex;flex-direction:column;align-items:center;
-    padding:0 16px calc(18px + env(safe-area-inset-bottom,0px));
-    min-height:100vh;overflow-x:hidden;
+    display:flex;flex-direction:column;
+    height:100dvh;
     -webkit-font-smoothing:antialiased;
     overscroll-behavior-y:none;
   }
@@ -42,22 +41,21 @@
   #app{
     position:relative;z-index:1;
     width:100%;max-width:1900px;margin:0 auto;
-    display:flex;flex-direction:column;gap:20px;align-items:center;
-    padding-top:calc(env(safe-area-inset-top,0px));
+    flex:1;min-height:0;
+    display:flex;flex-direction:column;gap:8px;align-items:stretch;
+    padding:8px 12px;
+    padding-top:max(8px, env(safe-area-inset-top,0px));
+    padding-bottom:max(8px, env(safe-area-inset-bottom,0px));
   }
 
   header{
-    position:sticky;top:0;z-index:30;
+    flex:none;
     display:flex;align-items:center;justify-content:space-between;
-    gap:14px;width:100%;flex-wrap:wrap;
-    padding:10px 12px;
-    margin:0 -12px;
-    background:linear-gradient(180deg,rgba(4,5,10,.94),rgba(4,5,10,.62));
-    backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
-    border-bottom:1px solid rgba(255,255,255,.06);
+    gap:10px;width:100%;flex-wrap:wrap;
+    padding:2px 0;
   }
   h1{
-    font-size:clamp(22px,4.6vw,54px);letter-spacing:.24em;font-weight:900;color:#fff;
+    font-size:clamp(18px,3.2vw,38px);letter-spacing:.22em;font-weight:900;color:#fff;
     text-shadow:0 0 14px rgba(77,216,255,.9),0 0 40px rgba(77,216,255,.5);
     animation:hglow 5s ease-in-out infinite;line-height:1;
   }
@@ -69,16 +67,16 @@
     color:#ff3d81;
     text-shadow:0 0 14px rgba(255,61,129,.9),0 0 40px rgba(255,61,129,.5);
   }
-  .head-right{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+  .head-right{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
   #statusbar{
-    display:inline-flex;align-items:center;gap:11px;
-    font-size:12px;letter-spacing:.22em;color:#8b9ab4;font-weight:800;
+    display:inline-flex;align-items:center;gap:8px;
+    font-size:11px;letter-spacing:.2em;color:#8b9ab4;font-weight:800;
     background:rgba(255,255,255,.035);
     border:1px solid rgba(255,255,255,.08);
-    padding:11px 22px;border-radius:99px;
+    padding:8px 16px;border-radius:99px;
     transition:all .3s;
   }
-  #statusbar .led{width:10px;height:10px;border-radius:50%;background:#64748b;transition:all .3s}
+  #statusbar .led{width:8px;height:8px;border-radius:50%;background:#64748b;transition:all .3s}
   #statusbar.live{border-color:rgba(52,211,153,.4);background:rgba(52,211,153,.08);color:#a7f3d0}
   #statusbar.live .led{background:#34d399;box-shadow:0 0 16px #34d399}
   #statusbar.warn{border-color:rgba(251,191,36,.4);background:rgba(251,191,36,.08);color:#fde68a}
@@ -87,12 +85,12 @@
   #statusbar.bad .led{background:#ff3d81;box-shadow:0 0 16px #ff3d81}
 
   .fs-btn{
-    width:46px;height:46px;padding:0;flex:none;
+    width:38px;height:38px;padding:0;flex:none;
     display:inline-flex;align-items:center;justify-content:center;
-    font-size:20px;line-height:1;letter-spacing:0;
+    font-size:18px;line-height:1;letter-spacing:0;
     border-radius:50%;
   }
-  .fs-btn svg{width:22px;height:22px;display:block;pointer-events:none}
+  .fs-btn svg{width:18px;height:18px;display:block;pointer-events:none}
   .fs-btn svg path,
   .fs-btn svg polyline,
   .fs-btn svg line,
@@ -102,17 +100,19 @@
   }
 
   #arena{
-    display:flex;gap:20px;justify-content:center;align-items:stretch;
-    flex-wrap:wrap;width:100%;
+    flex:1;min-height:0;
+    display:flex;gap:10px;justify-content:center;align-items:stretch;
+    width:100%;
   }
-  #arena.solo{justify-content:center}
+  #arena.solo .panel{max-width:1400px}
+  #arena.territory .panel{max-width:1600px}
 
   .panel{
     --pc:#4dd8ff;
-    flex:1 1 500px;max-width:1000px;min-width:0;
+    flex:1 1 0;min-width:0;min-height:0;
     background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.012));
     border:1px solid rgba(255,255,255,.10);
-    border-radius:26px;padding:20px 20px 22px;
+    border-radius:18px;padding:12px;
     box-shadow:
       0 40px 80px -40px #000,
       inset 0 1px 0 rgba(255,255,255,.07);
@@ -121,8 +121,6 @@
     overflow:hidden;
     display:flex;flex-direction:column;
   }
-  #arena.solo .panel{max-width:1400px;flex:1 1 auto}
-  #arena.territory .panel{max-width:1600px;flex:1 1 auto}
   .panel::before{
     content:'';position:absolute;inset:0;pointer-events:none;
     background:radial-gradient(900px 460px at 50% 0%, color-mix(in srgb, var(--pc) 10%, transparent), transparent 70%);
@@ -132,45 +130,46 @@
   .panel.won{box-shadow:0 0 80px -20px #34d399,0 40px 80px -40px #000}
 
   .phead{
-    display:flex;align-items:center;gap:12px;margin-bottom:14px;
+    flex:none;
+    display:flex;align-items:center;gap:8px;margin-bottom:8px;
     position:relative;z-index:1;flex-wrap:wrap;
   }
   .dot{
-    width:13px;height:13px;border-radius:50%;background:var(--pc);
+    width:11px;height:11px;border-radius:50%;background:var(--pc);
     box-shadow:0 0 18px var(--pc),0 0 36px color-mix(in srgb, var(--pc) 40%, transparent);
     flex:none;animation:dotpulse 2s ease-in-out infinite;
   }
   @keyframes dotpulse{0%,100%{transform:scale(1)}50%{transform:scale(1.22)}}
-  .pname{font-size:15px;font-weight:900;letter-spacing:.22em;color:#fff}
+  .pname{font-size:13px;font-weight:900;letter-spacing:.2em;color:#fff}
   .pkeys{
     margin-left:auto;font-size:10px;letter-spacing:.14em;color:#6b7a94;
     white-space:nowrap;font-weight:700;
   }
 
-  .pstats{display:flex;gap:10px;margin-bottom:14px;position:relative;z-index:1;flex-wrap:wrap}
+  .pstats{flex:none;display:flex;gap:6px;margin-bottom:8px;position:relative;z-index:1;flex-wrap:wrap}
   .pstat{
-    flex:1 1 0;min-width:80px;
+    flex:1 1 0;min-width:60px;
     background:rgba(255,255,255,.03);
     border:1px solid rgba(255,255,255,.07);
-    border-radius:13px;
-    padding:10px 14px;
-    display:flex;flex-direction:column;gap:3px;
+    border-radius:10px;
+    padding:6px 10px;
+    display:flex;flex-direction:column;gap:2px;
     transition:background .2s;
   }
   .pstat:hover{background:rgba(255,255,255,.05)}
-  .pstat .plabel{font-size:9.5px;letter-spacing:.2em;color:#5d7fa8;font-weight:800}
+  .pstat .plabel{font-size:8.5px;letter-spacing:.2em;color:#5d7fa8;font-weight:800}
   .pstat .pval{
     font-family:'Courier New',monospace;
-    font-size:clamp(18px,3.4vw,24px);font-weight:900;line-height:1;
+    font-size:clamp(14px,2.5vw,22px);font-weight:900;line-height:1;
     color:var(--pc);
     text-shadow:0 0 12px color-mix(in srgb, var(--pc) 60%, transparent);
     font-variant-numeric:tabular-nums;
   }
-  .pstat .pval.danger{color:#ff6b8a;text-shadow:0 0 12px rgba(255,107,138,.5)}
 
   .pbar{
-    height:7px;background:rgba(255,255,255,.05);border-radius:99px;
-    overflow:hidden;margin-bottom:16px;position:relative;z-index:1;
+    flex:none;
+    height:5px;background:rgba(255,255,255,.05);border-radius:99px;
+    overflow:hidden;margin-bottom:10px;position:relative;z-index:1;
     box-shadow:inset 0 1px 2px rgba(0,0,0,.4);
   }
   .pbar i{
@@ -181,8 +180,9 @@
   }
 
   .tbar{
-    display:flex;height:9px;border-radius:99px;overflow:hidden;
-    background:rgba(255,255,255,.05);margin-bottom:16px;position:relative;z-index:1;
+    flex:none;
+    display:flex;height:7px;border-radius:99px;overflow:hidden;
+    background:rgba(255,255,255,.05);margin-bottom:10px;position:relative;z-index:1;
     box-shadow:inset 0 1px 2px rgba(0,0,0,.4);
   }
   .tbar i{display:block;height:100%;flex:0 0 auto;transition:width .4s cubic-bezier(.4,0,.2,1)}
@@ -190,11 +190,13 @@
   .tbar i.theirs{background:#ff3d81;box-shadow:0 0 16px #ff3d81}
 
   .boardwrap{
-    position:relative;display:flex;justify-content:center;z-index:1;
-    flex:1;align-items:center;
+    position:relative;flex:1;min-height:0;
+    display:flex;justify-content:center;align-items:center;
+    z-index:1;overflow:hidden;
   }
   .boardwrap canvas{
-    display:block;width:100%;height:auto;border-radius:16px;
+    display:block;max-width:100%;max-height:100%;
+    border-radius:12px;
     touch-action:none;cursor:crosshair;
     -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;
     box-shadow:0 10px 40px -20px #000, inset 0 0 0 1px rgba(255,255,255,.03);
@@ -202,7 +204,7 @@
 
   .stun{
     position:absolute;inset:0;display:none;flex-direction:column;
-    align-items:center;justify-content:center;gap:6px;border-radius:16px;
+    align-items:center;justify-content:center;gap:6px;border-radius:12px;
     background:
       radial-gradient(circle at 50% 45%, rgba(239,68,68,.6), rgba(239,68,68,.32) 55%, rgba(80,15,30,.55));
     backdrop-filter:blur(9px) saturate(1.4);
@@ -215,17 +217,17 @@
   }
   .stun.on{display:flex;animation:stunpop .38s cubic-bezier(.34,1.56,.64,1)}
   .stun-emoji{
-    font-size:clamp(2.2rem,7vw,4.6rem);line-height:1;
+    font-size:clamp(1.8rem,5.5vw,3.4rem);line-height:1;
     animation:stunshine 1.4s ease-in-out infinite;
   }
   .stun-title{
-    font-size:clamp(.85rem,2.2vw,1.5rem);letter-spacing:.42em;color:#fff;font-weight:900;
+    font-size:clamp(.75rem,2vw,1.2rem);letter-spacing:.4em;color:#fff;font-weight:900;
     text-shadow:0 0 16px #ef4444,0 0 32px #ef4444;
-    padding-left:.42em;
+    padding-left:.4em;
   }
   .stun-timer{
     font-family:'Courier New',monospace;
-    font-size:clamp(2rem,6vw,3.6rem);font-weight:900;line-height:1;
+    font-size:clamp(1.6rem,5vw,2.8rem);font-weight:900;line-height:1;
     color:#fff;
     text-shadow:0 0 18px #ef4444,0 0 36px #ef4444,0 0 70px #ef4444;
     font-variant-numeric:tabular-nums;
@@ -233,8 +235,8 @@
     margin-top:2px;
   }
   .stun-sub{
-    font-size:10.5px;letter-spacing:.34em;color:#ffb1c7;font-weight:800;
-    margin-top:4px;padding-left:.34em;
+    font-size:9.5px;letter-spacing:.32em;color:#ffb1c7;font-weight:800;
+    margin-top:4px;padding-left:.32em;
   }
   .stun.ice{
     background:
@@ -259,23 +261,30 @@
   }
 
   .oppstun{
-    position:absolute;top:12px;right:12px;display:none;
-    padding:9px 16px;border-radius:99px;
+    position:absolute;top:10px;right:10px;display:none;
+    padding:6px 12px;border-radius:99px;
     background:rgba(255,61,129,.22);border:1px solid rgba(255,61,129,.55);
-    color:#ffb1c7;font-size:11px;letter-spacing:.16em;font-weight:900;
+    color:#ffb1c7;font-size:10px;letter-spacing:.14em;font-weight:900;
     backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
     pointer-events:none;z-index:2;
     animation:stunpop .3s cubic-bezier(.34,1.56,.64,1);
   }
   .oppstun.on{display:block}
-  .oppstun b{color:#fff;font-size:13px}
+  .oppstun b{color:#fff;font-size:12px}
   .oppstun.ice{background:rgba(56,189,248,.22);border-color:rgba(140,220,255,.6);color:#a5e8ff}
 
-  .controls{display:flex;flex-direction:column;gap:14px;width:100%;align-items:center}
+  .controls{
+    flex:none;
+    display:flex;flex-direction:column;gap:8px;
+    width:100%;align-items:center;
+  }
+  .controls > div{
+    display:flex;gap:8px;flex-wrap:wrap;justify-content:center;width:100%;
+  }
 
   button{
-    font-family:inherit;font-size:14px;font-weight:900;letter-spacing:.14em;
-    padding:15px 28px;border-radius:14px;cursor:pointer;color:#dbe6f7;
+    font-family:inherit;font-size:12px;font-weight:900;letter-spacing:.14em;
+    padding:10px 16px;border-radius:12px;cursor:pointer;color:#dbe6f7;
     background:linear-gradient(180deg,rgba(255,255,255,.09),rgba(255,255,255,.04));
     border:1px solid rgba(255,255,255,.16);
     transition:all .18s cubic-bezier(.4,0,.2,1);
@@ -312,20 +321,20 @@
     box-shadow:0 0 30px -8px #ff3d81,inset 0 1px 0 rgba(255,255,255,.12);
   }
 
+  /* Touch pad: rendered only on mobile (JS gates DOM injection) */
   .touchpad{
-    display:none;gap:20px;justify-content:center;align-items:center;
+    display:flex;gap:12px;justify-content:center;align-items:center;
     flex-wrap:wrap;width:100%;
   }
-  @media (pointer:coarse){ .touchpad{display:flex} }
   .dpad{
-    --tb:60px;
+    --tb:48px;
     display:grid;
     grid-template-columns:repeat(3,var(--tb));
     grid-template-rows:repeat(3,var(--tb));
-    gap:8px;justify-content:center;
+    gap:6px;justify-content:center;
   }
   .dpad button{
-    width:100%;height:100%;padding:0;font-size:20px;border-radius:16px;
+    width:100%;height:100%;padding:0;font-size:16px;border-radius:12px;
     letter-spacing:0;line-height:1;
     display:flex;align-items:center;justify-content:center;
   }
@@ -333,21 +342,21 @@
   .dpad .l{grid-area:2/1/3/2}
   .dpad .r{grid-area:2/3/3/4}
   .dpad .dn{grid-area:3/2/4/3}
-  .tp-actions{display:flex;flex-direction:column;gap:10px;min-width:150px}
-  .tp-actions button{width:100%;padding:16px 18px;font-size:13px}
+  .tp-actions{display:flex;flex-direction:column;gap:8px;min-width:110px}
+  .tp-actions button{width:100%;padding:10px 12px;font-size:11px}
 
   .overlay{
     position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;
     background:rgba(3,6,12,.87);
     backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
-    padding:22px;overflow-y:auto;
+    padding:16px;overflow-y:auto;
     animation:ovfade .28s ease;
     -webkit-overflow-scrolling:touch;
   }
   .overlay.hidden{display:none}
   @keyframes ovfade{from{opacity:0}to{opacity:1}}
   .ovbox{
-    text-align:center;padding:46px 42px;border-radius:30px;max-width:640px;width:100%;
+    text-align:center;padding:32px 28px;border-radius:24px;max-width:640px;width:100%;
     background:
       radial-gradient(800px 480px at 50% 0%, rgba(77,216,255,.12), transparent 60%),
       rgba(11,17,29,.97);
@@ -361,44 +370,44 @@
   }
   @keyframes ovpop{from{transform:scale(.94);opacity:0}to{transform:scale(1);opacity:1}}
   .ovbox h2{
-    margin:0 0 14px;font-size:clamp(24px,5vw,42px);
+    margin:0 0 12px;font-size:clamp(20px,4vw,34px);
     letter-spacing:.16em;color:#fff;font-weight:900;
     text-shadow:0 0 24px rgba(77,216,255,.4);
   }
   .ovbox h2 span{color:#4dd8ff}
   .ovbox > p{
-    margin:0 0 26px;font-size:14px;line-height:2;color:#8b9ab4;
+    margin:0 0 20px;font-size:13px;line-height:1.9;color:#8b9ab4;
     letter-spacing:.05em;
   }
   .ovbox > p b{font-weight:800}
-  .ovbtns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:8px}
+  .ovbtns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:6px}
   .big{
-    font-size:clamp(60px,14vw,100px);line-height:1;margin-bottom:18px;
+    font-size:clamp(48px,12vw,84px);line-height:1;margin-bottom:14px;
     filter:drop-shadow(0 0 34px rgba(251,191,36,.7));
     animation:bigpop .55s cubic-bezier(.34,1.56,.64,1);
   }
   @keyframes bigpop{from{transform:scale(.4) rotate(-15deg);opacity:0}to{transform:scale(1) rotate(0);opacity:1}}
   .cd{
-    font-size:clamp(90px,24vw,220px);font-weight:900;
+    font-size:clamp(80px,22vw,180px);font-weight:900;
     letter-spacing:.06em;color:#fff;line-height:1;
     text-shadow:0 0 34px #4dd8ff,0 0 80px #4dd8ff,0 0 150px #4dd8ff;
     animation:cdpop .55s cubic-bezier(.34,1.56,.64,1);
   }
   @keyframes cdpop{0%{transform:scale(.3);opacity:0}60%{transform:scale(1.12)}100%{transform:scale(1);opacity:1}}
 
-  .statrow{display:flex;gap:14px;justify-content:center;margin:20px 0 8px;flex-wrap:wrap}
+  .statrow{display:flex;gap:10px;justify-content:center;margin:16px 0 6px;flex-wrap:wrap}
   .statcard{
-    flex:0 1 150px;
+    flex:0 1 130px;
     background:rgba(255,255,255,.04);
     border:1px solid rgba(255,255,255,.09);
-    border-radius:14px;
-    padding:14px 16px;
+    border-radius:12px;
+    padding:10px 12px;
     text-align:center;
   }
-  .statcard .slabel{font-size:9.5px;letter-spacing:.24em;color:#5d7fa8;font-weight:800;margin-bottom:8px}
+  .statcard .slabel{font-size:9px;letter-spacing:.24em;color:#5d7fa8;font-weight:800;margin-bottom:6px}
   .statcard .sval{
     font-family:'Courier New',monospace;
-    font-size:26px;font-weight:900;line-height:1;color:#4dd8ff;
+    font-size:22px;font-weight:900;line-height:1;color:#4dd8ff;
     text-shadow:0 0 16px rgba(77,216,255,.6);
     font-variant-numeric:tabular-nums;
   }
@@ -407,11 +416,11 @@
 
   .codebox{
     display:flex;gap:16px;align-items:center;justify-content:center;
-    margin:26px 0 10px;flex-wrap:wrap;
+    margin:20px 0 8px;flex-wrap:wrap;
   }
   .codeval{
-    font-size:clamp(38px,10vw,68px);font-weight:900;letter-spacing:.34em;
-    padding:18px 26px 18px 38px;border-radius:20px;color:#4dd8ff;
+    font-size:clamp(32px,9vw,56px);font-weight:900;letter-spacing:.32em;
+    padding:14px 20px 14px 32px;border-radius:18px;color:#4dd8ff;
     background:linear-gradient(180deg,rgba(77,216,255,.12),rgba(77,216,255,.05));
     border:2px dashed rgba(77,216,255,.55);
     text-shadow:0 0 34px rgba(77,216,255,.8);
@@ -426,10 +435,10 @@
   }
   .codeval:active{transform:scale(.98)}
 
-  .joinrow{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:22px}
+  .joinrow{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:16px}
   .joinrow input{
-    font-family:inherit;font-size:24px;font-weight:900;letter-spacing:.34em;
-    text-align:center;width:min(220px,60vw);padding:16px 12px;border-radius:16px;
+    font-family:inherit;font-size:20px;font-weight:900;letter-spacing:.32em;
+    text-align:center;width:min(200px,55vw);padding:12px 10px;border-radius:14px;
     color:#fff;text-transform:uppercase;
     background:rgba(255,255,255,.05);
     border:1px solid rgba(255,255,255,.18);outline:none;
@@ -442,25 +451,25 @@
   }
   .joinrow input::placeholder{color:#4a5f7d}
   .spin{
-    display:inline-block;width:17px;height:17px;
+    display:inline-block;width:15px;height:15px;
     border:2.5px solid rgba(255,255,255,.18);border-top-color:#4dd8ff;
     border-radius:50%;animation:sp .75s linear infinite;
-    vertical-align:-3px;margin-right:10px;
+    vertical-align:-3px;margin-right:8px;
   }
   @keyframes sp{to{transform:rotate(360deg)}}
   .err{
-    color:#ff6b8a;font-size:13px;letter-spacing:.08em;
-    margin-top:16px;min-height:18px;font-weight:700;
+    color:#ff6b8a;font-size:12px;letter-spacing:.08em;
+    margin-top:12px;min-height:16px;font-weight:700;
   }
 
-  .config-section{margin:24px 0;text-align:left}
+  .config-section{margin:18px 0;text-align:left}
   .config-label{
-    font-size:11.5px;letter-spacing:.28em;color:#6b7a94;font-weight:800;
-    margin-bottom:12px;
+    font-size:11px;letter-spacing:.28em;color:#6b7a94;font-weight:800;
+    margin-bottom:10px;
   }
-  .config-options{display:flex;gap:14px;flex-wrap:wrap}
+  .config-options{display:flex;gap:10px;flex-wrap:wrap}
   .opt{
-    flex:1 1 160px;padding:18px 22px;text-align:left;border-radius:16px;
+    flex:1 1 140px;padding:14px 16px;text-align:left;border-radius:14px;
     background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.02));
     border:1px solid rgba(255,255,255,.12);
     cursor:pointer;transition:all .2s cubic-bezier(.4,0,.2,1);
@@ -478,30 +487,90 @@
     box-shadow:0 0 34px -10px #4dd8ff,inset 0 1px 0 rgba(255,255,255,.1);
   }
   .opt.active::before{
-    content:'✓';position:absolute;top:12px;right:14px;
-    font-size:16px;color:#4dd8ff;font-weight:900;
+    content:'✓';position:absolute;top:10px;right:12px;
+    font-size:14px;color:#4dd8ff;font-weight:900;
     text-shadow:0 0 12px #4dd8ff;
   }
   .opt.active .opt-name{color:#4dd8ff;text-shadow:0 0 12px rgba(77,216,255,.5)}
-  .opt-name{font-size:16px;font-weight:900;letter-spacing:.14em;color:#e6edf7;margin-bottom:6px}
-  .opt-desc{font-size:12px;color:#7c8aa5;letter-spacing:.05em;line-height:1.6}
+  .opt-name{font-size:14px;font-weight:900;letter-spacing:.14em;color:#e6edf7;margin-bottom:4px}
+  .opt-desc{font-size:11px;color:#7c8aa5;letter-spacing:.05em;line-height:1.5}
 
   #modal{z-index:70}
-  .confirm{padding:36px 32px;max-width:460px}
-  .confirm h2{font-size:clamp(20px,4vw,28px);margin-bottom:10px}
-  .confirm p{margin-bottom:22px;font-size:13px;line-height:1.9}
+  .confirm{padding:28px 24px;max-width:440px}
+  .confirm h2{font-size:clamp(18px,4vw,26px);margin-bottom:8px}
+  .confirm p{margin-bottom:18px;font-size:12px;line-height:1.8}
+
+  .ovbox.mapreview{
+    max-width:min(96vw,1100px);
+    width:min(96vw,1100px);
+    max-height:94dvh;
+    height:94dvh;
+    padding:16px;
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+    text-align:center;
+  }
+  .mapreview h2{
+    flex:none;
+    font-size:clamp(14px,2.6vw,20px);
+    margin:0;
+    letter-spacing:.18em;
+  }
+  .mapreview-canvas{
+    flex:1;
+    min-height:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    overflow:hidden;
+    border-radius:12px;
+    background:rgba(0,0,0,.28);
+    border:1px solid rgba(255,255,255,.06);
+  }
+  .mapreview-canvas canvas{
+    display:block;
+    max-width:100%;
+    max-height:100%;
+    border-radius:10px;
+  }
+  .mapreview-foot{
+    flex:none;
+    display:flex;
+    gap:10px;
+    justify-content:center;
+    flex-wrap:wrap;
+  }
 
   @media(max-width:960px){
-    #arena{flex-direction:column;align-items:stretch}
-    .panel{max-width:none;flex:1 1 auto;padding:14px 14px 16px;border-radius:20px}
+    #arena{flex-direction:column;gap:8px}
+    .panel{padding:10px;border-radius:14px}
     .pkeys{display:none}
-    .ovbox{padding:34px 22px}
-    h1{letter-spacing:.16em}
-    .pstat{padding:8px 10px}
+    .pstats{gap:4px;margin-bottom:6px}
+    .pbar{margin-bottom:8px}
+    .pstat{padding:5px 8px;min-width:50px}
+    .pstat .plabel{font-size:7.5px;letter-spacing:.16em}
   }
-  @media(max-width:420px){
-    .tp-actions{min-width:130px}
-    .dpad{--tb:54px}
+  @media(max-width:520px){
+    #app{padding:6px 8px;gap:6px}
+    h1{font-size:15px;letter-spacing:.16em}
+    #statusbar{padding:6px 12px;font-size:10px;letter-spacing:.16em}
+    #statusbar .led{width:7px;height:7px}
+    .fs-btn{width:32px;height:32px}
+    .fs-btn svg{width:16px;height:16px}
+    .panel{padding:8px;border-radius:12px}
+    .phead{margin-bottom:5px}
+    .pname{font-size:11px;letter-spacing:.14em}
+    .controls button{padding:8px 12px;font-size:11px;border-radius:10px}
+    .dpad{--tb:42px;gap:5px}
+    .dpad button{font-size:14px;border-radius:10px}
+    .tp-actions{min-width:92px;gap:6px}
+    .tp-actions button{padding:8px 10px;font-size:10px}
+    .ovbox{padding:22px 16px;border-radius:18px}
+    .big{font-size:clamp(40px,10vw,64px);margin-bottom:10px}
+    .ovbtns{gap:8px}
+    .statcard{flex:0 1 100px;padding:8px 10px}
+    .statcard .sval{font-size:18px}
   }
 </style>
 </head>
@@ -541,7 +610,6 @@
 const STUN_MS = 10000;
 const PREFIX  = 'mineduel-v5-';
 const TILES_PER_BOMB = 5;
-
 const HEARTBEAT_MS      = 1500;
 const HEARTBEAT_TIMEOUT = 5500;
 
@@ -600,6 +668,14 @@ function makeCode(){
   return s;
 }
 function newSeed(){ return (Math.random() * 0xFFFFFFFF) >>> 0; }
+
+/* Robust mobile detection: coarse pointer + no hover */
+function isMobileDevice(){
+  if (typeof window === 'undefined') return false;
+  const mq = window.matchMedia;
+  if (!mq) return 'ontouchstart' in window;
+  return mq('(hover: none) and (pointer: coarse)').matches && ('ontouchstart' in window || navigator.maxTouchPoints > 0);
+}
 
 const clamp = (v,a,b) => v < a ? a : v > b ? b : v;
 const easeOutCubic = t => 1 - Math.pow(1 - t, 3);
@@ -663,7 +739,7 @@ function vibrate(ms){
 }
 
 /* ══════════════════════════════════════════════════════════════
-   AUDIO — one shared palette used by every game mode.
+   AUDIO
    ══════════════════════════════════════════════════════════════ */
 let actx = null;
 function beep(freq, dur, type, vol){
@@ -681,6 +757,8 @@ function beep(freq, dur, type, vol){
 }
 
 const SFX = {
+  click(){ beep(720, 0.035, 'triangle', 0.028); },
+  clickSoft(){ beep(520, 0.03, 'sine', 0.022); },
   reveal(val){
     const v = clamp(val || 0, 0, 8);
     beep(500 + v * 60, 0.04, 'square', 0.02);
@@ -713,53 +791,6 @@ const SFX = {
 /* ══════════════════════════════════════════════════════════════
    BOARD GENERATION
    ══════════════════════════════════════════════════════════════ */
-function genBoard(seed, style, cols, rows, mineCount, starts){
-  const rnd = mulberry32(seed);
-  const neighbors = neighborsFor(style);
-
-  if (!starts || !starts.length){
-    starts = [{ r: Math.floor(rows / 2), c: Math.floor(cols / 2) }];
-  }
-
-  const safe = new Set();
-  for (const s of starts){
-    safe.add(s.r + ',' + s.c);
-    for (const [nr, nc] of neighbors(s.r, s.c, rows, cols)) safe.add(nr + ',' + nc);
-  }
-
-  const pool = [];
-  for (let r = 0; r < rows; r++)
-    for (let c = 0; c < cols; c++)
-      if (!safe.has(r + ',' + c)) pool.push([r, c]);
-
-  for (let i = pool.length - 1; i > 0; i--){
-    const j = Math.floor(rnd() * (i + 1));
-    const t = pool[i]; pool[i] = pool[j]; pool[j] = t;
-  }
-
-  const mines = new Set();
-  const n = Math.min(mineCount, pool.length);
-  for (let i = 0; i < n; i++) mines.add(pool[i][0] + ',' + pool[i][1]);
-
-  const adj = Array.from({length: rows}, () => new Array(cols).fill(0));
-  for (let r = 0; r < rows; r++)
-    for (let c = 0; c < cols; c++){
-      if (mines.has(r + ',' + c)) { adj[r][c] = -1; continue; }
-      let k = 0;
-      for (const [nr, nc] of neighbors(r, c, rows, cols))
-        if (mines.has(nr + ',' + nc)) k++;
-      adj[r][c] = k;
-    }
-
-  return {
-    style, cols, rows, mines, adj, neighbors,
-    mineCount: mines.size,
-    safeCount: rows * cols - mines.size,
-    start: starts[0],
-    starts
-  };
-}
-
 function territoryStarts(rows, cols){
   const r = Math.floor(rows / 2);
   return [
@@ -779,9 +810,6 @@ function placeholderBoard(style, rows, cols){
   };
 }
 
-/* Click-based safe zone ensuring the click is 0-adjacency AND at
-   least one neighbour is also 0-adjacency, so the natural BFS
-   opening always opens a wide connected area. */
 function openingSafeZone(rows, cols, neighbors, clickR, clickC){
   const safe = new Set();
   const add = (r, c) => {
@@ -848,12 +876,6 @@ function genBoardDeferred(seed, style, cols, rows, mineCount, clickR, clickC, st
   };
 }
 
-/* ──────────────────────────────────────────────────────────────
-   SOLVER — pure constraint propagation, exactly mirroring the
-   game's auto-flood rule (a revealed 0 tile opens every hidden
-   neighbour). Returns every tile a perfect player could open
-   without ever having to guess.
-   ────────────────────────────────────────────────────────────── */
 function solveBoard(board, opening){
   const rows = board.rows, cols = board.cols;
   const revealed = new Set();
@@ -885,8 +907,6 @@ function solveBoard(board, opening){
         if (!hidden.length) continue;
 
         if (flags === a){
-          /* every remaining hidden neighbour is safe — open them
-             (this is also the 0-tile auto-flood rule). */
           for (let i = 0; i < hidden.length; i++){
             revealed.add(hidden[i][0] + ',' + hidden[i][1]);
             changed = true;
@@ -903,14 +923,6 @@ function solveBoard(board, opening){
   return revealed;
 }
 
-function isSolvable(board, opening){
-  return solveBoard(board, opening).size >= board.safeCount;
-}
-
-/* Generate a board that can always be finished without guessing.
-   Retries with shifted seeds and keeps the furthest-reaching board
-   as a fallback, so every mode always hands the player at least
-   one logically forced move. */
 function generateSolvableBoard(seed, style, cols, rows, mineCount,
                                clickR, clickC, starts, opening){
   const MAX_ATTEMPTS = 400;
@@ -932,7 +944,6 @@ function generateSolvableBoard(seed, style, cols, rows, mineCount,
   return { board: best, seed: bestSeed };
 }
 
-/* Generate the real board on the first dig. */
 function ensureBoardReady(clickR, clickC){
   if (!G.boardPending) return;
   const d = dimsFor(G.config);
@@ -1002,7 +1013,8 @@ const G = {
   lossPending: false,
   winSent: false,
   opponentGone: false,
-  lastRecv: 0
+  lastRecv: 0,
+  deathTile: null
 };
 
 /* ══════════════════════════════════════════════════════════════
@@ -1034,6 +1046,15 @@ function hideOverlay(){
   overlay.classList.add('hidden');
   overlay.innerHTML = '';
 }
+
+/* Menu click sounds: delegate on overlay + modal so it survives DOM rebuilds */
+overlay.addEventListener('click', e => {
+  if (e.target.closest('button:not(:disabled)')) SFX.click();
+}, true);
+modal.addEventListener('click', e => {
+  if (e.target.closest('button:not(:disabled)')) SFX.click();
+}, true);
+fsBtn.addEventListener('click', () => SFX.click(), true);
 
 /* ══════════════════════════════════════════════════════════════
    CONFIRM DIALOG
@@ -1112,18 +1133,10 @@ function exitFs(){
           : null;
   if (p && p.catch) p.catch(()=>{});
 }
-async function onFsClick(){
-  if (isFullscreen()){
-    const ok = await confirmDialog({
-      title:'EXIT FULLSCREEN?',
-      message:'You will return to the normal browser view.',
-      ok:'EXIT',
-      cancel:'STAY'
-    });
-    if (ok) exitFs();
-  } else {
-    enterFs();
-  }
+function onFsClick(){
+  /* Exit confirmation removed: toggles directly. */
+  if (isFullscreen()) exitFs();
+  else enterFs();
 }
 fsBtn.addEventListener('click', onFsClick);
 document.addEventListener('fullscreenchange', refreshFsIcon);
@@ -1143,6 +1156,7 @@ class BoardView {
     this.particles = [];
     this.shake = 0;
     this.lastT = performance.now();
+    this.ro = null;
     this.ownerTint   = [null, 'rgba(77,216,255,.17)', 'rgba(255,61,129,.17)'];
     this.ownerEdge   = [null, 'rgba(77,216,255,.62)', 'rgba(255,61,129,.62)'];
     this.ownerSolid  = [null, '#4dd8ff', '#ff3d81'];
@@ -1158,6 +1172,7 @@ class BoardView {
     this.config = config;
     this.layout = this.computeLayout(config);
     this.resize();
+    this.observeParentSize();
   }
   computeLayout(config){
     const small = Math.min(window.innerWidth, window.innerHeight) < 720;
@@ -1188,13 +1203,37 @@ class BoardView {
     const { W, H } = this.layout;
     this.canvas.width  = Math.round(W * this.dpr);
     this.canvas.height = Math.round(H * this.dpr);
-    this.canvas.style.maxWidth = W + 'px';
-    this.canvas.style.aspectRatio = W + ' / ' + H;
     this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    this.fitCanvas();
+  }
+  fitCanvas(){
+    const parent = this.canvas.parentElement;
+    if (!parent || !this.layout) return;
+    const pw = parent.clientWidth;
+    const ph = parent.clientHeight;
+    if (pw <= 0 || ph <= 0) return;
+    const aspect = this.layout.W / this.layout.H;
+    let w = pw, h = w / aspect;
+    if (h > ph){ h = ph; w = h * aspect; }
+    this.canvas.style.width  = Math.floor(w) + 'px';
+    this.canvas.style.height = Math.floor(h) + 'px';
+  }
+  observeParentSize(){
+    if (this.ro){ this.ro.disconnect(); this.ro = null; }
+    const parent = this.canvas.parentElement;
+    if (!parent) return;
+    if (typeof ResizeObserver !== 'undefined'){
+      this.ro = new ResizeObserver(() => this.fitCanvas());
+      this.ro.observe(parent);
+    }
+  }
+  destroy(){
+    if (this.ro){ this.ro.disconnect(); this.ro = null; }
   }
   hitTest(clientX, clientY){
     if (!this.layout) return null;
     const rect = this.canvas.getBoundingClientRect();
+    if (!rect.width || !rect.height) return null;
     const { W, H } = this.layout;
     const px = (clientX - rect.left) * (W / rect.width);
     const py = (clientY - rect.top)  * (H / rect.height);
@@ -1421,6 +1460,22 @@ class BoardView {
       }
     }
 
+    if (state.highlights){
+      for (const h of state.highlights){
+        const x = ox + h.c * (cell + gap);
+        const y = oy + h.r * (cell + gap);
+        const pulse = 0.5 + 0.5 * Math.sin(now / 170);
+        ctx.save();
+        ctx.strokeStyle = h.color || '#ffe066';
+        ctx.lineWidth = 3 + 1.5 * pulse;
+        ctx.shadowColor = h.color || '#ffe066';
+        ctx.shadowBlur = 14 + 18 * pulse;
+        this.roundRect(ctx, x - 3, y - 3, cell + 6, cell + 6, radius + 4);
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+
     for (const cur of cursors){
       const x = ox + cur.c * (cell + gap);
       const y = oy + cur.r * (cell + gap);
@@ -1562,6 +1617,21 @@ class BoardView {
       }
     }
 
+    if (state.highlights){
+      for (const h of state.highlights){
+        const p = this.hexCenter(h.r, h.c);
+        const pulse = 0.5 + 0.5 * Math.sin(now / 170);
+        ctx.save();
+        ctx.shadowColor = h.color || '#ffe066';
+        ctx.shadowBlur = 14 + 18 * pulse;
+        ctx.strokeStyle = h.color || '#ffe066';
+        ctx.lineWidth = 3 + 1.5 * pulse;
+        this.hexPath(p.x, p.y, size - 1);
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+
     for (const cur of cursors){
       const p = this.hexCenter(cur.r, cur.c);
       ctx.save();
@@ -1651,7 +1721,7 @@ function makeTerritoryPanel(){
     '<div class="phead">' +
       '<span class="dot" style="background:#4dd8ff;box-shadow:0 0 18px #4dd8ff"></span>' +
       '<span class="pname" style="color:#4dd8ff">YOU</span>' +
-      '<span class="pname" style="color:#6b7a94;font-size:12px">VS</span>' +
+      '<span class="pname" style="color:#6b7a94;font-size:11px">VS</span>' +
       '<span class="dot" style="background:#ff3d81;box-shadow:0 0 18px #ff3d81"></span>' +
       '<span class="pname" style="color:#ff3d81">OPPONENT</span>' +
       '<span class="pkeys">WASD · SPACE · F</span>' +
@@ -1685,7 +1755,6 @@ function buildArena(){
   const mode = G.config.mode;
 
   arena.classList.toggle('solo', mode === 'solo');
-  arena.classList.toggle('coop', mode === 'coop');
   arena.classList.toggle('territory', mode === 'territory');
 
   if (mode === 'territory'){ buildTerritoryArena(); return; }
@@ -1708,7 +1777,7 @@ function buildArena(){
     panel: panelA
   };
   if (isSolo)      panelA._els.keys.textContent = 'WASD · SPACE · F';
-  else if (isCoop) panelA._els.keys.textContent = 'SHARED BOARD · WASD · SPACE · F';
+  else if (isCoop) panelA._els.keys.textContent = 'SHARED · WASD · SPACE · F';
   else             panelA._els.keys.textContent = 'WASD · SPACE · F';
 
   if (mode === 'duel'){
@@ -1831,9 +1900,6 @@ function bindCanvasInput(view){
     if (touchPress){ clearTimeout(touchPress.timer); touchPress = null; }
   };
   canvas.addEventListener('pointercancel', cancelTouch);
-  canvas.addEventListener('pointerleave', () => {
-    if (touchPress) return;
-  });
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -1870,7 +1936,7 @@ window.addEventListener('keydown', e => {
 /* ══════════════════════════════════════════════════════════════
    INPUT — touch pad (mobile only: move / dig / flag)
    ══════════════════════════════════════════════════════════════ */
-function holdButton(btn, fn, delay){
+function holdButton(btn, fn){
   let t1 = null, t2 = null;
   const start = e => {
     e.preventDefault();
@@ -2025,8 +2091,6 @@ function countLand(boardState, owner){
   return n;
 }
 
-/* Territorial rule: you may only interact with a tile that is your
-   own territory or directly adjacent to a tile you own. */
 function canTouchTerritory(boardState, board, r, c, owner){
   if (!boardState || !boardState.owner || !board) return true;
   if (boardState.owner[r][c] === owner) return true;
@@ -2087,18 +2151,15 @@ function localDig(){
   const r = G.me.cursor.r, c = G.me.cursor.c;
   const mode = G.config.mode;
 
-  /* Flagged tile: left-click only removes the flag, never digs. */
   if (G.myBoard.flagged[r][c]){
     localFlag();
     return;
   }
 
-  /* Territorial: may only act on tiles adjacent to your own land. */
   if (mode === 'territory' && !canTouchTerritory(G.myBoard, G.board, r, c, G.myOwner)){
     return;
   }
 
-  /* ── deferred board generation on the very first dig ── */
   if (G.boardPending){
     if (mode === 'solo'){
       ensureBoardReady(r, c);
@@ -2125,7 +2186,6 @@ function localDig(){
   doLocalDig(r, c);
 }
 
-/* Apply a dig assuming the board is already generated. */
 function doLocalDig(r, c){
   const mode = G.config.mode;
 
@@ -2141,6 +2201,7 @@ function doLocalDig(r, c){
     if (!res) return;
     if (res.type === 'mine'){
       G.me.hits++;
+      G.deathTile = { r, c };
       send({ t:'hit', r, c });
       duelFreeze(r, c);
       return;
@@ -2190,6 +2251,7 @@ function handleLoss(r, c, view, bs, board){
   if (G.lossPending) return;
   G.lossPending = true;
   G.me.done = true;
+  G.deathTile = { r, c };
 
   if (view){
     view.triggerShake();
@@ -2214,6 +2276,7 @@ function handleCoopLoss(r, c, broadcast, iTriggered){
   if (G.lossPending) return;
   G.lossPending = true;
   if (G.me) G.me.done = true;
+  G.deathTile = { r, c };
 
   const bs = G.myBoard;
   const view = G.viewMe;
@@ -2294,11 +2357,10 @@ function applyPenalty(ownerId, reason){
   send({ t:'stun', who: ownerId, reason: r });
 }
 
-/* Territorial: a bomb tile is revealed for BOTH players and claimed
-   by the clicker; the clicker takes the 10s freeze. */
 function handleTerritoryBoom(r, c, owner){
   const bs = G.myBoard;
   const iTriggered = (owner === G.myOwner);
+  if (iTriggered) G.deathTile = { r, c };
 
   if (bs){
     if (bs.owner) bs.owner[r][c] = owner;
@@ -2415,6 +2477,7 @@ function localChord(){
     if (res.type === 'mine'){
       G.me.hits++;
       const mr = res.tiles[0][0], mc = res.tiles[0][1];
+      G.deathTile = { r: mr, c: mc };
       send({ t:'hit', r: mr, c: mc });
       duelFreeze(mr, mc);
       return;
@@ -2482,7 +2545,6 @@ function hostApplyTerritoryFlag(r, c, owner){
   const bs = G.myBoard;
   if (bs.revealed[r][c]) return;
 
-  /* removing an existing flag */
   if (bs.flagged[r][c]){
     bs.flagged[r][c] = false;
     bs.flagAt[r][c] = performance.now();
@@ -2550,8 +2612,6 @@ function send(msg){
   }
 }
 
-/* ── heartbeat: guarantees we notice an opponent who vanishes
-   (closed the tab, lost signal) instead of hanging forever. ── */
 let hbTimer = null;
 
 function startHeartbeat(){
@@ -2570,7 +2630,6 @@ function stopHeartbeat(){
   if (hbTimer){ clearInterval(hbTimer); hbTimer = null; }
 }
 
-/* Single funnel for "the other side is gone". */
 function onConnClosed(){
   stopHeartbeat();
   if (G.opponentGone) return;
@@ -2654,7 +2713,6 @@ function handleMessage(msg){
       if (G.config.mode !== 'coop' && G.config.mode !== 'territory') break;
       if (performance.now() < G.them.stunUntil) break;
 
-      /* Territorial: enforce adjacency-to-your-land rule. */
       if (G.config.mode === 'territory' &&
           !canTouchTerritory(G.myBoard, G.board, msg.r, msg.c, G.theirOwner)) break;
 
@@ -2918,6 +2976,7 @@ function idleOverlay(){
   G.winSent = false;
   G.opponentGone = false;
   G.lastRecv = 0;
+  G.deathTile = null;
   arena.innerHTML = '';
   controls.innerHTML = '';
   cleanupNet();
@@ -2994,12 +3053,13 @@ function showCodeScreen(code){
       '<h2>ROOM <span>READY</span></h2>' +
       '<p>Share this code with your opponent.<br>Tap the code to copy it.</p>' +
       '<div class="codebox"><div class="codeval" id="codeVal">' + code + '</div></div>' +
-      '<p style="margin-top:16px"><span class="spin"></span>Waiting for opponent…</p>' +
+      '<p style="margin-top:12px"><span class="spin"></span>Waiting for opponent…</p>' +
       '<div class="ovbtns"><button class="ghost" id="btnCancel">CANCEL</button></div>' +
     '</div>'
   );
   const cv = overlay.querySelector('#codeVal');
   cv.onclick = () => {
+    SFX.clickSoft();
     copyToClipboard(code).then(ok => {
       cv.textContent = ok ? 'COPIED' : code;
       setTimeout(() => { cv.textContent = code; }, 900);
@@ -3062,6 +3122,7 @@ function startMatch(seed, role){
   G.opponentGone = false;
   G.pendingDig = null;
   G.lastRecv = performance.now();
+  G.deathTile = null;
 
   const d = dimsFor(G.config);
   const mode = G.config.mode;
@@ -3070,9 +3131,6 @@ function startMatch(seed, role){
   if (mode === 'territory') starts = territoryStarts(d.rows, d.cols);
 
   if (mode === 'territory'){
-    /* Territorial: the board is generated up-front (no click-based
-       deferral), because both spawn areas are revealed from the
-       start. Guaranteed to be finishable without guessing. */
     const opening = starts.map(s => [s.r, s.c]);
     const res = generateSolvableBoard(
       G.seed, G.config.style, d.cols, d.rows, d.mines,
@@ -3116,9 +3174,6 @@ function revealTerritoryStart(){
   const starts = territoryStarts(d.rows, d.cols);
   const myS = starts[G.myOwner - 1];
   const theirS = starts[G.theirOwner - 1];
-  /* Natural BFS flood-fill from each spawn — the safe zone around
-     each start guarantees a wide connected opening. Both clients
-     compute this identically from the same seed + starts. */
   applyReveal(G.myBoard, G.board, myS.r, myS.c, G.myOwner);
   applyReveal(G.myBoard, G.board, theirS.r, theirS.c, G.theirOwner);
 }
@@ -3144,7 +3199,7 @@ function buildControls(){
   controls.innerHTML = '';
 
   const row = document.createElement('div');
-  row.style.cssText = 'display:flex;gap:12px;flex-wrap:wrap;justify-content:center;width:100%';
+  row.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;justify-content:center;width:100%';
 
   const leave = document.createElement('button');
   leave.className = 'danger';
@@ -3160,7 +3215,11 @@ function buildControls(){
   row.appendChild(rematch);
 
   controls.appendChild(row);
-  controls.appendChild(buildTouchpad());
+
+  /* Touch pad only on mobile devices. */
+  if (isMobileDevice()){
+    controls.appendChild(buildTouchpad());
+  }
 }
 
 async function onLeaveClick(){
@@ -3188,6 +3247,105 @@ function onRematchClick(){
   const seed = newSeed();
   send({ t:'seed', seed, config: G.config });
   startMatch(seed, 'host');
+}
+
+/* ══════════════════════════════════════════════════════════════
+   MAP REVIEW
+   ══════════════════════════════════════════════════════════════ */
+
+/* Full map: every tile is drawn — safe tiles, all mines, all flags. */
+function buildFullRevealState(baseState, board){
+  const s = makeBoardState(board.rows, board.cols);
+  for (let r = 0; r < board.rows; r++){
+    for (let c = 0; c < board.cols; c++){
+      s.revealed[r][c] = true;
+      if (baseState.owner) s.owner[r][c] = baseState.owner[r][c];
+    }
+  }
+  s.safeRevealed = board.safeCount;
+  return s;
+}
+
+/* End state: same as the final in-game board, except revealed mines
+   other than the one the player actually pressed are hidden. Flags
+   stay visible, and the death bomb stays visible. */
+function buildEndReviewState(baseState, board, deathTile){
+  const s = makeBoardState(board.rows, board.cols);
+  for (let r = 0; r < board.rows; r++){
+    for (let c = 0; c < board.cols; c++){
+      const isMine = board.mines.has(r + ',' + c);
+      const isDeath = deathTile && deathTile.r === r && deathTile.c === c;
+      const rev = baseState.revealed[r][c] && (!isMine || isDeath);
+      s.revealed[r][c] = rev;
+      s.flagged[r][c]  = baseState.flagged[r][c];
+      /* Seed flagAt so the flag animation is already complete when the
+         review renders (render passes now + 60000, so this fully draws). */
+      s.flagAt[r][c]   = 1;
+      if (baseState.owner) s.owner[r][c] = baseState.owner[r][c];
+      if (rev && !isMine) s.safeRevealed++;
+    }
+  }
+  return s;
+}
+
+let reviewRafId = null;
+function showMapReview(){
+  if (!G.board || !G.myBoard) return;
+
+  const endState  = buildEndReviewState(G.myBoard, G.board, G.deathTile);
+  const fullState = buildFullRevealState(G.myBoard, G.board);
+
+  modal.innerHTML =
+    '<div class="ovbox mapreview">' +
+      '<h2>MAP <span>REVIEW</span></h2>' +
+      '<div class="mapreview-canvas"><canvas id="reviewCanvas"></canvas></div>' +
+      '<div class="mapreview-foot">' +
+        '<button id="btnToggleView">SHOW FULL MAP</button>' +
+        '<button class="ghost" id="btnCloseReview">CLOSE</button>' +
+      '</div>' +
+    '</div>';
+  modal.classList.remove('hidden');
+
+  const canvas = modal.querySelector('#reviewCanvas');
+  const view = new BoardView(canvas);
+  view.setConfig(viewConfig());
+
+  let showingFull = false;
+  const highlights = G.deathTile
+    ? [{ r: G.deathTile.r, c: G.deathTile.c, color: '#ffe066' }]
+    : [];
+
+  const draw = (now) => {
+    reviewRafId = requestAnimationFrame(draw);
+    const boardState = showingFull ? fullState : endState;
+    view.render(now + 60000, {
+      board: G.board,
+      boardState,
+      cursors: [],
+      highlights
+    });
+  };
+  reviewRafId = requestAnimationFrame(draw);
+
+  const toggleBtn = modal.querySelector('#btnToggleView');
+  toggleBtn.onclick = () => {
+    showingFull = !showingFull;
+    toggleBtn.textContent = showingFull ? 'SHOW END STATE' : 'SHOW FULL MAP';
+    toggleBtn.classList.toggle('primary', showingFull);
+  };
+
+  const closeReview = () => {
+    if (reviewRafId){ cancelAnimationFrame(reviewRafId); reviewRafId = null; }
+    view.destroy();
+    modal.classList.add('hidden');
+    modal.innerHTML = '';
+    document.removeEventListener('keydown', onKey);
+  };
+  const onKey = e => { if (e.key === 'Escape') closeReview(); };
+
+  modal.querySelector('#btnCloseReview').onclick = closeReview;
+  modal.addEventListener('click', e => { if (e.target === modal) closeReview(); });
+  document.addEventListener('keydown', onKey);
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -3220,6 +3378,7 @@ function endGame(result, icon, title, sub, elapsed, cards){
   }
 
   const canRematch = (G.role === 'solo') || (G.role === 'host' && !G.opponentGone);
+  const canReview  = !!G.board && !!G.myBoard;
 
   showOverlay(
     '<div class="ovbox">' +
@@ -3229,6 +3388,7 @@ function endGame(result, icon, title, sub, elapsed, cards){
       '<div class="statrow">' + cardsHtml + '</div>' +
       '<div class="ovbtns">' +
         (canRematch ? '<button class="primary" id="btnAgain">REMATCH</button>' : '') +
+        (canReview ? '<button id="btnReview">VIEW MAP</button>' : '') +
         '<button class="ghost" id="btnMenu">MAIN MENU</button>' +
       '</div>' +
       (G.role === 'guest' && !G.opponentGone ? '<div class="err">Waiting for the host to start a rematch…</div>' : '') +
@@ -3243,6 +3403,9 @@ function endGame(result, icon, title, sub, elapsed, cards){
     send({ t:'seed', seed, config: G.config });
     startMatch(seed, 'host');
   };
+
+  const review = overlay.querySelector('#btnReview');
+  if (review) review.onclick = () => showMapReview();
 
   overlay.querySelector('#btnMenu').onclick = () => {
     cleanupNet();
@@ -3260,8 +3423,6 @@ function renderAll(now){
   if (!G.viewMe || !G.myBoard || !G.board || !G.me) return;
 
   const myColor = '#4dd8ff';
-
-  /* Only your own cursor is rendered — opponent highlight hidden. */
   const cursors = [{ r: G.me.cursor.r, c: G.me.cursor.c, color: myColor }];
 
   G.viewMe.render(now, { board: G.board, boardState: G.myBoard, cursors });
@@ -3368,7 +3529,7 @@ window.addEventListener('resize', () => {
       G.viewMe.setConfig(vc);
       if (G.viewThem) G.viewThem.setConfig(vc);
     } catch(e){}
-  }, 180);
+  }, 120);
 });
 
 window.addEventListener('orientationchange', () => {

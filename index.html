@@ -32,12 +32,8 @@
     background-size:64px 64px;
     mask-image:radial-gradient(circle at 50% 40%, #000 0%, transparent 78%);
     -webkit-mask-image:radial-gradient(circle at 50% 40%, #000 0%, transparent 78%);
-    animation:gridpan 90s linear infinite;
   }
-  @keyframes gridpan{from{background-position:0 0,0 0}to{background-position:64px 64px,64px 64px}}
-
   .hidden{display:none !important}
-
   #app{
     position:relative;z-index:1;
     width:100%;max-width:1900px;margin:0 auto;
@@ -47,7 +43,6 @@
     padding-top:max(8px, env(safe-area-inset-top,0px));
     padding-bottom:max(8px, env(safe-area-inset-bottom,0px));
   }
-
   header{
     flex:none;
     display:flex;align-items:center;justify-content:space-between;
@@ -57,11 +52,7 @@
   h1{
     font-size:clamp(18px,3.2vw,38px);letter-spacing:.22em;font-weight:900;color:#fff;
     text-shadow:0 0 14px rgba(77,216,255,.9),0 0 40px rgba(77,216,255,.5);
-    animation:hglow 5s ease-in-out infinite;line-height:1;
-  }
-  @keyframes hglow{
-    0%,100%{text-shadow:0 0 14px rgba(77,216,255,.9),0 0 40px rgba(77,216,255,.5)}
-    50%{text-shadow:0 0 20px rgba(77,216,255,1),0 0 54px rgba(77,216,255,.7)}
+    line-height:1;
   }
   h1 span{
     color:#ff3d81;
@@ -116,7 +107,6 @@
     box-shadow:
       0 40px 80px -40px #000,
       inset 0 1px 0 rgba(255,255,255,.07);
-    transition:opacity .4s, filter .4s, transform .4s;
     position:relative;
     overflow:hidden;
     display:flex;flex-direction:column;
@@ -126,8 +116,6 @@
     background:radial-gradient(900px 460px at 50% 0%, color-mix(in srgb, var(--pc) 10%, transparent), transparent 70%);
   }
   .panel.them{--pc:#ff3d81;background:linear-gradient(180deg,rgba(255,61,129,.045),rgba(255,255,255,.012))}
-  .panel.lost{opacity:.28;filter:grayscale(.7) blur(1px);transform:scale(.98)}
-  .panel.won{box-shadow:0 0 80px -20px #34d399,0 40px 80px -40px #000}
 
   .phead{
     flex:none;
@@ -137,9 +125,8 @@
   .dot{
     width:11px;height:11px;border-radius:50%;background:var(--pc);
     box-shadow:0 0 18px var(--pc),0 0 36px color-mix(in srgb, var(--pc) 40%, transparent);
-    flex:none;animation:dotpulse 2s ease-in-out infinite;
+    flex:none;
   }
-  @keyframes dotpulse{0%,100%{transform:scale(1)}50%{transform:scale(1.22)}}
   .pname{font-size:13px;font-weight:900;letter-spacing:.2em;color:#fff}
   .pkeys{
     margin-left:auto;font-size:10px;letter-spacing:.14em;color:#6b7a94;
@@ -154,15 +141,12 @@
     border-radius:10px;
     padding:6px 10px;
     display:flex;flex-direction:column;gap:2px;
-    transition:background .2s;
   }
-  .pstat:hover{background:rgba(255,255,255,.05)}
   .pstat .plabel{font-size:8.5px;letter-spacing:.2em;color:#5d7fa8;font-weight:800}
   .pstat .pval{
     font-family:'Courier New',monospace;
     font-size:clamp(14px,2.5vw,22px);font-weight:900;line-height:1;
     color:var(--pc);
-    text-shadow:0 0 12px color-mix(in srgb, var(--pc) 60%, transparent);
     font-variant-numeric:tabular-nums;
   }
 
@@ -170,7 +154,6 @@
     flex:none;
     height:5px;background:rgba(255,255,255,.05);border-radius:99px;
     overflow:hidden;margin-bottom:10px;position:relative;z-index:1;
-    box-shadow:inset 0 1px 2px rgba(0,0,0,.4);
   }
   .pbar i{
     display:block;height:100%;width:0;background:var(--pc);
@@ -183,104 +166,71 @@
     flex:none;
     display:flex;height:7px;border-radius:99px;overflow:hidden;
     background:rgba(255,255,255,.05);margin-bottom:10px;position:relative;z-index:1;
-    box-shadow:inset 0 1px 2px rgba(0,0,0,.4);
   }
   .tbar i{display:block;height:100%;flex:0 0 auto;transition:width .4s cubic-bezier(.4,0,.2,1)}
-  .tbar i.mine{background:#4dd8ff;box-shadow:0 0 16px #4dd8ff}
-  .tbar i.theirs{background:#ff3d81;box-shadow:0 0 16px #ff3d81}
+  .tbar i.mine{background:#4dd8ff}
+  .tbar i.theirs{background:#ff3d81}
 
   .boardwrap{
-    position:relative;flex:1;min-height:0;
-    display:flex;justify-content:center;align-items:center;
+    position:relative;flex:1;min-height:0;min-width:0;
     z-index:1;overflow:hidden;
   }
   .boardwrap canvas{
-    display:block;max-width:100%;max-height:100%;
+    position:absolute;top:0;left:0;
+    display:block;
     border-radius:12px;
     touch-action:none;cursor:crosshair;
     -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;
-    box-shadow:0 10px 40px -20px #000, inset 0 0 0 1px rgba(255,255,255,.03);
+  }
+  .review-cell canvas{
+    position:absolute;top:0;left:0;
+    display:block;border-radius:10px;touch-action:none;
+    -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;
   }
 
   .stun{
     position:absolute;inset:0;display:none;flex-direction:column;
     align-items:center;justify-content:center;gap:6px;border-radius:12px;
-    background:
-      radial-gradient(circle at 50% 45%, rgba(239,68,68,.6), rgba(239,68,68,.32) 55%, rgba(80,15,30,.55));
-    backdrop-filter:blur(9px) saturate(1.4);
-    -webkit-backdrop-filter:blur(9px) saturate(1.4);
+    background:radial-gradient(circle at 50% 45%, rgba(239,68,68,.72), rgba(239,68,68,.5) 55%, rgba(80,15,30,.7));
     pointer-events:none;
     border:2px solid rgba(255,120,150,.55);
-    box-shadow:
-      inset 0 0 80px rgba(239,68,68,.35),
-      0 0 60px rgba(239,68,68,.35);
   }
-  .stun.on{display:flex;animation:stunpop .38s cubic-bezier(.34,1.56,.64,1)}
-  .stun-emoji{
-    font-size:clamp(1.8rem,5.5vw,3.4rem);line-height:1;
-    animation:stunshine 1.4s ease-in-out infinite;
-  }
+  .stun.on{display:flex}
+  .stun-emoji{font-size:clamp(1.8rem,5.5vw,3.4rem);line-height:1;animation:stunpulse 1.4s ease-in-out infinite}
   .stun-title{
     font-size:clamp(.75rem,2vw,1.2rem);letter-spacing:.4em;color:#fff;font-weight:900;
-    text-shadow:0 0 16px #ef4444,0 0 32px #ef4444;
+    text-shadow:0 0 16px #ef4444;
     padding-left:.4em;
   }
   .stun-timer{
     font-family:'Courier New',monospace;
     font-size:clamp(1.6rem,5vw,2.8rem);font-weight:900;line-height:1;
-    color:#fff;
-    text-shadow:0 0 18px #ef4444,0 0 36px #ef4444,0 0 70px #ef4444;
-    font-variant-numeric:tabular-nums;
-    letter-spacing:.02em;
-    margin-top:2px;
+    color:#fff;text-shadow:0 0 18px #ef4444;
+    font-variant-numeric:tabular-nums;margin-top:2px;
   }
-  .stun-sub{
-    font-size:9.5px;letter-spacing:.32em;color:#ffb1c7;font-weight:800;
-    margin-top:4px;padding-left:.32em;
-  }
+  .stun-sub{font-size:9.5px;letter-spacing:.32em;color:#ffb1c7;font-weight:800;margin-top:4px;padding-left:.32em}
   .stun.ice{
-    background:
-      radial-gradient(circle at 50% 45%, rgba(56,189,248,.62), rgba(56,189,248,.30) 55%, rgba(10,40,72,.6));
+    background:radial-gradient(circle at 50% 45%, rgba(56,189,248,.72), rgba(56,189,248,.5) 55%, rgba(10,40,72,.72));
     border-color:rgba(140,220,255,.6);
-    box-shadow:
-      inset 0 0 80px rgba(56,189,248,.35),
-      0 0 60px rgba(56,189,248,.35);
   }
-  .stun.ice .stun-emoji{animation:stunshineIce 1.4s ease-in-out infinite}
-  .stun.ice .stun-title{text-shadow:0 0 16px #38bdf8,0 0 32px #38bdf8}
-  .stun.ice .stun-timer{text-shadow:0 0 18px #38bdf8,0 0 36px #38bdf8,0 0 70px #38bdf8}
+  .stun.ice .stun-title{text-shadow:0 0 16px #38bdf8}
+  .stun.ice .stun-timer{text-shadow:0 0 18px #38bdf8}
   .stun.ice .stun-sub{color:#a5e8ff}
-  @keyframes stunpop{from{transform:scale(.9);opacity:0}to{transform:scale(1);opacity:1}}
-  @keyframes stunshine{
-    0%,100%{filter:drop-shadow(0 0 14px #ef4444);transform:scale(1)}
-    50%{filter:drop-shadow(0 0 34px #ef4444);transform:scale(1.08)}
-  }
-  @keyframes stunshineIce{
-    0%,100%{filter:drop-shadow(0 0 14px #38bdf8);transform:scale(1)}
-    50%{filter:drop-shadow(0 0 34px #38bdf8);transform:scale(1.08)}
-  }
+  @keyframes stunpulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.08);opacity:.85}}
 
   .oppstun{
     position:absolute;top:10px;right:10px;display:none;
     padding:6px 12px;border-radius:99px;
     background:rgba(255,61,129,.22);border:1px solid rgba(255,61,129,.55);
     color:#ffb1c7;font-size:10px;letter-spacing:.14em;font-weight:900;
-    backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
     pointer-events:none;z-index:2;
-    animation:stunpop .3s cubic-bezier(.34,1.56,.64,1);
   }
   .oppstun.on{display:block}
   .oppstun b{color:#fff;font-size:12px}
   .oppstun.ice{background:rgba(56,189,248,.22);border-color:rgba(140,220,255,.6);color:#a5e8ff}
 
-  .controls{
-    flex:none;
-    display:flex;flex-direction:column;gap:8px;
-    width:100%;align-items:center;
-  }
-  .controls > div{
-    display:flex;gap:8px;flex-wrap:wrap;justify-content:center;width:100%;
-  }
+  .controls{flex:none;display:flex;flex-direction:column;gap:8px;width:100%;align-items:center}
+  .controls > div{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;width:100%}
 
   button{
     font-family:inherit;font-size:12px;font-weight:900;letter-spacing:.14em;
@@ -288,29 +238,20 @@
     background:linear-gradient(180deg,rgba(255,255,255,.09),rgba(255,255,255,.04));
     border:1px solid rgba(255,255,255,.16);
     transition:all .18s cubic-bezier(.4,0,.2,1);
-    box-shadow:0 6px 18px -10px #000,inset 0 1px 0 rgba(255,255,255,.08);
-    position:relative;
-    -webkit-tap-highlight-color:transparent;
-    touch-action:manipulation;
+    position:relative;-webkit-tap-highlight-color:transparent;touch-action:manipulation;
   }
   button:hover{
     background:linear-gradient(180deg,rgba(34,211,238,.20),rgba(34,211,238,.08));
-    border-color:#22d3ee;color:#fff;
-    box-shadow:0 0 30px -8px #22d3ee,inset 0 1px 0 rgba(255,255,255,.12);
-    transform:translateY(-2px);
+    border-color:#22d3ee;color:#fff;transform:translateY(-2px);
   }
   button:active{transform:translateY(0) scale(.98)}
   button.ghost{background:transparent;border-color:rgba(255,255,255,.14)}
-  button.ghost:hover{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.3);box-shadow:none}
+  button.ghost:hover{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.3)}
   button.primary{
     background:linear-gradient(180deg,#22d3ee,#0e7490);
     border-color:#22d3ee;color:#fff;
-    box-shadow:0 0 30px -8px #22d3ee,inset 0 1px 0 rgba(255,255,255,.25);
   }
-  button.primary:hover{
-    background:linear-gradient(180deg,#4dd8ff,#0e7490);
-    box-shadow:0 0 40px -6px #22d3ee,inset 0 1px 0 rgba(255,255,255,.3);
-  }
+  button.primary:hover{background:linear-gradient(180deg,#4dd8ff,#0e7490)}
   button.danger{
     background:linear-gradient(180deg,rgba(255,61,129,.24),rgba(255,61,129,.10));
     border-color:rgba(255,61,129,.5);color:#ffd0dd;
@@ -318,26 +259,15 @@
   button.danger:hover{
     background:linear-gradient(180deg,rgba(255,61,129,.35),rgba(255,61,129,.15));
     border-color:#ff3d81;color:#fff;
-    box-shadow:0 0 30px -8px #ff3d81,inset 0 1px 0 rgba(255,255,255,.12);
   }
 
-  /* Touch pad: rendered only on mobile (JS gates DOM injection) */
-  .touchpad{
-    display:flex;gap:12px;justify-content:center;align-items:center;
-    flex-wrap:wrap;width:100%;
-  }
+  .touchpad{display:flex;gap:12px;justify-content:center;align-items:center;flex-wrap:wrap;width:100%}
   .dpad{
     --tb:48px;
-    display:grid;
-    grid-template-columns:repeat(3,var(--tb));
-    grid-template-rows:repeat(3,var(--tb));
+    display:grid;grid-template-columns:repeat(3,var(--tb));grid-template-rows:repeat(3,var(--tb));
     gap:6px;justify-content:center;
   }
-  .dpad button{
-    width:100%;height:100%;padding:0;font-size:16px;border-radius:12px;
-    letter-spacing:0;line-height:1;
-    display:flex;align-items:center;justify-content:center;
-  }
+  .dpad button{width:100%;height:100%;padding:0;font-size:16px;border-radius:12px;letter-spacing:0;line-height:1;display:flex;align-items:center;justify-content:center}
   .dpad .u{grid-area:1/2/2/3}
   .dpad .l{grid-area:2/1/3/2}
   .dpad .r{grid-area:2/3/3/4}
@@ -348,92 +278,48 @@
   .overlay{
     position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;
     background:rgba(3,6,12,.87);
-    backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
-    padding:16px;overflow-y:auto;
-    animation:ovfade .28s ease;
-    -webkit-overflow-scrolling:touch;
+    padding:16px;overflow-y:auto;-webkit-overflow-scrolling:touch;
   }
   .overlay.hidden{display:none}
-  @keyframes ovfade{from{opacity:0}to{opacity:1}}
   .ovbox{
     text-align:center;padding:32px 28px;border-radius:24px;max-width:640px;width:100%;
     background:
       radial-gradient(800px 480px at 50% 0%, rgba(77,216,255,.12), transparent 60%),
       rgba(11,17,29,.97);
     border:1px solid rgba(255,255,255,.14);
-    box-shadow:
-      0 40px 100px -40px #000,
-      0 0 70px -20px rgba(77,216,255,.25),
-      inset 0 1px 0 rgba(255,255,255,.08);
-    animation:ovpop .32s cubic-bezier(.34,1.56,.64,1);
     margin:auto;
   }
-  @keyframes ovpop{from{transform:scale(.94);opacity:0}to{transform:scale(1);opacity:1}}
-  .ovbox h2{
-    margin:0 0 12px;font-size:clamp(20px,4vw,34px);
-    letter-spacing:.16em;color:#fff;font-weight:900;
-    text-shadow:0 0 24px rgba(77,216,255,.4);
-  }
+  .ovbox h2{margin:0 0 12px;font-size:clamp(20px,4vw,34px);letter-spacing:.16em;color:#fff;font-weight:900}
   .ovbox h2 span{color:#4dd8ff}
-  .ovbox > p{
-    margin:0 0 20px;font-size:13px;line-height:1.9;color:#8b9ab4;
-    letter-spacing:.05em;
-  }
+  .ovbox > p{margin:0 0 20px;font-size:13px;line-height:1.9;color:#8b9ab4;letter-spacing:.05em}
   .ovbox > p b{font-weight:800}
   .ovbtns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:6px}
-  .big{
-    font-size:clamp(48px,12vw,84px);line-height:1;margin-bottom:14px;
-    filter:drop-shadow(0 0 34px rgba(251,191,36,.7));
-    animation:bigpop .55s cubic-bezier(.34,1.56,.64,1);
-  }
-  @keyframes bigpop{from{transform:scale(.4) rotate(-15deg);opacity:0}to{transform:scale(1) rotate(0);opacity:1}}
+  .big{font-size:clamp(48px,12vw,84px);line-height:1;margin-bottom:14px}
   .cd{
     font-size:clamp(80px,22vw,180px);font-weight:900;
     letter-spacing:.06em;color:#fff;line-height:1;
-    text-shadow:0 0 34px #4dd8ff,0 0 80px #4dd8ff,0 0 150px #4dd8ff;
-    animation:cdpop .55s cubic-bezier(.34,1.56,.64,1);
+    text-shadow:0 0 34px #4dd8ff,0 0 80px #4dd8ff;
   }
-  @keyframes cdpop{0%{transform:scale(.3);opacity:0}60%{transform:scale(1.12)}100%{transform:scale(1);opacity:1}}
 
   .statrow{display:flex;gap:10px;justify-content:center;margin:16px 0 6px;flex-wrap:wrap}
-  .statcard{
-    flex:0 1 130px;
-    background:rgba(255,255,255,.04);
-    border:1px solid rgba(255,255,255,.09);
-    border-radius:12px;
-    padding:10px 12px;
-    text-align:center;
-  }
+  .statcard{flex:0 1 130px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);border-radius:12px;padding:10px 12px;text-align:center}
   .statcard .slabel{font-size:9px;letter-spacing:.24em;color:#5d7fa8;font-weight:800;margin-bottom:6px}
-  .statcard .sval{
-    font-family:'Courier New',monospace;
-    font-size:22px;font-weight:900;line-height:1;color:#4dd8ff;
-    text-shadow:0 0 16px rgba(77,216,255,.6);
-    font-variant-numeric:tabular-nums;
-  }
-  .statcard.win .sval{color:#8affc1;text-shadow:0 0 16px rgba(138,255,193,.6)}
-  .statcard.lose .sval{color:#ff6b8a;text-shadow:0 0 16px rgba(255,107,138,.6)}
+  .statcard .sval{font-family:'Courier New',monospace;font-size:22px;font-weight:900;line-height:1;color:#4dd8ff;font-variant-numeric:tabular-nums}
+  .statcard.win .sval{color:#8affc1}
+  .statcard.lose .sval{color:#ff6b8a}
 
-  .codebox{
-    display:flex;gap:16px;align-items:center;justify-content:center;
-    margin:20px 0 8px;flex-wrap:wrap;
-  }
+  .codebox{display:flex;gap:16px;align-items:center;justify-content:center;margin:20px 0 8px;flex-wrap:wrap}
   .codeval{
     font-size:clamp(32px,9vw,56px);font-weight:900;letter-spacing:.32em;
     padding:14px 20px 14px 32px;border-radius:18px;color:#4dd8ff;
     background:linear-gradient(180deg,rgba(77,216,255,.12),rgba(77,216,255,.05));
     border:2px dashed rgba(77,216,255,.55);
-    text-shadow:0 0 34px rgba(77,216,255,.8);
-    font-family:'Courier New',monospace;
-    cursor:pointer;transition:all .2s;user-select:all;
+    font-family:'Courier New',monospace;cursor:pointer;transition:all .2s;user-select:all;
   }
   .codeval:hover{
     background:linear-gradient(180deg,rgba(77,216,255,.2),rgba(77,216,255,.1));
     border-color:#4dd8ff;
-    box-shadow:0 0 46px -8px rgba(77,216,255,.6);
-    transform:scale(1.03);
   }
-  .codeval:active{transform:scale(.98)}
 
   .joinrow{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:16px}
   .joinrow input{
@@ -441,14 +327,9 @@
     text-align:center;width:min(200px,55vw);padding:12px 10px;border-radius:14px;
     color:#fff;text-transform:uppercase;
     background:rgba(255,255,255,.05);
-    border:1px solid rgba(255,255,255,.18);outline:none;
-    transition:all .2s;
+    border:1px solid rgba(255,255,255,.18);outline:none;transition:all .2s;
   }
-  .joinrow input:focus{
-    border-color:#4dd8ff;
-    box-shadow:0 0 34px -8px #4dd8ff;
-    background:rgba(77,216,255,.08);
-  }
+  .joinrow input:focus{border-color:#4dd8ff;background:rgba(77,216,255,.08)}
   .joinrow input::placeholder{color:#4a5f7d}
   .spin{
     display:inline-block;width:15px;height:15px;
@@ -457,15 +338,29 @@
     vertical-align:-3px;margin-right:8px;
   }
   @keyframes sp{to{transform:rotate(360deg)}}
-  .err{
-    color:#ff6b8a;font-size:12px;letter-spacing:.08em;
-    margin-top:12px;min-height:16px;font-weight:700;
-  }
+  .err{color:#ff6b8a;font-size:12px;letter-spacing:.08em;margin-top:12px;min-height:16px;font-weight:700}
 
-  .config-section{margin:18px 0;text-align:left}
+  /* ══ MENU CONFIG SECTIONS — MORE SEPARATED ══ */
+  .config-section{
+    margin:22px 0;
+    padding:16px 16px 18px;
+    border-radius:16px;
+    background:rgba(255,255,255,.022);
+    border:1px solid rgba(255,255,255,.06);
+    border-left:3px solid rgba(77,216,255,.45);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.03);
+    text-align:left;
+    position:relative;
+  }
+  .config-section + .config-section{margin-top:26px}
   .config-label{
-    font-size:11px;letter-spacing:.28em;color:#6b7a94;font-weight:800;
-    margin-bottom:10px;
+    font-size:10.5px;letter-spacing:.32em;color:#7fb0e0;font-weight:900;
+    margin-bottom:12px;
+    display:flex;align-items:center;gap:8px;
+  }
+  .config-label::before{
+    content:'';width:5px;height:5px;border-radius:50%;
+    background:#4dd8ff;box-shadow:0 0 10px #4dd8ff;
   }
   .config-options{display:flex;gap:10px;flex-wrap:wrap}
   .opt{
@@ -479,21 +374,19 @@
   .opt:hover{
     background:linear-gradient(180deg,rgba(77,216,255,.10),rgba(77,216,255,.04));
     border-color:rgba(77,216,255,.5);
-    transform:translateY(-2px);
   }
   .opt.active{
     background:linear-gradient(180deg,rgba(77,216,255,.18),rgba(77,216,255,.08));
     border-color:#4dd8ff;
-    box-shadow:0 0 34px -10px #4dd8ff,inset 0 1px 0 rgba(255,255,255,.1);
   }
   .opt.active::before{
     content:'✓';position:absolute;top:10px;right:12px;
     font-size:14px;color:#4dd8ff;font-weight:900;
-    text-shadow:0 0 12px #4dd8ff;
   }
-  .opt.active .opt-name{color:#4dd8ff;text-shadow:0 0 12px rgba(77,216,255,.5)}
+  .opt.active .opt-name{color:#4dd8ff}
   .opt-name{font-size:14px;font-weight:900;letter-spacing:.14em;color:#e6edf7;margin-bottom:4px}
   .opt-desc{font-size:11px;color:#7c8aa5;letter-spacing:.05em;line-height:1.5}
+  .opt-desc:empty{display:none}
 
   #modal{z-index:70}
   .confirm{padding:28px 24px;max-width:440px}
@@ -501,46 +394,54 @@
   .confirm p{margin-bottom:18px;font-size:12px;line-height:1.8}
 
   .ovbox.mapreview{
-    max-width:min(96vw,1100px);
-    width:min(96vw,1100px);
-    max-height:94dvh;
-    height:94dvh;
-    padding:16px;
-    display:flex;
-    flex-direction:column;
-    gap:12px;
-    text-align:center;
+    max-width:min(96vw,1100px);width:min(96vw,1100px);
+    max-height:94dvh;height:94dvh;padding:16px;
+    display:flex;flex-direction:column;gap:12px;text-align:center;
   }
-  .mapreview h2{
-    flex:none;
-    font-size:clamp(14px,2.6vw,20px);
-    margin:0;
-    letter-spacing:.18em;
-  }
+  .mapreview h2{flex:none;font-size:clamp(14px,2.6vw,20px);margin:0;letter-spacing:.18em}
   .mapreview-canvas{
-    flex:1;
-    min-height:0;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    overflow:hidden;
-    border-radius:12px;
-    background:rgba(0,0,0,.28);
+    flex:1;min-height:0;display:flex;align-items:stretch;justify-content:stretch;
+    overflow:hidden;border-radius:12px;background:rgba(0,0,0,.28);
     border:1px solid rgba(255,255,255,.06);
   }
-  .mapreview-canvas canvas{
-    display:block;
-    max-width:100%;
-    max-height:100%;
-    border-radius:10px;
+  .mapreview-canvas.two{gap:10px;padding:6px}
+  .mapreview-canvas .review-cell{position:relative;flex:1 1 0;min-width:0;min-height:0;overflow:hidden}
+  .review-label{
+    position:absolute;top:6px;left:50%;transform:translateX(-50%);
+    font-size:10px;letter-spacing:.24em;font-weight:900;
+    padding:4px 12px;border-radius:99px;
+    background:rgba(0,0,0,.62);
+    pointer-events:none;white-space:nowrap;z-index:2;
   }
-  .mapreview-foot{
-    flex:none;
-    display:flex;
-    gap:10px;
-    justify-content:center;
-    flex-wrap:wrap;
+  .review-label.me{color:#4dd8ff;border:1px solid rgba(77,216,255,.45)}
+  .review-label.them{color:#ff3d81;border:1px solid rgba(255,61,129,.45)}
+  .mapreview-foot{flex:none;display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+
+  .zoom-badge{
+    position:absolute;top:8px;left:8px;
+    padding:4px 10px;border-radius:99px;
+    background:rgba(0,0,0,.65);border:1px solid rgba(77,216,255,.45);
+    color:#4dd8ff;font-size:10px;font-weight:900;letter-spacing:.14em;
+    pointer-events:auto;cursor:pointer;z-index:3;display:none;user-select:none;
   }
+  .zoom-badge.on{display:inline-flex;align-items:center;gap:6px}
+
+  .terr-unlock{
+    position:fixed;inset:0;z-index:60;
+    display:flex;align-items:center;justify-content:center;
+    pointer-events:none;padding:16px;
+  }
+  .terr-unlock.fade{opacity:0;transition:opacity .55s}
+  .terr-unlock-box{
+    max-width:min(92vw,480px);padding:24px 30px;border-radius:20px;text-align:center;
+    background:linear-gradient(180deg,rgba(24,34,54,.96),rgba(10,16,28,.97));
+    border:2px solid rgba(255,209,102,.6);
+  }
+  .terr-unlock-icon{font-size:46px;line-height:1;margin-bottom:8px}
+  .terr-unlock-title{font-size:clamp(14px,3vw,20px);letter-spacing:.22em;font-weight:900;color:#ffd166;margin-bottom:10px;padding-left:.22em}
+  .terr-unlock-body{font-size:12px;letter-spacing:.06em;color:#cfe4ff;line-height:1.8}
+  .terr-unlock-body b{color:#4dd8ff;font-weight:900}
+  .terr-unlock-body i{color:#ff3d81;font-style:normal;font-weight:900}
 
   @media(max-width:960px){
     #arena{flex-direction:column;gap:8px}
@@ -571,6 +472,8 @@
     .ovbtns{gap:8px}
     .statcard{flex:0 1 100px;padding:8px 10px}
     .statcard .sval{font-size:18px}
+    .config-options .opt{flex:1 1 100%}
+    .config-section{padding:12px 12px 14px;margin:16px 0}
   }
 </style>
 </head>
@@ -604,37 +507,67 @@
 (() => {
 'use strict';
 
-/* ══════════════════════════════════════════════════════════════
-   CONFIG
-   ══════════════════════════════════════════════════════════════ */
 const STUN_MS = 10000;
 const PREFIX  = 'mineduel-v5-';
-const TILES_PER_BOMB = 5;
 const HEARTBEAT_MS      = 1500;
 const HEARTBEAT_TIMEOUT = 5500;
 
-function bombsFor(rows, cols){
-  return Math.max(1, Math.floor((rows * cols) / TILES_PER_BOMB));
+const TARGET_FPS = 120;
+const FRAME_MIN_MS = 1000 / TARGET_FPS;
+const PAN_SPEED_CSS = 900;
+
+const SOLVER_MAX_ATTEMPTS = 8;
+const SOLVER_BUDGET_MS    = 10;
+
+/* ── Per-style bomb density ───────────────────────────────────
+   Square   : 1 bomb per 4 tiles
+   Hex      : 1 bomb per 5 tiles
+*/
+const TILES_PER_BOMB = {
+  square: 4,
+  hex:    5
+};
+
+function bombsFor(rows, cols, style){
+  const per = TILES_PER_BOMB[style] || TILES_PER_BOMB.square;
+  return Math.max(1, Math.floor((rows * cols) / per));
 }
 
 const STYLES = {
   square: {
     id:'square', name:'Classic',
-    cols:16, rows:16, mines: bombsFor(16,16),
-    terrCols:24, terrRows:24, terrMines: bombsFor(24,24)
+    cols:16, rows:16,
+    terrCols:24, terrRows:24
   },
   hex: {
     id:'hex', name:'Neon Hex',
-    cols:18, rows:15, mines: bombsFor(18,15),
-    terrCols:26, terrRows:20, terrMines: bombsFor(26,20)
+    cols:18, rows:15,
+    terrCols:26, terrRows:20
   }
 };
 
-function styleDesc(s, terr){
-  const c = terr ? s.terrCols : s.cols;
-  const r = terr ? s.terrRows : s.rows;
-  const m = terr ? s.terrMines : s.mines;
-  return c + ' × ' + r + ' · ' + m + ' mines';
+const SIZES = {
+  small:  { id:'small',  name:'Small',  scale:1.0 },
+  medium: { id:'medium', name:'Medium', scale:1.4 },
+  large:  { id:'large',  name:'Large',  scale:1.8 }
+};
+
+function dimsFor(config){
+  const s = STYLES[config.style] || STYLES.square;
+  const sz = SIZES[config.size] || SIZES.small;
+  let cols, rows;
+  if (config.mode === 'territory'){ cols = s.terrCols; rows = s.terrRows; }
+  else { cols = s.cols; rows = s.rows; }
+  cols = Math.max(4, Math.round(cols * sz.scale));
+  rows = Math.max(4, Math.round(rows * sz.scale));
+  const mines = bombsFor(rows, cols, config.style);
+  return { cols, rows, mines };
+}
+
+function sizeDesc(sizeId, mode, styleId){
+  const d = dimsFor({ style: styleId, mode, size: sizeId });
+  const per = TILES_PER_BOMB[styleId] || 4;
+  return d.cols + ' × ' + d.rows + ' · ' + d.mines + ' mines (1/' + per + ')';
 }
 
 const MODES = {
@@ -643,12 +576,6 @@ const MODES = {
   solo:      { id:'solo',      name:'Solo',        desc:'Practise · bomb = loss' },
   territory: { id:'territory', name:'Territorial', desc:'Claim land · adjacent only · bomb = freeze' }
 };
-
-function dimsFor(config){
-  const s = STYLES[config.style] || STYLES.square;
-  if (config.mode === 'territory') return { cols:s.terrCols, rows:s.terrRows, mines:s.terrMines };
-  return { cols:s.cols, rows:s.rows, mines:s.mines };
-}
 
 /* ══════════════════════════════════════════════════════════════
    UTILS
@@ -669,7 +596,6 @@ function makeCode(){
 }
 function newSeed(){ return (Math.random() * 0xFFFFFFFF) >>> 0; }
 
-/* Robust mobile detection: coarse pointer + no hover */
 function isMobileDevice(){
   if (typeof window === 'undefined') return false;
   const mq = window.matchMedia;
@@ -707,7 +633,8 @@ function sqNeighbors(r, c, rows, cols){
     }
   return out;
 }
-const neighborsFor = style => style === 'hex' ? hexNeighbors : sqNeighbors;
+const neighborsFor = style =>
+  style === 'hex' ? hexNeighbors : sqNeighbors;
 
 function copyToClipboard(text){
   return new Promise(resolve => {
@@ -755,7 +682,6 @@ function beep(freq, dur, type, vol){
     o.start(); o.stop(actx.currentTime + dur);
   } catch(e){}
 }
-
 const SFX = {
   click(){ beep(720, 0.035, 'triangle', 0.028); },
   clickSoft(){ beep(520, 0.03, 'sine', 0.022); },
@@ -778,6 +704,11 @@ const SFX = {
     beep(780, 0.07, 'triangle', 0.05);
     setTimeout(() => beep(560, 0.09, 'triangle', 0.05), 70);
     setTimeout(() => beep(300, 0.26, 'sawtooth', 0.05), 160);
+  },
+  unlock(){
+    beep(660, 0.10, 'triangle', 0.05);
+    setTimeout(() => beep(880, 0.12, 'triangle', 0.05), 100);
+    setTimeout(() => beep(1180, 0.22, 'triangle', 0.05), 220);
   },
   win(){
     beep(880, 0.12, 'square', 0.05);
@@ -810,19 +741,14 @@ function placeholderBoard(style, rows, cols){
   };
 }
 
+/* Click-safe zone: clicked tile + its neighbours (shape-aware). */
 function openingSafeZone(rows, cols, neighbors, clickR, clickC){
   const safe = new Set();
   const add = (r, c) => {
     if (r >= 0 && r < rows && c >= 0 && c < cols) safe.add(r + ',' + c);
   };
   add(clickR, clickC);
-  const nbs = neighbors(clickR, clickC, rows, cols);
-  for (const [nr, nc] of nbs) add(nr, nc);
-  if (nbs.length > 0){
-    const [er, ec] = nbs[0];
-    add(er, ec);
-    for (const [nr, nc] of neighbors(er, ec, rows, cols)) add(nr, nc);
-  }
+  for (const [nr, nc] of neighbors(clickR, clickC, rows, cols)) add(nr, nc);
   return safe;
 }
 
@@ -835,13 +761,7 @@ function genBoardDeferred(seed, style, cols, rows, mineCount, clickR, clickC, st
   };
   for (const s of starts){
     addSafe(s.r, s.c);
-    const sn = neighbors(s.r, s.c, rows, cols);
-    for (const [nr, nc] of sn) addSafe(nr, nc);
-    if (sn.length > 0){
-      const [er, ec] = sn[0];
-      addSafe(er, ec);
-      for (const [nr, nc] of neighbors(er, ec, rows, cols)) addSafe(nr, nc);
-    }
+    for (const [nr, nc] of neighbors(s.r, s.c, rows, cols)) addSafe(nr, nc);
   }
   if (clickR !== undefined && clickC !== undefined){
     const z = openingSafeZone(rows, cols, neighbors, clickR, clickC);
@@ -880,13 +800,12 @@ function solveBoard(board, opening){
   const rows = board.rows, cols = board.cols;
   const revealed = new Set();
   const flagged  = new Set();
-
-  for (let i = 0; i < opening.length; i++){
+  for (let i = 0; i < opening.length; i++)
     revealed.add(opening[i][0] + ',' + opening[i][1]);
-  }
 
+  const MAX_ITER = 300;
   let changed = true, iter = 0;
-  while (changed && iter < 4000){
+  while (changed && iter < MAX_ITER){
     changed = false;
     iter++;
     for (let r = 0; r < rows; r++){
@@ -895,7 +814,6 @@ function solveBoard(board, opening){
         if (!revealed.has(k)) continue;
         const a = board.adj[r][c];
         if (a < 0) continue;
-
         const nbs = board.neighbors(r, c, rows, cols);
         let flags = 0;
         const hidden = [];
@@ -905,7 +823,6 @@ function solveBoard(board, opening){
           else if (!revealed.has(nk)) hidden.push(nbs[i]);
         }
         if (!hidden.length) continue;
-
         if (flags === a){
           for (let i = 0; i < hidden.length; i++){
             revealed.add(hidden[i][0] + ',' + hidden[i][1]);
@@ -925,21 +842,15 @@ function solveBoard(board, opening){
 
 function generateSolvableBoard(seed, style, cols, rows, mineCount,
                                clickR, clickC, starts, opening){
-  const MAX_ATTEMPTS = 400;
-  const BUDGET_MS    = 320;
   const t0 = performance.now();
-
   let best = null, bestSeed = seed, bestScore = -1;
-
-  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++){
+  for (let attempt = 0; attempt < SOLVER_MAX_ATTEMPTS; attempt++){
     const s = (seed + Math.imul(attempt, 0x9E3779B9)) >>> 0;
     const b = genBoardDeferred(s, style, cols, rows, mineCount, clickR, clickC, starts);
     const score = solveBoard(b, opening).size;
-
     if (score > bestScore){ bestScore = score; best = b; bestSeed = s; }
     if (score >= b.safeCount) return { board: b, seed: s };
-
-    if (attempt >= 3 && (performance.now() - t0) > BUDGET_MS) break;
+    if (attempt >= 2 && (performance.now() - t0) > SOLVER_BUDGET_MS) break;
   }
   return { board: best, seed: bestSeed };
 }
@@ -950,15 +861,37 @@ function ensureBoardReady(clickR, clickC){
   const mode = G.config.mode;
   let starts = [{ r: (d.rows >> 1), c: (d.cols >> 1) }];
   if (mode === 'territory') starts = territoryStarts(d.rows, d.cols);
-
+  const opening = (clickR === undefined || clickC === undefined)
+    ? starts.map(s => [s.r, s.c])
+    : [[clickR, clickC]];
   const res = generateSolvableBoard(
-    G.seed, G.config.style, d.cols, d.rows, d.mines,
-    clickR, clickC, starts, [[clickR, clickC]]
+    G.mySeed >>> 0, G.config.style, d.cols, d.rows, d.mines,
+    clickR, clickC, starts, opening
   );
-
   G.board = res.board;
   G.boardSeed = res.seed;
   G.boardPending = false;
+}
+
+function recomputeAdjacency(board){
+  const { rows, cols, neighbors } = board;
+  for (let r = 0; r < rows; r++){
+    for (let c = 0; c < cols; c++){
+      if (board.mines.has(r + ',' + c)){ board.adj[r][c] = -1; continue; }
+      let k = 0;
+      for (const [nr, nc] of neighbors(r, c, rows, cols))
+        if (board.mines.has(nr + ',' + nc)) k++;
+      board.adj[r][c] = k;
+    }
+  }
+}
+
+function rebuildBoardFromMines(layout, mineArr, style){
+  layout.mines = new Set(mineArr);
+  recomputeAdjacency(layout);
+  layout.mineCount = layout.mines.size;
+  layout.safeCount = layout.rows * layout.cols - layout.mineCount;
+  layout.pending = false;
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -980,41 +913,29 @@ function makeBoardState(rows, cols){
 function makePlayerState(start){
   return {
     cursor: { r: start.r, c: start.c },
-    hits: 0,
-    stunUntil: 0,
-    stunReason: 'bomb',
-    done: false,
-    wasStunned: false
+    hits: 0, stunUntil: 0, stunReason: 'bomb',
+    done: false, wasStunned: false, digged: false
   };
 }
 
 const G = {
-  config: { mode:'duel', style:'square' },
+  config: { mode:'duel', style:'square', size:'small' },
   board: null,
-  seed: 0,
-  boardSeed: 0,
-  boardPending: false,
-  pendingDig: null,
-  role: 'none',
-  state: 'lobby',
-  myOwner: 1,
-  theirOwner: 2,
-  me: null,
-  them: null,
-  myBoard: null,
-  theirBoard: null,
-  viewMe: null,
-  viewThem: null,
-  panelMe: null,
-  panelThem: null,
-  peer: null,
-  conn: null,
-  startTime: 0,
-  lossPending: false,
-  winSent: false,
-  opponentGone: false,
-  lastRecv: 0,
-  deathTile: null
+  theirBoardLayout: null,
+  seed: 0, mySeed: 0, theirSeed: 0, boardSeed: 0,
+  boardPending: false, pendingDig: null,
+  role: 'none', state: 'lobby',
+  myOwner: 1, theirOwner: 2,
+  me: null, them: null,
+  myBoard: null, theirBoard: null,
+  viewMe: null, viewThem: null,
+  panelMe: null, panelThem: null,
+  peer: null, conn: null,
+  startTime: 0, lossPending: false, winSent: false,
+  opponentGone: false, lastRecv: 0,
+  deathTile: null, theirDeathTile: null,
+  territoryUnlocked: false,
+  reviewViews: []
 };
 
 /* ══════════════════════════════════════════════════════════════
@@ -1029,35 +950,17 @@ const controls   = document.getElementById('controls');
 const fsBtn      = document.getElementById('fsBtn');
 const fsIcon     = document.getElementById('fsIcon');
 
-function setStatus(text, cls){
-  statusText.textContent = text;
-  statusbar.className = cls || '';
-}
-function setText(el, v){
-  if (!el) return;
-  const s = String(v);
-  if (el.textContent !== s) el.textContent = s;
-}
-function showOverlay(html){
-  overlay.innerHTML = html;
-  overlay.classList.remove('hidden');
-}
-function hideOverlay(){
-  overlay.classList.add('hidden');
-  overlay.innerHTML = '';
-}
+function setStatus(text, cls){ statusText.textContent = text; statusbar.className = cls || ''; }
+function setText(el, v){ if (!el) return; const s = String(v); if (el.textContent !== s) el.textContent = s; }
+function showOverlay(html){ overlay.innerHTML = html; overlay.classList.remove('hidden'); }
+function hideOverlay(){ overlay.classList.add('hidden'); overlay.innerHTML = ''; }
 
-/* Menu click sounds: delegate on overlay + modal so it survives DOM rebuilds */
-overlay.addEventListener('click', e => {
-  if (e.target.closest('button:not(:disabled)')) SFX.click();
-}, true);
-modal.addEventListener('click', e => {
-  if (e.target.closest('button:not(:disabled)')) SFX.click();
-}, true);
+overlay.addEventListener('click', e => { if (e.target.closest('button:not(:disabled)')) SFX.click(); }, true);
+modal.addEventListener('click', e => { if (e.target.closest('button:not(:disabled)')) SFX.click(); }, true);
 fsBtn.addEventListener('click', () => SFX.click(), true);
 
 /* ══════════════════════════════════════════════════════════════
-   CONFIRM DIALOG
+   CONFIRM
    ══════════════════════════════════════════════════════════════ */
 let confirmOpen = false;
 function confirmDialog(opts){
@@ -1065,7 +968,6 @@ function confirmDialog(opts){
   return new Promise(resolve => {
     if (confirmOpen){ resolve(false); return; }
     confirmOpen = true;
-
     modal.innerHTML =
       '<div class="ovbox confirm">' +
         '<h2>' + (o.title || 'ARE YOU SURE?') + '</h2>' +
@@ -1076,14 +978,11 @@ function confirmDialog(opts){
         '</div>' +
       '</div>';
     modal.classList.remove('hidden');
-
     let settled = false;
     const finish = v => {
       if (settled) return;
-      settled = true;
-      confirmOpen = false;
-      modal.classList.add('hidden');
-      modal.innerHTML = '';
+      settled = true; confirmOpen = false;
+      modal.classList.add('hidden'); modal.innerHTML = '';
       document.removeEventListener('keydown', onKey);
       resolve(v);
     };
@@ -1102,19 +1001,12 @@ function confirmDialog(opts){
    FULLSCREEN
    ══════════════════════════════════════════════════════════════ */
 const FS_ENTER_SVG =
-  '<polyline points="4,9 4,4 9,4"/>' +
-  '<polyline points="15,4 20,4 20,9"/>' +
-  '<polyline points="20,15 20,20 15,20"/>' +
-  '<polyline points="9,20 4,20 4,15"/>';
+  '<polyline points="4,9 4,4 9,4"/><polyline points="15,4 20,4 20,9"/>' +
+  '<polyline points="20,15 20,20 15,20"/><polyline points="9,20 4,20 4,15"/>';
 const FS_EXIT_SVG =
-  '<polyline points="9,4 9,9 4,9"/>' +
-  '<polyline points="20,9 15,9 15,4"/>' +
-  '<polyline points="15,20 15,15 20,15"/>' +
-  '<polyline points="4,15 9,15 9,20"/>';
-
-function isFullscreen(){
-  return !!(document.fullscreenElement || document.webkitFullscreenElement);
-}
+  '<polyline points="9,4 9,9 4,9"/><polyline points="20,9 15,9 15,4"/>' +
+  '<polyline points="15,20 15,15 20,15"/><polyline points="4,15 9,15 9,20"/>';
+function isFullscreen(){ return !!(document.fullscreenElement || document.webkitFullscreenElement); }
 function refreshFsIcon(){
   fsIcon.innerHTML = isFullscreen() ? FS_EXIT_SVG : FS_ENTER_SVG;
   fsBtn.title = isFullscreen() ? 'Exit fullscreen' : 'Enter fullscreen';
@@ -1123,22 +1015,15 @@ function refreshFsIcon(){
 function enterFs(){
   const el = document.documentElement;
   const p = el.requestFullscreen ? el.requestFullscreen()
-          : el.webkitRequestFullscreen ? el.webkitRequestFullscreen()
-          : null;
+          : el.webkitRequestFullscreen ? el.webkitRequestFullscreen() : null;
   if (p && p.catch) p.catch(()=>{});
 }
 function exitFs(){
   const p = document.exitFullscreen ? document.exitFullscreen()
-          : document.webkitExitFullscreen ? document.webkitExitFullscreen()
-          : null;
+          : document.webkitExitFullscreen ? document.webkitExitFullscreen() : null;
   if (p && p.catch) p.catch(()=>{});
 }
-function onFsClick(){
-  /* Exit confirmation removed: toggles directly. */
-  if (isFullscreen()) exitFs();
-  else enterFs();
-}
-fsBtn.addEventListener('click', onFsClick);
+fsBtn.addEventListener('click', () => { if (isFullscreen()) exitFs(); else enterFs(); });
 document.addEventListener('fullscreenchange', refreshFsIcon);
 document.addEventListener('webkitfullscreenchange', refreshFsIcon);
 refreshFsIcon();
@@ -1152,11 +1037,16 @@ class BoardView {
     this.ctx = canvas.getContext('2d');
     this.dpr = Math.min(window.devicePixelRatio || 1, 2);
     this.config = null;
-    this.layout = null;
+    this.metrics = null;
+    this.baseScale = 1;
+    this.zoom = 1; this.panX = 0; this.panY = 0;
+    this.maxZoom = 5;
+    this.pw = 1; this.ph = 1;
     this.particles = [];
     this.shake = 0;
     this.lastT = performance.now();
     this.ro = null;
+    this._mineSprite = null;
     this.ownerTint   = [null, 'rgba(77,216,255,.17)', 'rgba(255,61,129,.17)'];
     this.ownerEdge   = [null, 'rgba(77,216,255,.62)', 'rgba(255,61,129,.62)'];
     this.ownerSolid  = [null, '#4dd8ff', '#ff3d81'];
@@ -1168,16 +1058,18 @@ class BoardView {
     this.ownerSolid    = [null, map[1].solid,    map[2].solid];
     this.ownerTintMine = [null, map[1].tintMine, map[2].tintMine];
   }
-  setConfig(config){
+  setConfig(config, keepView){
     this.config = config;
-    this.layout = this.computeLayout(config);
+    this.metrics = this.computeMetrics(config);
+    if (!keepView){ this.zoom = 1; this.panX = 0; this.panY = 0; }
     this.resize();
     this.observeParentSize();
   }
-  computeLayout(config){
+  computeMetrics(config){
     const small = Math.min(window.innerWidth, window.innerHeight) < 720;
     const isDuel = config.mode === 'duel';
     const isTerr = config.mode === 'territory';
+
     if (config.style === 'hex'){
       let size = isDuel ? 22 : (isTerr ? 20 : 30);
       if (small) size = isDuel ? 15 : (isTerr ? 14 : 22);
@@ -1185,8 +1077,8 @@ class BoardView {
       const HW = SQ3 * size;
       return {
         style: 'hex', size, pad, HW,
-        W: Math.round(HW * (config.cols + 0.5) + pad * 2),
-        H: Math.round(size * 1.5 * (config.rows - 1) + size * 2 + pad * 2)
+        boardW: Math.round(HW * (config.cols + 0.5) + pad * 2),
+        boardH: Math.round(size * 1.5 * (config.rows - 1) + size * 2 + pad * 2)
       };
     }
     let cell = isDuel ? 42 : (isTerr ? 32 : 54);
@@ -1195,91 +1087,151 @@ class BoardView {
     const pad  = isDuel ? 16 : (isTerr ? 16 : 22);
     return {
       style: 'square', cell, gap, pad,
-      W: pad * 2 + cell * config.cols + gap * (config.cols - 1),
-      H: pad * 2 + cell * config.rows + gap * (config.rows - 1)
+      boardW: pad * 2 + cell * config.cols + gap * (config.cols - 1),
+      boardH: pad * 2 + cell * config.rows + gap * (config.rows - 1)
     };
   }
   resize(){
-    const { W, H } = this.layout;
-    this.canvas.width  = Math.round(W * this.dpr);
-    this.canvas.height = Math.round(H * this.dpr);
-    this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
-    this.fitCanvas();
-  }
-  fitCanvas(){
+    const m = this.metrics;
+    if (!m) return;
+    this.dpr = Math.min(window.devicePixelRatio || 1, 2);
     const parent = this.canvas.parentElement;
-    if (!parent || !this.layout) return;
-    const pw = parent.clientWidth;
-    const ph = parent.clientHeight;
-    if (pw <= 0 || ph <= 0) return;
-    const aspect = this.layout.W / this.layout.H;
-    let w = pw, h = w / aspect;
-    if (h > ph){ h = ph; w = h * aspect; }
-    this.canvas.style.width  = Math.floor(w) + 'px';
-    this.canvas.style.height = Math.floor(h) + 'px';
+    const pw = Math.max(1, (parent && parent.clientWidth) || Math.ceil(m.boardW));
+    const ph = Math.max(1, (parent && parent.clientHeight) || Math.ceil(m.boardH));
+    this.pw = pw; this.ph = ph;
+    const bw = Math.max(1, Math.round(pw * this.dpr));
+    const bh = Math.max(1, Math.round(ph * this.dpr));
+    if (this.canvas.width !== bw)  this.canvas.width  = bw;
+    if (this.canvas.height !== bh) this.canvas.height = bh;
+    this.canvas.style.width  = pw + 'px';
+    this.canvas.style.height = ph + 'px';
+    this.baseScale = Math.min(pw / m.boardW, ph / m.boardH);
+    this.clampPan();
+  }
+  clampPan(){
+    const m = this.metrics; if (!m) return;
+    const z = this.zoom;
+    const bw = this.baseScale * z * m.boardW;
+    const bh = this.baseScale * z * m.boardH;
+    if (bw <= this.pw) this.panX = (this.pw - bw) / 2;
+    else this.panX = clamp(this.panX, this.pw - bw, 0);
+    if (bh <= this.ph) this.panY = (this.ph - bh) / 2;
+    else this.panY = clamp(this.panY, this.ph - bh, 0);
+    if (!isFinite(this.panX)) this.panX = (this.pw - bw) / 2;
+    if (!isFinite(this.panY)) this.panY = (this.ph - bh) / 2;
+  }
+  resetView(){ this.zoom = 1; this.clampPan(); }
+  zoomAround(cx, cy, newZoom){
+    if (!this.metrics) return;
+    newZoom = clamp(newZoom, 1, this.maxZoom);
+    if (Math.abs(newZoom - this.zoom) < 0.0005) return;
+    const scale = this.baseScale * this.zoom;
+    const bx = (cx - this.panX) / scale;
+    const by = (cy - this.panY) / scale;
+    this.zoom = newZoom;
+    this.panX = cx - bx * this.baseScale * this.zoom;
+    this.panY = cy - by * this.baseScale * this.zoom;
+    if (this.zoom <= 1.0001){ this.zoom = 1; }
+    this.clampPan();
+  }
+  panBy(dx_css, dy_css){
+    if (this.zoom <= 1.0001) return;
+    this.panX += dx_css;
+    this.panY += dy_css;
+    this.clampPan();
   }
   observeParentSize(){
     if (this.ro){ this.ro.disconnect(); this.ro = null; }
-    const parent = this.canvas.parentElement;
-    if (!parent) return;
+    const parent = this.canvas.parentElement; if (!parent) return;
     if (typeof ResizeObserver !== 'undefined'){
-      this.ro = new ResizeObserver(() => this.fitCanvas());
+      this.ro = new ResizeObserver(() => this.resize());
       this.ro.observe(parent);
     }
   }
-  destroy(){
-    if (this.ro){ this.ro.disconnect(); this.ro = null; }
-  }
+  destroy(){ if (this.ro){ this.ro.disconnect(); this.ro = null; } }
   hitTest(clientX, clientY){
-    if (!this.layout) return null;
+    if (!this.metrics) return null;
     const rect = this.canvas.getBoundingClientRect();
     if (!rect.width || !rect.height) return null;
-    const { W, H } = this.layout;
-    const px = (clientX - rect.left) * (W / rect.width);
-    const py = (clientY - rect.top)  * (H / rect.height);
-    if (this.layout.style === 'hex') return this.hexHitTest(px, py);
-    return this.squareHitTest(px, py);
+    const cx = clientX - rect.left;
+    const cy = clientY - rect.top;
+    const scale = this.baseScale * this.zoom;
+    const bx = (cx - this.panX) / scale;
+    const by = (cy - this.panY) / scale;
+    if (this.metrics.style === 'hex') return this.hexHitTest(bx, by);
+    return this.squareHitTest(bx, by);
   }
-  squareHitTest(px, py){
-    const { cell, gap, W, H } = this.layout;
+  squareHitTest(bx, by){
+    const m = this.metrics;
+    const { cell, gap, pad } = m;
     const { rows, cols } = this.config;
-    const totalW = cell * cols + gap * (cols - 1);
-    const totalH = cell * rows + gap * (rows - 1);
-    const ox = (W - totalW) / 2;
-    const oy = (H - totalH) / 2;
-    const relX = px - ox, relY = py - oy;
-    if (relX < 0 || relY < 0 || relX > totalW || relY > totalH) return null;
+    const relX = bx - pad, relY = by - pad;
+    if (relX < 0 || relY < 0) return null;
     const c = Math.floor(relX / (cell + gap));
     const r = Math.floor(relY / (cell + gap));
     if (r < 0 || r >= rows || c < 0 || c >= cols) return null;
+    if (relX - c * (cell + gap) > cell) return null;
+    if (relY - r * (cell + gap) > cell) return null;
     return { r, c };
   }
   hexCenter(r, c){
-    const { size, pad, HW } = this.layout;
+    const m = this.metrics;
+    const { size, pad, HW } = m;
     return {
       x: pad + HW * 0.5 + HW * c + ((r & 1) ? HW * 0.5 : 0),
       y: pad + size + size * 1.5 * r
     };
   }
-  hexHitTest(px, py){
-    const { size } = this.layout;
+  hexHitTest(bx, by){
+    const m = this.metrics;
+    const { size } = m;
     const { rows, cols } = this.config;
     let best = null, bestDist = Infinity;
     for (let r = 0; r < rows; r++){
       const y = this.hexCenter(r, 0).y;
-      if (Math.abs(py - y) > size * 1.3) continue;
+      if (Math.abs(by - y) > size * 1.3) continue;
       for (let c = 0; c < cols; c++){
         const x = this.hexCenter(r, c).x;
-        const d = Math.hypot(px - x, py - y);
+        const d = Math.hypot(bx - x, by - y);
         if (d < bestDist){ bestDist = d; best = { r, c }; }
       }
     }
     return (best && bestDist < size * 0.98) ? best : null;
   }
+
+  getMineSprite(size){
+    if (this._mineSprite && this._mineSprite._size === size) return this._mineSprite;
+    const dpr = Math.max(1, this.dpr);
+    const w = Math.max(2, Math.ceil(size * dpr));
+    const c = document.createElement('canvas');
+    c.width = w; c.height = w;
+    const cx = c.getContext('2d');
+    cx.scale(dpr, dpr);
+    const grad = cx.createRadialGradient(size/2, size/2, 0, size/2, size/2, size*0.55);
+    grad.addColorStop(0, 'rgba(255,77,109,.55)');
+    grad.addColorStop(1, 'rgba(255,77,109,0)');
+    cx.fillStyle = grad; cx.fillRect(0, 0, size, size);
+    cx.fillStyle = '#ff4d6d';
+    cx.beginPath(); cx.arc(size/2, size/2, size * 0.24, 0, Math.PI * 2); cx.fill();
+    cx.strokeStyle = '#ff4d6d';
+    cx.lineWidth = Math.max(1.6, size * 0.06);
+    cx.lineCap = 'round';
+    for (let i = 0; i < 6; i++){
+      const ang = i * Math.PI / 3;
+      cx.beginPath();
+      cx.moveTo(size/2 + Math.cos(ang) * size * 0.3, size/2 + Math.sin(ang) * size * 0.3);
+      cx.lineTo(size/2 + Math.cos(ang) * size * 0.42, size/2 + Math.sin(ang) * size * 0.42);
+      cx.stroke();
+    }
+    c._size = size;
+    this._mineSprite = c;
+    return c;
+  }
+
   render(now, state){
+    const ctx = this.ctx;
     const dt = Math.min(now - this.lastT, 50);
     this.lastT = now;
-
     if (this.shake > 0) this.shake = Math.max(0, this.shake - dt * 0.0026);
 
     for (let i = this.particles.length - 1; i >= 0; i--){
@@ -1292,34 +1244,39 @@ class BoardView {
       if (p.life <= 0) this.particles.splice(i, 1);
     }
 
-    const ctx = this.ctx;
-    const { W, H } = this.layout;
-    ctx.clearRect(0, 0, W, H);
-    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    if (!this.metrics) return;
 
+    let sx = 0, sy = 0;
     if (this.shake > 0.01){
       const m = this.shake * 12;
-      ctx.translate((Math.random() - 0.5) * m, (Math.random() - 0.5) * m);
+      sx = (Math.random() - 0.5) * m;
+      sy = (Math.random() - 0.5) * m;
     }
+    const scale = this.baseScale * this.zoom * this.dpr;
+    ctx.setTransform(scale, 0, 0, scale,
+      (this.panX + sx) * this.dpr,
+      (this.panY + sy) * this.dpr);
 
-    if (this.layout.style === 'hex') this.renderHex(now, state);
+    if (this.metrics.style === 'hex') this.renderHex(now, state);
     else this.renderSquare(now, state);
 
-    for (const p of this.particles){
-      ctx.globalAlpha = clamp(p.life, 0, 1);
-      ctx.fillStyle = p.color;
-      ctx.shadowColor = p.color;
-      ctx.shadowBlur = 12;
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
-      ctx.fill();
+    if (this.particles.length){
+      for (const p of this.particles){
+        ctx.globalAlpha = clamp(p.life, 0, 1);
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
     }
-    ctx.globalAlpha = 1;
-    ctx.shadowBlur = 0;
-    ctx.restore();
   }
   boom(cx, cy, color, n, power){
     power = power || 150;
+    const cap = 60;
+    if (this.particles.length > cap) return;
     for (let i = 0; i < n; i++){
       const a = Math.random() * Math.PI * 2;
       const sp = 40 + Math.random() * power;
@@ -1335,36 +1292,33 @@ class BoardView {
 
   renderSquare(now, state){
     const ctx = this.ctx;
-    const { cell, gap, W, H } = this.layout;
+    const m = this.metrics;
+    const { cell, gap, pad } = m;
     const { board, boardState, cursors } = state;
     const { rows, cols } = board;
     const useOwner = this.config.mode === 'territory';
-
-    const totalW = cell * cols + gap * (cols - 1);
-    const totalH = cell * rows + gap * (rows - 1);
-    const ox = (W - totalW) / 2;
-    const oy = (H - totalH) / 2;
-
     const NUM_COLORS = ['', '#4dd8ff', '#5dff9e', '#ffd166', '#ff7ad9',
                         '#b98cff', '#ff5c5c', '#ff9f43', '#7ef9ff'];
     const radius = Math.max(3, Math.floor(cell * 0.16));
+    const mineSprite = this.getMineSprite(cell);
+    const nowMs = now;
 
     for (let r = 0; r < rows; r++){
       for (let c = 0; c < cols; c++){
-        const x = ox + c * (cell + gap);
-        const y = oy + r * (cell + gap);
+        const x = pad + c * (cell + gap);
+        const y = pad + r * (cell + gap);
         const rev = boardState.revealed[r][c];
         const flg = boardState.flagged[r][c];
         const isMine = board.mines.has(r + ',' + c);
         const own = (useOwner && boardState.owner) ? boardState.owner[r][c] : 0;
 
-        ctx.save();
-
-        if (rev && now >= boardState.revealAt[r][c]){
-          const t = (now - boardState.revealAt[r][c]) / 200;
+        if (rev && nowMs >= boardState.revealAt[r][c]){
+          const t = (nowMs - boardState.revealAt[r][c]) / 200;
           const e = easeOutCubic(clamp(t, 0, 1));
           const sc = 0.68 + 0.32 * e;
           const a = clamp(t * 2.2, 0, 1);
+
+          ctx.save();
           ctx.globalAlpha = a;
           ctx.translate(x + cell/2, y + cell/2);
           ctx.scale(sc, sc);
@@ -1388,31 +1342,15 @@ class BoardView {
           ctx.stroke();
 
           if (isMine){
-            ctx.shadowColor = '#ff4d6d'; ctx.shadowBlur = 18;
-            ctx.fillStyle = '#ff4d6d';
-            ctx.beginPath();
-            ctx.arc(cell/2, cell/2, cell * 0.24, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.strokeStyle = '#ff4d6d';
-            ctx.lineWidth = Math.max(1.6, cell * 0.06);
-            ctx.lineCap = 'round';
-            for (let i = 0; i < 6; i++){
-              const ang = i * Math.PI / 3;
-              ctx.beginPath();
-              ctx.moveTo(cell/2 + Math.cos(ang) * cell * 0.3, cell/2 + Math.sin(ang) * cell * 0.3);
-              ctx.lineTo(cell/2 + Math.cos(ang) * cell * 0.42, cell/2 + Math.sin(ang) * cell * 0.42);
-              ctx.stroke();
-            }
-            ctx.shadowBlur = 0;
+            ctx.drawImage(mineSprite, 0, 0, cell, cell);
           } else if (board.adj[r][c] > 0){
             const col = NUM_COLORS[board.adj[r][c]] || '#cfe4ff';
             ctx.font = '900 ' + (cell * 0.58) + 'px "Courier New", monospace';
             ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-            ctx.shadowColor = col; ctx.shadowBlur = 14;
             ctx.fillStyle = col;
             ctx.fillText(board.adj[r][c], cell/2, cell/2 + 1);
-            ctx.shadowBlur = 0;
           }
+          ctx.restore();
         } else {
           ctx.fillStyle = '#111a2c';
           this.roundRect(ctx, x, y, cell, cell, radius);
@@ -1424,7 +1362,7 @@ class BoardView {
             ctx.fill();
           }
 
-          const pulse = 0.22 + 0.11 * Math.sin(now / 800 + (r * 0.7 + c * 0.45));
+          const pulse = 0.22 + 0.11 * Math.sin(nowMs / 800 + (r * 0.7 + c * 0.45));
           ctx.strokeStyle = own ? this.ownerEdge[own]
             : 'rgba(90,165,255,' + pulse.toFixed(3) + ')';
           ctx.lineWidth = own ? 2 : 1.5;
@@ -1432,14 +1370,13 @@ class BoardView {
           ctx.stroke();
 
           if (flg){
-            const ft = clamp((now - (boardState.flagAt[r][c] || now)) / 240, 0, 1);
+            const ft = clamp((nowMs - (boardState.flagAt[r][c] || nowMs)) / 240, 0, 1);
             const fs = clamp(easeOutBack(ft), 0, 1.3);
             const flagColor = (own && this.ownerSolid[own]) ? this.ownerSolid[own] : '#ff3d81';
             ctx.save();
             ctx.globalAlpha = clamp(ft * 3, 0, 1);
             ctx.translate(x + cell/2, y + cell/2);
             ctx.scale(fs, fs);
-            ctx.shadowColor = flagColor; ctx.shadowBlur = 16;
             ctx.fillStyle = flagColor; ctx.strokeStyle = flagColor;
             ctx.lineWidth = Math.max(2, cell * 0.075);
             ctx.lineCap = 'round';
@@ -1456,20 +1393,17 @@ class BoardView {
             ctx.restore();
           }
         }
-        ctx.restore();
       }
     }
 
     if (state.highlights){
       for (const h of state.highlights){
-        const x = ox + h.c * (cell + gap);
-        const y = oy + h.r * (cell + gap);
-        const pulse = 0.5 + 0.5 * Math.sin(now / 170);
+        const x = pad + h.c * (cell + gap);
+        const y = pad + h.r * (cell + gap);
+        const pulse = 0.5 + 0.5 * Math.sin(nowMs / 170);
         ctx.save();
         ctx.strokeStyle = h.color || '#ffe066';
         ctx.lineWidth = 3 + 1.5 * pulse;
-        ctx.shadowColor = h.color || '#ffe066';
-        ctx.shadowBlur = 14 + 18 * pulse;
         this.roundRect(ctx, x - 3, y - 3, cell + 6, cell + 6, radius + 4);
         ctx.stroke();
         ctx.restore();
@@ -1477,13 +1411,11 @@ class BoardView {
     }
 
     for (const cur of cursors){
-      const x = ox + cur.c * (cell + gap);
-      const y = oy + cur.r * (cell + gap);
+      const x = pad + cur.c * (cell + gap);
+      const y = pad + cur.r * (cell + gap);
       ctx.save();
       ctx.strokeStyle = cur.color;
       ctx.lineWidth = 3;
-      ctx.shadowColor = cur.color;
-      ctx.shadowBlur = 18;
       this.roundRect(ctx, x - 2, y - 2, cell + 4, cell + 4, radius + 3);
       ctx.stroke();
       ctx.restore();
@@ -1492,13 +1424,15 @@ class BoardView {
 
   renderHex(now, state){
     const ctx = this.ctx;
-    const { size } = this.layout;
+    const m = this.metrics;
+    const { size } = m;
     const { board, boardState, cursors } = state;
     const { rows, cols } = board;
     const useOwner = this.config.mode === 'territory';
-
     const NUM_COLORS = ['', '#4dd8ff', '#5dff9e', '#ffd166', '#ff7ad9',
                         '#b98cff', '#ff5c5c', '#ff9f43', '#7ef9ff'];
+    const mineSprite = this.getMineSprite(size * 1.6);
+    const nowMs = now;
 
     for (let r = 0; r < rows; r++){
       for (let c = 0; c < cols; c++){
@@ -1509,26 +1443,21 @@ class BoardView {
         const isMine = board.mines.has(r + ',' + c);
         const own = (useOwner && boardState.owner) ? boardState.owner[r][c] : 0;
 
-        if (rev && now >= boardState.revealAt[r][c]){
-          const t = (now - boardState.revealAt[r][c]) / 240;
+        if (rev && nowMs >= boardState.revealAt[r][c]){
+          const t = (nowMs - boardState.revealAt[r][c]) / 240;
           const e = easeOutCubic(clamp(t, 0, 1));
           const s = 0.6 + 0.4 * e;
           const a = clamp(t * 2.2, 0, 1);
-
           ctx.save();
           ctx.globalAlpha = a;
           ctx.translate(x, y);
           ctx.scale(s, s);
-
           this.hexPath(0, 0, size - 3);
-          ctx.fillStyle = '#070b14';
-          ctx.fill();
-
+          ctx.fillStyle = '#070b14'; ctx.fill();
           if (own){
             ctx.fillStyle = isMine ? this.ownerTintMine[own] : this.ownerTint[own];
             ctx.fill();
           }
-
           ctx.strokeStyle = own
             ? this.ownerEdge[own]
             : (isMine ? 'rgba(255,77,109,.55)' : 'rgba(58,96,150,.32)');
@@ -1536,76 +1465,48 @@ class BoardView {
           ctx.stroke();
 
           if (isMine){
-            ctx.shadowColor = '#ff4d6d'; ctx.shadowBlur = 20;
-            ctx.fillStyle = '#ff4d6d';
-            ctx.beginPath(); ctx.arc(0, 0, size * 0.28, 0, Math.PI * 2); ctx.fill();
-            ctx.strokeStyle = '#ff4d6d';
-            ctx.lineWidth = Math.max(1.8, size * 0.13);
-            ctx.lineCap = 'round';
-            for (let i = 0; i < 6; i++){
-              const ang = i * Math.PI / 3;
-              ctx.beginPath();
-              ctx.moveTo(Math.cos(ang) * size * 0.35, Math.sin(ang) * size * 0.35);
-              ctx.lineTo(Math.cos(ang) * size * 0.55, Math.sin(ang) * size * 0.55);
-              ctx.stroke();
-            }
-            ctx.shadowBlur = 0;
+            const sz = size * 1.6;
+            ctx.drawImage(mineSprite, -sz/2, -sz/2, sz, sz);
           } else if (board.adj[r][c] > 0){
             const col = NUM_COLORS[board.adj[r][c]] || '#cfe4ff';
             ctx.font = '900 ' + (size * 1.0) + 'px "Courier New", monospace';
             ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-            ctx.shadowColor = col; ctx.shadowBlur = 15;
             ctx.fillStyle = col;
             ctx.fillText(board.adj[r][c], 0, 1);
-            ctx.shadowBlur = 0;
           }
           ctx.restore();
         } else {
           const isHover = cursors.some(cur => cur.r === r && cur.c === c);
           this.hexPath(x, y, size - 3);
           if (isHover){
-            ctx.fillStyle = '#1c2b4a';
-            ctx.fill();
+            ctx.fillStyle = '#1c2b4a'; ctx.fill();
             ctx.save();
-            ctx.shadowColor = 'rgba(77,216,255,.95)';
-            ctx.shadowBlur = 20;
             ctx.strokeStyle = '#4dd8ff';
             ctx.lineWidth = 2.4;
             ctx.stroke();
             ctx.restore();
           } else {
-            ctx.fillStyle = '#111a2c';
-            ctx.fill();
-
-            if (own && !isMine){
-              ctx.fillStyle = this.ownerTint[own];
-              ctx.fill();
-            }
-
-            const pulse = 0.22 + 0.11 * Math.sin(now / 800 + (r * 0.7 + c * 0.45));
+            ctx.fillStyle = '#111a2c'; ctx.fill();
+            if (own && !isMine){ ctx.fillStyle = this.ownerTint[own]; ctx.fill(); }
+            const pulse = 0.22 + 0.11 * Math.sin(nowMs / 800 + (r * 0.7 + c * 0.45));
             ctx.strokeStyle = own ? this.ownerEdge[own]
               : 'rgba(90,165,255,' + pulse.toFixed(3) + ')';
             ctx.lineWidth = own ? 2.2 : 1.5;
             ctx.stroke();
           }
-
           if (flg){
-            const ft = clamp((now - (boardState.flagAt[r][c] || now)) / 240, 0, 1);
+            const ft = clamp((nowMs - (boardState.flagAt[r][c] || nowMs)) / 240, 0, 1);
             const fs = clamp(easeOutBack(ft), 0, 1.3);
             const flagColor = (own && this.ownerSolid[own]) ? this.ownerSolid[own] : '#ff3d81';
             ctx.save();
             ctx.globalAlpha = clamp(ft * 3, 0, 1);
-            ctx.translate(x, y);
-            ctx.scale(fs, fs);
-            ctx.shadowColor = flagColor; ctx.shadowBlur = 16;
+            ctx.translate(x, y); ctx.scale(fs, fs);
             ctx.strokeStyle = flagColor; ctx.fillStyle = flagColor;
             ctx.lineWidth = Math.max(2, size * 0.11);
             ctx.lineCap = 'round'; ctx.lineJoin = 'round';
             const poleH = size * 0.82;
             ctx.beginPath();
-            ctx.moveTo(-2, poleH * 0.55);
-            ctx.lineTo(-2, -poleH * 0.55);
-            ctx.stroke();
+            ctx.moveTo(-2, poleH * 0.55); ctx.lineTo(-2, -poleH * 0.55); ctx.stroke();
             ctx.beginPath();
             ctx.moveTo(-2, -poleH * 0.55);
             ctx.lineTo(size * 0.52, -size * 0.2);
@@ -1620,10 +1521,8 @@ class BoardView {
     if (state.highlights){
       for (const h of state.highlights){
         const p = this.hexCenter(h.r, h.c);
-        const pulse = 0.5 + 0.5 * Math.sin(now / 170);
+        const pulse = 0.5 + 0.5 * Math.sin(nowMs / 170);
         ctx.save();
-        ctx.shadowColor = h.color || '#ffe066';
-        ctx.shadowBlur = 14 + 18 * pulse;
         ctx.strokeStyle = h.color || '#ffe066';
         ctx.lineWidth = 3 + 1.5 * pulse;
         this.hexPath(p.x, p.y, size - 1);
@@ -1631,12 +1530,9 @@ class BoardView {
         ctx.restore();
       }
     }
-
     for (const cur of cursors){
       const p = this.hexCenter(cur.r, cur.c);
       ctx.save();
-      ctx.shadowColor = cur.color;
-      ctx.shadowBlur = 20;
       ctx.strokeStyle = cur.color;
       ctx.lineWidth = 3;
       this.hexPath(p.x, p.y, size - 3);
@@ -1665,6 +1561,13 @@ class BoardView {
     ctx.arcTo(x, y, x + w, y, r);
     ctx.closePath();
   }
+}
+
+function hexOrSqCenter(view, r, c){
+  const m = view.metrics;
+  if (m.style === 'hex') return view.hexCenter(r, c);
+  const { cell, gap, pad } = m;
+  return { x: pad + c * (cell + gap) + cell/2, y: pad + r * (cell + gap) + cell/2 };
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -1709,6 +1612,7 @@ function makePanel(cls, name, color){
     '<div class="boardwrap">' +
       '<canvas></canvas>' +
       STUN_HTML +
+      '<div class="zoom-badge" data-zoombadge>⤢ 1.0×</div>' +
     '</div>';
   return panel;
 }
@@ -1719,12 +1623,12 @@ function makeTerritoryPanel(){
   panel.style.setProperty('--pc', '#4dd8ff');
   panel.innerHTML =
     '<div class="phead">' +
-      '<span class="dot" style="background:#4dd8ff;box-shadow:0 0 18px #4dd8ff"></span>' +
+      '<span class="dot" style="background:#4dd8ff"></span>' +
       '<span class="pname" style="color:#4dd8ff">YOU</span>' +
       '<span class="pname" style="color:#6b7a94;font-size:11px">VS</span>' +
-      '<span class="dot" style="background:#ff3d81;box-shadow:0 0 18px #ff3d81"></span>' +
+      '<span class="dot" style="background:#ff3d81"></span>' +
       '<span class="pname" style="color:#ff3d81">OPPONENT</span>' +
-      '<span class="pkeys">WASD · SPACE · F</span>' +
+      '<span class="pkeys">ARROWS · WASD PAN · SPACE · F</span>' +
     '</div>' +
     '<div class="pstats">' +
       '<div class="pstat" style="--pc:#4dd8ff"><span class="plabel">YOUR LAND</span><span class="pval" data-myland>0</span></div>' +
@@ -1739,6 +1643,7 @@ function makeTerritoryPanel(){
       '<canvas></canvas>' +
       STUN_HTML +
       '<div class="oppstun"><span data-oemoji>💥</span> OPPONENT FROZEN <b>10.0</b></div>' +
+      '<div class="zoom-badge" data-zoombadge>⤢ 1.0×</div>' +
     '</div>';
   return panel;
 }
@@ -1751,14 +1656,10 @@ function viewConfig(){
 function buildArena(){
   arena.innerHTML = '';
   G.viewMe = null; G.viewThem = null; G.panelMe = null; G.panelThem = null;
-
   const mode = G.config.mode;
-
   arena.classList.toggle('solo', mode === 'solo');
   arena.classList.toggle('territory', mode === 'territory');
-
   if (mode === 'territory'){ buildTerritoryArena(); return; }
-
   const isSolo = mode === 'solo';
   const isCoop = mode === 'coop';
 
@@ -1766,7 +1667,8 @@ function buildArena(){
   arena.appendChild(panelA);
   G.viewMe = new BoardView(panelA.querySelector('canvas'));
   G.viewMe.setConfig(viewConfig());
-  bindCanvasInput(G.viewMe);
+  bindCanvasInput(G.viewMe, true);
+  wireZoomBadge(panelA, G.viewMe);
   panelA._els = {
     mines: panelA.querySelector('[data-mines]'),
     time:  panelA.querySelector('[data-time]'),
@@ -1776,15 +1678,17 @@ function buildArena(){
     keys:  panelA.querySelector('.pkeys'),
     panel: panelA
   };
-  if (isSolo)      panelA._els.keys.textContent = 'WASD · SPACE · F';
-  else if (isCoop) panelA._els.keys.textContent = 'SHARED · WASD · SPACE · F';
-  else             panelA._els.keys.textContent = 'WASD · SPACE · F';
+  if (isSolo)      panelA._els.keys.textContent = 'ARROWS · WASD PAN · SPACE · F';
+  else if (isCoop) panelA._els.keys.textContent = 'SHARED · ARROWS · WASD PAN · SPACE · F';
+  else             panelA._els.keys.textContent = 'ARROWS · WASD PAN · SPACE · F';
 
   if (mode === 'duel'){
     const panelB = makePanel('them', 'OPPONENT', '#ff3d81');
     arena.appendChild(panelB);
     G.viewThem = new BoardView(panelB.querySelector('canvas'));
     G.viewThem.setConfig(viewConfig());
+    bindCanvasInput(G.viewThem, false);
+    wireZoomBadge(panelB, G.viewThem);
     panelB._els = {
       mines: panelB.querySelector('[data-mines]'),
       time:  panelB.querySelector('[data-time]'),
@@ -1803,26 +1707,19 @@ function buildArena(){
 function buildTerritoryArena(){
   const panel = makeTerritoryPanel();
   arena.appendChild(panel);
-
   G.viewMe = new BoardView(panel.querySelector('canvas'));
   G.viewMe.setConfig(viewConfig());
-
   const CYAN = {
-    tint: 'rgba(77,216,255,.17)',
-    tintMine: 'rgba(77,216,255,.30)',
-    edge: 'rgba(77,216,255,.72)',
-    solid: '#4dd8ff'
+    tint: 'rgba(77,216,255,.17)', tintMine: 'rgba(77,216,255,.30)',
+    edge: 'rgba(77,216,255,.72)', solid: '#4dd8ff'
   };
   const PINK = {
-    tint: 'rgba(255,61,129,.17)',
-    tintMine: 'rgba(255,61,129,.30)',
-    edge: 'rgba(255,61,129,.72)',
-    solid: '#ff3d81'
+    tint: 'rgba(255,61,129,.17)', tintMine: 'rgba(255,61,129,.30)',
+    edge: 'rgba(255,61,129,.72)', solid: '#ff3d81'
   };
   G.viewMe.setOwnerPalette(G.myOwner === 1 ? { 1: CYAN, 2: PINK } : { 1: PINK, 2: CYAN });
-
-  bindCanvasInput(G.viewMe);
-
+  bindCanvasInput(G.viewMe, true);
+  wireZoomBadge(panel, G.viewMe);
   panel._els = {
     myLand:    panel.querySelector('[data-myland]'),
     theirLand: panel.querySelector('[data-theirland]'),
@@ -1836,88 +1733,224 @@ function buildTerritoryArena(){
   G.panelMe = panel;
 }
 
+function wireZoomBadge(panel, view){
+  const badge = panel.querySelector('[data-zoombadge]');
+  if (!badge) return;
+  let rafId = null;
+  const tick = () => {
+    rafId = requestAnimationFrame(tick);
+    if (view.zoom > 1.001){
+      badge.classList.add('on');
+      badge.textContent = '⤢ ' + view.zoom.toFixed(1) + '× · reset';
+    } else {
+      badge.classList.remove('on');
+    }
+  };
+  rafId = requestAnimationFrame(tick);
+  badge.addEventListener('click', e => {
+    e.stopPropagation();
+    view.resetView();
+    SFX.clickSoft();
+  });
+  badge.addEventListener('pointerdown', e => e.stopPropagation());
+}
+
 /* ══════════════════════════════════════════════════════════════
    INPUT — canvas
    ══════════════════════════════════════════════════════════════ */
 function interactive(){
   return G.state === 'playing' && G.me && !G.me.done;
 }
-
-function bindCanvasInput(view){
+function bindCanvasInput(view, gameplay){
   const canvas = view.canvas;
-  let touchPress = null;
+  const pointers = new Map();
+  let pinch = null;
+  let touchGesture = null;
+  let mousePan = null;
 
-  const cellAt = e => view.hitTest(e.clientX, e.clientY);
+  const clientToLocal = (clientX, clientY) => {
+    const rect = canvas.getBoundingClientRect();
+    return { x: clientX - rect.left, y: clientY - rect.top, rect };
+  };
 
   canvas.addEventListener('contextmenu', e => e.preventDefault());
+  canvas.addEventListener('wheel', e => {
+    if (!view.metrics) return;
+    e.preventDefault();
+    let delta = e.deltaY;
+    if (e.deltaMode === 1) delta *= 16;
+    else if (e.deltaMode === 2) delta *= 400;
+    const factor = Math.exp(-delta * 0.0018);
+    const newZoom = clamp(view.zoom * factor, 1, view.maxZoom);
+    if (Math.abs(newZoom - view.zoom) < 0.001) return;
+    const { x, y } = clientToLocal(e.clientX, e.clientY);
+    view.zoomAround(x, y, newZoom);
+  }, { passive: false });
+
+  const cancelTouchGesture = () => {
+    if (touchGesture && touchGesture.timer) clearTimeout(touchGesture.timer);
+    touchGesture = null;
+  };
 
   canvas.addEventListener('pointerdown', e => {
-    if (!interactive()) return;
+    if (!view.metrics) return;
+    try { canvas.setPointerCapture(e.pointerId); } catch(err){}
+    pointers.set(e.pointerId, {
+      x: e.clientX, y: e.clientY,
+      startX: e.clientX, startY: e.clientY,
+      startTime: performance.now()
+    });
 
-    if (e.pointerType === 'touch' || e.pointerType === 'pen'){
-      e.preventDefault();
-      const cell = cellAt(e);
+    if (e.pointerType === 'mouse'){
+      if (e.button === 1 || (e.button === 0 && e.shiftKey)){
+        e.preventDefault();
+        mousePan = { id: e.pointerId, lastX: e.clientX, lastY: e.clientY };
+        return;
+      }
+      if (!gameplay || !interactive()) return;
+      const cell = view.hitTest(e.clientX, e.clientY);
       if (!cell) return;
-      G.me.cursor = { r: cell.r, c: cell.c };
-      touchPress = {
-        cell, x: e.clientX, y: e.clientY, longFired: false, timer: null
-      };
-      touchPress.timer = setTimeout(() => {
-        if (!touchPress) return;
-        touchPress.longFired = true;
-        localFlagAt(cell.r, cell.c);
-        vibrate(20);
-      }, 400);
+      e.preventDefault();
+      if (e.button === 0)      localDigAt(cell.r, cell.c);
+      else if (e.button === 2) localFlagAt(cell.r, cell.c);
       return;
     }
 
-    const cell = cellAt(e);
-    if (!cell) return;
-    e.preventDefault();
-    if (e.button === 0){
-      if (e.shiftKey) localChordAt(cell.r, cell.c);
-      else localDigAt(cell.r, cell.c);
-    } else if (e.button === 2){
-      localFlagAt(cell.r, cell.c);
-    } else if (e.button === 1){
-      localChordAt(cell.r, cell.c);
+    if (pointers.size >= 2){
+      cancelTouchGesture();
+      const pts = Array.from(pointers.values());
+      const d0 = Math.hypot(pts[0].startX - pts[1].startX, pts[0].startY - pts[1].startY);
+      const midX0 = (pts[0].startX + pts[1].startX) / 2;
+      const midY0 = (pts[0].startY + pts[1].startY) / 2;
+      const l0 = clientToLocal(midX0, midY0);
+      pinch = { d0, zoom0: view.zoom, pan0X: view.panX, pan0Y: view.panY, midL0X: l0.x, midL0Y: l0.y };
+      return;
+    }
+
+    touchGesture = {
+      id: e.pointerId, x0: e.clientX, y0: e.clientY,
+      x: e.clientX, y: e.clientY,
+      time0: performance.now(),
+      moved: false, longFired: false, panning: false,
+      lastX: e.clientX, lastY: e.clientY, timer: null
+    };
+    if (gameplay && interactive()){
+      const g = touchGesture;
+      const cx = e.clientX, cy = e.clientY;
+      g.timer = setTimeout(() => {
+        if (touchGesture !== g || g.moved || g.panning || !interactive()) return;
+        g.longFired = true;
+        const cell = view.hitTest(cx, cy);
+        if (cell) localFlagAt(cell.r, cell.c);
+        vibrate(20);
+      }, 400);
     }
   });
 
-  canvas.addEventListener('pointerup', e => {
-    if (e.pointerType !== 'touch' && e.pointerType !== 'pen') return;
-    const st = touchPress;
-    touchPress = null;
-    if (!st) return;
-    clearTimeout(st.timer);
-    if (st.longFired) return;
-    if (Math.hypot(e.clientX - st.x, e.clientY - st.y) > 14) return;
-    if (!interactive()) return;
-    localDigAt(st.cell.r, st.cell.c);
+  canvas.addEventListener('pointermove', e => {
+    const tracked = pointers.get(e.pointerId);
+    if (!tracked) return;
+    tracked.x = e.clientX; tracked.y = e.clientY;
+
+    if (mousePan && mousePan.id === e.pointerId){
+      const dx = e.clientX - mousePan.lastX;
+      const dy = e.clientY - mousePan.lastY;
+      mousePan.lastX = e.clientX; mousePan.lastY = e.clientY;
+      view.panBy(dx, dy);
+      return;
+    }
+    if (pinch && pointers.size >= 2){
+      const pts = Array.from(pointers.values());
+      const d = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+      const cx = (pts[0].x + pts[1].x) / 2;
+      const cy = (pts[0].y + pts[1].y) / 2;
+      const l = clientToLocal(cx, cy);
+      const newZoom = clamp(pinch.zoom0 * (d / Math.max(pinch.d0, 1)), 1, view.maxZoom);
+      const w0x = (pinch.midL0X - pinch.pan0X) / pinch.zoom0;
+      const w0y = (pinch.midL0Y - pinch.pan0Y) / pinch.zoom0;
+      view.zoom = newZoom;
+      view.panX = l.x - w0x * newZoom;
+      view.panY = l.y - w0y * newZoom;
+      if (view.zoom <= 1.0001) view.zoom = 1;
+      view.clampPan();
+      return;
+    }
+    if (touchGesture && touchGesture.id === e.pointerId){
+      const dxTotal = e.clientX - touchGesture.x0;
+      const dyTotal = e.clientY - touchGesture.y0;
+      if (!touchGesture.moved && Math.hypot(dxTotal, dyTotal) > 8){
+        touchGesture.moved = true;
+        if (touchGesture.timer) clearTimeout(touchGesture.timer);
+        if (view.zoom > 1.001){
+          touchGesture.panning = true;
+          touchGesture.lastX = e.clientX;
+          touchGesture.lastY = e.clientY;
+        }
+      }
+      if (touchGesture.panning){
+        const pdx = e.clientX - touchGesture.lastX;
+        const pdy = e.clientY - touchGesture.lastY;
+        touchGesture.lastX = e.clientX;
+        touchGesture.lastY = e.clientY;
+        view.panBy(pdx, pdy);
+      }
+    }
   });
 
-  const cancelTouch = () => {
-    if (touchPress){ clearTimeout(touchPress.timer); touchPress = null; }
+  const finishPointer = e => {
+    if (mousePan && mousePan.id === e.pointerId) mousePan = null;
+    if (touchGesture && touchGesture.id === e.pointerId){
+      if (touchGesture.timer) clearTimeout(touchGesture.timer);
+      const g = touchGesture;
+      touchGesture = null;
+      if (gameplay && interactive() && !g.moved && !g.longFired && !g.panning){
+        const cell = view.hitTest(e.clientX, e.clientY);
+        if (cell) localDigAt(cell.r, cell.c);
+      }
+    }
+    pointers.delete(e.pointerId);
+    if (pointers.size < 2) pinch = null;
+    if (pointers.size === 1){
+      const [id, p] = pointers.entries().next().value;
+      touchGesture = {
+        id, x0: p.x, y0: p.y, x: p.x, y: p.y,
+        time0: performance.now(),
+        moved: true, longFired: true, panning: false,
+        lastX: p.x, lastY: p.y, timer: null
+      };
+    }
   };
-  canvas.addEventListener('pointercancel', cancelTouch);
+
+  canvas.addEventListener('pointerup', finishPointer);
+  canvas.addEventListener('pointercancel', finishPointer);
 }
 
 /* ══════════════════════════════════════════════════════════════
    INPUT — keyboard
    ══════════════════════════════════════════════════════════════ */
+const heldPan = { w:false, a:false, s:false, d:false };
+
 window.addEventListener('keydown', e => {
-  if (G.state !== 'playing' || !G.me) return;
   const tag = (e.target && e.target.tagName) || '';
   if (tag === 'INPUT' || tag === 'TEXTAREA') return;
-
   const k = e.key.toLowerCase();
-  let handled = true;
 
+  if (k === 'w' || k === 'a' || k === 's' || k === 'd'){
+    const hasReview = G.reviewViews && G.reviewViews.length > 0;
+    if (hasReview || (G.viewMe && G.state !== 'lobby')){
+      heldPan[k] = true;
+      e.preventDefault();
+    }
+    return;
+  }
+
+  if (G.state !== 'playing' || !G.me) return;
+  let handled = true;
   switch (k){
-    case 'w': case 'arrowup':    moveCursor(-1, 0); break;
-    case 's': case 'arrowdown':  moveCursor(1, 0);  break;
-    case 'a': case 'arrowleft':  moveCursor(0, -1); break;
-    case 'd': case 'arrowright': moveCursor(0, 1);  break;
+    case 'arrowup':    moveCursor(-1, 0); break;
+    case 'arrowdown':  moveCursor(1, 0);  break;
+    case 'arrowleft':  moveCursor(0, -1); break;
+    case 'arrowright': moveCursor(0, 1);  break;
     case ' ':
       if (!e.repeat) localDig();
       break;
@@ -1927,14 +1960,44 @@ window.addEventListener('keydown', e => {
     case 'e': case 'q':
       if (!e.repeat) localChord();
       break;
+    case '0':
+      if (G.viewMe) G.viewMe.resetView();
+      break;
     default:
       handled = false;
   }
   if (handled) e.preventDefault();
 }, { passive:false });
 
+window.addEventListener('keyup', e => {
+  const k = e.key.toLowerCase();
+  if (k === 'w' || k === 'a' || k === 's' || k === 'd') heldPan[k] = false;
+});
+window.addEventListener('blur', () => {
+  heldPan.w = heldPan.a = heldPan.s = heldPan.d = false;
+});
+
+function updatePanFromKeys(dtMs){
+  const targets = (G.reviewViews && G.reviewViews.length)
+    ? G.reviewViews
+    : (G.viewMe ? [G.viewMe] : []);
+  if (!targets.length) return;
+  let dx = 0, dy = 0;
+  if (heldPan.a) dx += 1;
+  if (heldPan.d) dx -= 1;
+  if (heldPan.w) dy += 1;
+  if (heldPan.s) dy -= 1;
+  if (!dx && !dy) return;
+  const dt = dtMs / 1000;
+  for (const v of targets){
+    if (v && v.metrics && v.zoom > 1.0001){
+      v.panBy(dx * PAN_SPEED_CSS * dt, dy * PAN_SPEED_CSS * dt);
+    }
+  }
+}
+
 /* ══════════════════════════════════════════════════════════════
-   INPUT — touch pad (mobile only: move / dig / flag)
+   INPUT — touch pad
    ══════════════════════════════════════════════════════════════ */
 function holdButton(btn, fn){
   let t1 = null, t2 = null;
@@ -1950,7 +2013,6 @@ function holdButton(btn, fn){
   btn.addEventListener('pointerleave', stop);
   btn.addEventListener('pointercancel', stop);
 }
-
 function buildTouchpad(){
   const pad = document.createElement('div');
   pad.className = 'touchpad';
@@ -1965,7 +2027,6 @@ function buildTouchpad(){
       '<button class="primary" data-act="dig">DIG ⛏</button>' +
       '<button data-act="flag">FLAG ⚑</button>' +
     '</div>';
-
   const map = {
     up:    () => moveCursor(-1, 0),
     down:  () => moveCursor(1, 0),
@@ -1984,12 +2045,10 @@ function buildTouchpad(){
 function applyReveal(boardState, board, r, c, owner){
   owner = owner || 0;
   if (boardState.revealed[r][c]) return null;
-
   if (boardState.flagged[r][c]){
     boardState.flagged[r][c] = false;
     boardState.flagCount = Math.max(0, boardState.flagCount - 1);
   }
-
   if (board.mines.has(r + ',' + c)){
     boardState.revealed[r][c] = true;
     boardState.revealAt[r][c] = performance.now();
@@ -1997,12 +2056,10 @@ function applyReveal(boardState, board, r, c, owner){
     boardState.count++;
     return { type: 'mine', tiles: [[r, c]] };
   }
-
   const now = performance.now();
   const queue = [[r, c, 0]];
   const seen = new Set([r + ',' + c]);
   const tiles = [];
-
   while (queue.length){
     const item = queue.shift();
     const cr = item[0], cc = item[1], d = item[2];
@@ -2017,7 +2074,6 @@ function applyReveal(boardState, board, r, c, owner){
     boardState.count++;
     boardState.safeRevealed++;
     tiles.push([cr, cc]);
-
     if (board.adj[cr][cc] === 0){
       for (const nb of board.neighbors(cr, cc, board.rows, board.cols)){
         const nr = nb[0], nc = nb[1];
@@ -2035,7 +2091,6 @@ function applyReveal(boardState, board, r, c, owner){
 function applyChord(boardState, board, r, c, owner){
   if (!boardState.revealed[r][c]) return null;
   if (board.adj[r][c] <= 0) return null;
-
   const nbs = board.neighbors(r, c, board.rows, board.cols);
   let flags = 0;
   for (const nb of nbs){
@@ -2044,7 +2099,6 @@ function applyChord(boardState, board, r, c, owner){
     else if (boardState.revealed[nr][nc] && board.mines.has(nr + ',' + nc)) flags++;
   }
   if (flags !== board.adj[r][c]) return null;
-
   for (const nb of nbs){
     const nr = nb[0], nc = nb[1];
     if (boardState.flagged[nr][nc] || boardState.revealed[nr][nc]) continue;
@@ -2053,7 +2107,6 @@ function applyChord(boardState, board, r, c, owner){
       return { type: 'mine', tiles: res ? res.tiles : [[nr, nc]] };
     }
   }
-
   const allTiles = [];
   for (const nb of nbs){
     const nr = nb[0], nc = nb[1];
@@ -2077,11 +2130,7 @@ function revealAllMines(boardState, board, originR, originC){
     }
   }
 }
-
-function checkWin(boardState, board){
-  return boardState.safeRevealed >= board.safeCount;
-}
-
+function checkWin(boardState, board){ return boardState.safeRevealed >= board.safeCount; }
 function countLand(boardState, owner){
   let n = 0;
   if (!boardState.owner) return 0;
@@ -2090,14 +2139,57 @@ function countLand(boardState, owner){
       if (boardState.owner[r][c] === owner) n++;
   return n;
 }
-
-function canTouchTerritory(boardState, board, r, c, owner){
+function canTouchTerritoryRaw(boardState, board, r, c, owner){
   if (!boardState || !boardState.owner || !board) return true;
   if (boardState.owner[r][c] === owner) return true;
   for (const [nr, nc] of board.neighbors(r, c, board.rows, board.cols)){
     if (boardState.owner[nr][nc] === owner) return true;
   }
   return false;
+}
+function canTouchTerritory(boardState, board, r, c, owner){
+  if (G.territoryUnlocked) return true;
+  return canTouchTerritoryRaw(boardState, board, r, c, owner);
+}
+function hasAvailableMove(boardState, board, owner){
+  if (!boardState || !board || !boardState.owner) return true;
+  for (let r = 0; r < board.rows; r++){
+    for (let c = 0; c < board.cols; c++){
+      if (boardState.revealed[r][c]) continue;
+      if (boardState.flagged[r][c]) continue;
+      if (canTouchTerritoryRaw(boardState, board, r, c, owner)) return true;
+    }
+  }
+  return false;
+}
+
+function findSafeSwapTarget(board, boardState, r, c){
+  const { rows, cols } = board;
+  const candidates = [];
+  for (let dr = -4; dr <= 4; dr++){
+    for (let dc = -4; dc <= 4; dc++){
+      if (!dr && !dc) continue;
+      const nr = r + dr, nc = c + dc;
+      if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
+      if (board.mines.has(nr + ',' + nc)) continue;
+      if (boardState && boardState.revealed[nr][nc]) continue;
+      candidates.push({ r: nr, c: nc });
+    }
+  }
+  if (!candidates.length) return null;
+  return candidates[Math.floor(Math.random() * candidates.length)];
+}
+function ensureFirstDigSafe(board, boardState, playerState, r, c, syncNetwork){
+  if (!playerState || playerState.digged) return false;
+  playerState.digged = true;
+  if (!board.mines.has(r + ',' + c)) return false;
+  const swap = findSafeSwapTarget(board, boardState, r, c);
+  if (!swap) return false;
+  board.mines.delete(r + ',' + c);
+  board.mines.add(swap.r + ',' + swap.c);
+  recomputeAdjacency(board);
+  if (syncNetwork) send({ t:'swapmine', r, c, sr: swap.r, sc: swap.c });
+  return true;
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -2106,9 +2198,7 @@ function canTouchTerritory(boardState, board, r, c, owner){
 function canAct(){
   return G.state === 'playing' && G.me && !G.me.done && performance.now() >= G.me.stunUntil;
 }
-function isFrozen(){
-  return G.me && performance.now() < G.me.stunUntil;
-}
+function isFrozen(){ return G.me && performance.now() < G.me.stunUntil; }
 
 let lastCursorSent = 0;
 function sendCursor(){
@@ -2118,7 +2208,6 @@ function sendCursor(){
   lastCursorSent = now;
   send({ t:'cur', r: G.me.cursor.r, c: G.me.cursor.c });
 }
-
 function moveCursor(dr, dc){
   if (G.state !== 'playing' || !G.me || G.me.done) return;
   if (isFrozen()) return;
@@ -2129,41 +2218,25 @@ function moveCursor(dr, dc){
   G.me.cursor = { r: nr, c: nc };
   sendCursor();
 }
-
-function localDigAt(r, c){
-  if (!canAct()) return;
-  G.me.cursor = { r, c };
-  localDig();
-}
-function localFlagAt(r, c){
-  if (!canAct()) return;
-  G.me.cursor = { r, c };
-  localFlag();
-}
-function localChordAt(r, c){
-  if (!canAct()) return;
-  G.me.cursor = { r, c };
-  localChord();
-}
+function localDigAt(r, c){ if (!canAct()) return; G.me.cursor = { r, c }; localDig(); }
+function localFlagAt(r, c){ if (!canAct()) return; G.me.cursor = { r, c }; localFlag(); }
+function localChordAt(r, c){ if (!canAct()) return; G.me.cursor = { r, c }; localChord(); }
 
 function localDig(){
   if (!canAct()) return;
   const r = G.me.cursor.r, c = G.me.cursor.c;
   const mode = G.config.mode;
 
-  if (G.myBoard.flagged[r][c]){
-    localFlag();
-    return;
-  }
-
-  if (mode === 'territory' && !canTouchTerritory(G.myBoard, G.board, r, c, G.myOwner)){
-    return;
-  }
+  if (G.myBoard.flagged[r][c]){ localFlag(); return; }
+  if (mode === 'territory' && !canTouchTerritory(G.myBoard, G.board, r, c, G.myOwner)) return;
 
   if (G.boardPending){
     if (mode === 'solo'){
       ensureBoardReady(r, c);
     } else if (mode === 'duel'){
+      ensureBoardReady(r, c);
+      send({ t:'layout', mines: Array.from(G.board.mines) });
+    } else {
       if (G.role === 'host'){
         ensureBoardReady(r, c);
         send({ t:'board', seed: G.boardSeed, clickR: r, clickC: c });
@@ -2172,36 +2245,24 @@ function localDig(){
         G.pendingDig = { r, c };
         return;
       }
-    } else { /* coop */
-      if (G.role === 'host'){
-        ensureBoardReady(r, c);
-        send({ t:'board', seed: G.boardSeed, clickR: r, clickC: c });
-      } else {
-        send({ t:'dig', r, c });
-        return;
-      }
     }
   }
-
   doLocalDig(r, c);
 }
-
 function doLocalDig(r, c){
   const mode = G.config.mode;
-
   if (mode === 'coop' || mode === 'territory'){
     if (G.role === 'host') hostApplyDig(r, c, G.myOwner);
     else send({ t:'dig', r, c });
     return;
   }
-
   if (mode === 'duel'){
     const bs = G.myBoard;
+    ensureFirstDigSafe(G.board, bs, G.me, r, c, true);
     const res = applyReveal(bs, G.board, r, c, 0);
     if (!res) return;
     if (res.type === 'mine'){
-      G.me.hits++;
-      G.deathTile = { r, c };
+      G.me.hits++; G.deathTile = { r, c };
       send({ t:'hit', r, c });
       duelFreeze(r, c);
       return;
@@ -2211,9 +2272,9 @@ function doLocalDig(r, c){
     if (checkWin(bs, G.board)) duelWin();
     return;
   }
-
   /* solo */
   const bs = G.myBoard;
+  ensureFirstDigSafe(G.board, bs, G.me, r, c, false);
   const res = applyReveal(bs, G.board, r, c, 0);
   if (!res) return;
   if (res.type === 'mine'){
@@ -2227,117 +2288,81 @@ function doLocalDig(r, c){
     endGame('win', '✨', 'CLEARED!', 'You swept every safe tile.', performance.now() - G.startTime);
   }
 }
-
 function afterRevealFeedback(res){
   if (!res || !res.tiles || res.tiles.length === 0) return;
   const r0 = res.tiles[0][0], c0 = res.tiles[0][1];
   const val = G.board.adj[r0][c0];
   SFX.reveal(val);
 }
-
-function hexOrSqCenter(view, r, c){
-  if (view.layout.style === 'hex') return view.hexCenter(r, c);
-  const cell = view.layout.cell, gap = view.layout.gap;
-  const W = view.layout.W, H = view.layout.H;
-  const rows = view.config.rows, cols = view.config.cols;
-  const totalW = cell * cols + gap * (cols - 1);
-  const totalH = cell * rows + gap * (rows - 1);
-  const ox = (W - totalW) / 2;
-  const oy = (H - totalH) / 2;
-  return { x: ox + c * (cell + gap) + cell/2, y: oy + r * (cell + gap) + cell/2 };
-}
-
 function handleLoss(r, c, view, bs, board){
   if (G.lossPending) return;
-  G.lossPending = true;
-  G.me.done = true;
+  G.lossPending = true; G.me.done = true;
   G.deathTile = { r, c };
-
   if (view){
     view.triggerShake();
     const p = hexOrSqCenter(view, r, c);
-    view.boom(p.x, p.y, '#ff4d6d', 50, 320);
-    view.boom(p.x, p.y, '#ffd166', 24, 180);
+    view.boom(p.x, p.y, '#ff4d6d', 40, 280);
+    view.boom(p.x, p.y, '#ffd166', 18, 150);
   }
-  SFX.mine();
-  vibrate(180);
-
+  SFX.mine(); vibrate(180);
   revealAllMines(bs, board, r, c);
-
   const elapsed = performance.now() - G.startTime;
   setTimeout(() => {
     endGame('lose', '💥', 'BOOM!', 'You hit a mine. The field is lost.', elapsed);
     G.lossPending = false;
   }, 1000);
 }
-
 function handleCoopLoss(r, c, broadcast, iTriggered){
   if (iTriggered === undefined) iTriggered = true;
   if (G.lossPending) return;
   G.lossPending = true;
   if (G.me) G.me.done = true;
   G.deathTile = { r, c };
-
   const bs = G.myBoard;
   const view = G.viewMe;
-
   if (view){
     if (iTriggered) view.triggerShake();
     const p = hexOrSqCenter(view, r, c);
-    view.boom(p.x, p.y, '#ff4d6d', 50, 320);
-    view.boom(p.x, p.y, '#ffd166', 24, 180);
+    view.boom(p.x, p.y, '#ff4d6d', 40, 280);
+    view.boom(p.x, p.y, '#ffd166', 18, 150);
   }
-
-  if (iTriggered){ SFX.mine(); vibrate(180); }
-  else { SFX.oppStun(); }
-
+  if (iTriggered){ SFX.mine(); vibrate(180); } else { SFX.oppStun(); }
   revealAllMines(bs, G.board, r, c);
-
   if (broadcast){
-    send({
-      t:'delta', lose:true, r, c,
-      by: iTriggered ? G.myOwner : G.theirOwner
-    });
+    send({ t:'delta', lose:true, r, c, by: iTriggered ? G.myOwner : G.theirOwner });
   }
-
   const elapsed = performance.now() - G.startTime;
   setTimeout(() => {
     endGame('lose', '💥', 'BOOM!', 'A mine was triggered. The field is lost.', elapsed);
     G.lossPending = false;
   }, 1000);
 }
-
 function duelFreeze(r, c){
   const now = performance.now();
   G.me.stunUntil = now + STUN_MS;
   G.me.wasStunned = true;
   G.me.stunReason = 'bomb';
-
   const view = G.viewMe;
   if (view){
     view.triggerShake();
     const p = hexOrSqCenter(view, r, c);
-    view.boom(p.x, p.y, '#ff4d6d', 46, 300);
-    view.boom(p.x, p.y, '#ffd166', 20, 160);
+    view.boom(p.x, p.y, '#ff4d6d', 36, 260);
+    view.boom(p.x, p.y, '#ffd166', 16, 140);
   }
   SFX.mine();
   setTimeout(() => SFX.freeze(), 150);
   vibrate(160);
 }
-
 function duelWin(){
   if (G.winSent) return;
-  G.winSent = true;
-  G.me.done = true;
+  G.winSent = true; G.me.done = true;
   send({ t:'win' });
   const elapsed = performance.now() - G.startTime;
   endGame('win', '🏆', 'VICTORY!', 'You cleared your field first.', elapsed);
 }
-
 function applyPenalty(ownerId, reason){
   const now = performance.now();
   const r = reason || 'bomb';
-
   if (ownerId === G.myOwner){
     G.me.hits++;
     G.me.stunUntil = now + STUN_MS;
@@ -2353,15 +2378,12 @@ function applyPenalty(ownerId, reason){
     G.them.stunReason = r;
     SFX.oppStun();
   }
-
   send({ t:'stun', who: ownerId, reason: r });
 }
-
 function handleTerritoryBoom(r, c, owner){
   const bs = G.myBoard;
   const iTriggered = (owner === G.myOwner);
   if (iTriggered) G.deathTile = { r, c };
-
   if (bs){
     if (bs.owner) bs.owner[r][c] = owner;
     if (!bs.revealed[r][c]){
@@ -2370,20 +2392,16 @@ function handleTerritoryBoom(r, c, owner){
       bs.count++;
     }
   }
-
   applyPenalty(owner, 'bomb');
-
   const view = G.viewMe;
   if (view){
     if (iTriggered) view.triggerShake();
     const p = hexOrSqCenter(view, r, c);
-    view.boom(p.x, p.y, '#ff4d6d', iTriggered ? 50 : 30, iTriggered ? 320 : 200);
-    view.boom(p.x, p.y, '#ffd166', iTriggered ? 24 : 14, 160);
+    view.boom(p.x, p.y, '#ff4d6d', iTriggered ? 40 : 24, iTriggered ? 280 : 180);
+    view.boom(p.x, p.y, '#ffd166', iTriggered ? 18 : 10, 140);
   }
-
   send({ t:'delta', mine:[r, c], own: owner, rev: [[r, c]] });
 }
-
 function afterSharedReveal(){
   if (G.config.mode === 'coop'){
     if (checkWin(G.myBoard, G.board)){
@@ -2391,45 +2409,38 @@ function afterSharedReveal(){
       endGame('win', '🎉', 'FIELD CLEARED!', 'Together you swept every safe tile.', performance.now() - G.startTime);
     }
   } else if (G.config.mode === 'territory'){
-    if (checkWin(G.myBoard, G.board)) finishTerritory();
+    if (checkWin(G.myBoard, G.board)){ finishTerritory(); return; }
+    checkTerritoryUnlock();
   }
 }
-
 function finishTerritory(){
   if (G.state === 'over') return;
   const mine   = countLand(G.myBoard, G.myOwner);
   const theirs = countLand(G.myBoard, G.theirOwner);
   const total  = G.board.safeCount;
-
   let result, icon, title, sub;
   if (mine > theirs){
     result = 'win';  icon = '🏆'; title = 'LAND GRAB WON!';
-    sub = 'You claimed <b style="color:#4dd8ff">' + mine + '</b> tiles — opponent got ' +
-          '<b style="color:#ff3d81">' + theirs + '</b>.';
+    sub = 'You claimed <b style="color:#4dd8ff">' + mine + '</b> tiles — opponent got <b style="color:#ff3d81">' + theirs + '</b>.';
   } else if (theirs > mine){
     result = 'lose'; icon = '💀'; title = 'LAND GRAB LOST';
-    sub = 'Opponent claimed <b style="color:#ff3d81">' + theirs + '</b> tiles — you got ' +
-          '<b style="color:#4dd8ff">' + mine + '</b>.';
+    sub = 'Opponent claimed <b style="color:#ff3d81">' + theirs + '</b> tiles — you got <b style="color:#4dd8ff">' + mine + '</b>.';
   } else {
     result = 'draw'; icon = '🤝'; title = 'DEAD EVEN';
     sub = 'Both players claimed <b>' + mine + '</b> tiles.';
   }
-
   const cards =
     '<div class="statcard win"><div class="slabel">YOUR LAND</div><div class="sval">' + mine + '</div></div>' +
     '<div class="statcard lose"><div class="slabel">THEIR LAND</div><div class="sval">' + theirs + '</div></div>' +
     '<div class="statcard"><div class="slabel">TOTAL</div><div class="sval">' + total + '</div></div>';
-
   endGame(result, icon, title, sub, performance.now() - G.startTime, cards);
 }
-
 function localFlag(){
   if (!canAct()) return;
   const r = G.me.cursor.r, c = G.me.cursor.c;
   const bs = G.myBoard;
   if (bs.revealed[r][c]) return;
   const mode = G.config.mode;
-
   if (mode === 'territory'){
     if (!canTouchTerritory(bs, G.board, r, c, G.myOwner)) return;
     if (G.role === 'host') hostApplyTerritoryFlag(r, c, G.myOwner);
@@ -2439,7 +2450,6 @@ function localFlag(){
     }
     return;
   }
-
   if (mode === 'coop'){
     if (G.role === 'host') hostApplyFlag(r, c);
     else {
@@ -2448,28 +2458,23 @@ function localFlag(){
     }
     return;
   }
-
   const on = bs.flagged[r][c] ? 0 : 1;
   bs.flagged[r][c] = !!on;
   bs.flagAt[r][c] = performance.now();
   bs.flagCount += on ? 1 : -1;
   on ? SFX.flag() : SFX.unflag();
-
   if (mode === 'duel') send({ t:'flag', r, c, on });
 }
-
 function localChord(){
   if (!canAct()) return;
   const r = G.me.cursor.r, c = G.me.cursor.c;
   const mode = G.config.mode;
-
   if (mode === 'coop' || mode === 'territory'){
     if (mode === 'territory' && !canTouchTerritory(G.myBoard, G.board, r, c, G.myOwner)) return;
     if (G.role === 'host') hostApplyChord(r, c, G.myOwner);
     else send({ t:'chord', r, c });
     return;
   }
-
   if (mode === 'duel'){
     const bs = G.myBoard;
     const res = applyChord(bs, G.board, r, c, 0);
@@ -2487,7 +2492,6 @@ function localChord(){
     if (checkWin(bs, G.board)) duelWin();
     return;
   }
-
   const bs = G.myBoard;
   const res = applyChord(bs, G.board, r, c, 0);
   if (!res) return;
@@ -2497,7 +2501,6 @@ function localChord(){
     return;
   }
   afterRevealFeedback(res);
-
   if (checkWin(bs, G.board)){
     G.me.done = true;
     endGame('win', '✨', 'CLEARED!', 'You swept every safe tile.', performance.now() - G.startTime);
@@ -2505,31 +2508,72 @@ function localChord(){
 }
 
 /* ══════════════════════════════════════════════════════════════
+   TERRITORY UNLOCK
+   ══════════════════════════════════════════════════════════════ */
+function checkTerritoryUnlock(){
+  if (G.config.mode !== 'territory') return;
+  if (G.territoryUnlocked) return;
+  if (G.state !== 'playing') return;
+  if (G.role !== 'host' && G.role !== 'solo') return;
+  if (!G.myBoard || !G.board) return;
+  const myBlocked    = !hasAvailableMove(G.myBoard, G.board, G.myOwner);
+  const theirBlocked = !hasAvailableMove(G.myBoard, G.board, G.theirOwner);
+  if (!myBlocked && !theirBlocked) return;
+  G.territoryUnlocked = true;
+  const byOwner = myBlocked ? G.myOwner : G.theirOwner;
+  send({ t:'unlock', by: byOwner });
+  showUnlockPopup(byOwner);
+}
+function showUnlockPopup(byOwner){
+  const prev = document.querySelector('.terr-unlock');
+  if (prev) prev.remove();
+  const meBlocked = (byOwner === G.myOwner);
+  const who = meBlocked
+    ? '<b>You</b> have no legal moves left.'
+    : '<i>Your opponent</i> has no legal moves left.';
+  const el = document.createElement('div');
+  el.className = 'terr-unlock';
+  el.innerHTML =
+    '<div class="terr-unlock-box">' +
+      '<div class="terr-unlock-icon">🔓</div>' +
+      '<div class="terr-unlock-title">TERRITORY OPENED</div>' +
+      '<div class="terr-unlock-body">' + who +
+        '<br>All remaining tiles can now be claimed by either player.' +
+      '</div>' +
+    '</div>';
+  document.body.appendChild(el);
+  SFX.unlock();
+  vibrate([40, 60, 40]);
+  setTimeout(() => {
+    el.classList.add('fade');
+    setTimeout(() => el.remove(), 700);
+  }, 3600);
+}
+
+/* ══════════════════════════════════════════════════════════════
    HOST-AUTHORITATIVE SHARED ACTIONS
    ══════════════════════════════════════════════════════════════ */
 function hostApplyDig(r, c, owner){
   const bs = G.myBoard;
-
+  const isMyDig = (owner === G.myOwner);
+  const who = isMyDig ? G.me : G.them;
+  if (who && ensureFirstDigSafe(G.board, bs, who, r, c, true)){}
   if (bs.flagged[r][c]){
     if (G.config.mode === 'territory') hostApplyTerritoryFlag(r, c, owner);
     else hostApplyFlag(r, c);
     return;
   }
-
   const res = applyReveal(bs, G.board, r, c, owner);
   if (!res) return;
-
   if (res.type === 'mine'){
     if (G.config.mode === 'coop') handleCoopLoss(r, c, true, owner === G.myOwner);
     else handleTerritoryBoom(r, c, owner);
     return;
   }
-
   send({ t:'delta', rev: res.tiles, own: owner });
   afterRevealFeedback(res);
   afterSharedReveal();
 }
-
 function hostApplyFlag(r, c){
   const bs = G.myBoard;
   if (bs.revealed[r][c]) return;
@@ -2540,11 +2584,9 @@ function hostApplyFlag(r, c){
   send({ t:'delta', flg: [[r, c, on]] });
   on ? SFX.flag() : SFX.unflag();
 }
-
 function hostApplyTerritoryFlag(r, c, owner){
   const bs = G.myBoard;
   if (bs.revealed[r][c]) return;
-
   if (bs.flagged[r][c]){
     bs.flagged[r][c] = false;
     bs.flagAt[r][c] = performance.now();
@@ -2552,11 +2594,10 @@ function hostApplyTerritoryFlag(r, c, owner){
     if (bs.owner && bs.owner[r][c] === owner) bs.owner[r][c] = 0;
     send({ t:'delta', flg: [[r, c, 0]], own: 0 });
     SFX.unflag();
+    checkTerritoryUnlock();
     return;
   }
-
   const isMine = G.board.mines.has(r + ',' + c);
-
   if (isMine){
     bs.flagged[r][c] = true;
     bs.flagAt[r][c] = performance.now();
@@ -2564,40 +2605,35 @@ function hostApplyTerritoryFlag(r, c, owner){
     if (bs.owner) bs.owner[r][c] = owner;
     send({ t:'delta', flg: [[r, c, 1]], own: owner });
     SFX.flag();
+    checkTerritoryUnlock();
   } else {
     bs.revealed[r][c] = true;
     bs.revealAt[r][c] = performance.now();
     if (bs.owner) bs.owner[r][c] = owner;
     bs.count++;
     bs.safeRevealed++;
-
     send({ t:'delta', rev: [[r, c]], own: owner });
-
     const view = G.viewMe;
     if (view){
       const p = hexOrSqCenter(view, r, c);
       if (owner === G.myOwner) view.triggerShake();
-      view.boom(p.x, p.y, '#7fd8ff', 22, 190);
+      view.boom(p.x, p.y, '#7fd8ff', 18, 160);
     }
-
     applyPenalty(owner, 'flag');
-
-    if (checkWin(bs, G.board)) finishTerritory();
+    if (checkWin(bs, G.board)){ finishTerritory(); return; }
+    checkTerritoryUnlock();
   }
 }
-
 function hostApplyChord(r, c, owner){
   const bs = G.myBoard;
   const res = applyChord(bs, G.board, r, c, owner);
   if (!res) return;
-
   if (res.type === 'mine'){
     const mr = res.tiles[0][0], mc = res.tiles[0][1];
     if (G.config.mode === 'coop') handleCoopLoss(mr, mc, true, owner === G.myOwner);
     else handleTerritoryBoom(mr, mc, owner);
     return;
   }
-
   send({ t:'delta', rev: res.tiles, own: owner });
   afterRevealFeedback(res);
   afterSharedReveal();
@@ -2611,30 +2647,24 @@ function send(msg){
     try { G.conn.send(msg); } catch(e){}
   }
 }
-
 let hbTimer = null;
-
 function startHeartbeat(){
   stopHeartbeat();
   hbTimer = setInterval(() => {
     if (G.state === 'lobby' && !G.conn) return;
     if (!G.conn || !G.conn.open){ onConnClosed(); return; }
     if (G.lastRecv && (performance.now() - G.lastRecv) > HEARTBEAT_TIMEOUT){
-      onConnClosed();
-      return;
+      onConnClosed(); return;
     }
     send({ t:'ping' });
   }, HEARTBEAT_MS);
 }
-function stopHeartbeat(){
-  if (hbTimer){ clearInterval(hbTimer); hbTimer = null; }
-}
+function stopHeartbeat(){ if (hbTimer){ clearInterval(hbTimer); hbTimer = null; } }
 
 function onConnClosed(){
   stopHeartbeat();
   if (G.opponentGone) return;
   G.opponentGone = true;
-
   if (G.state === 'playing' || G.state === 'countdown'){
     endGame('disconnect', '🔌', 'OPPONENT DISCONNECTED',
             'Your opponent left the match.', performance.now() - G.startTime);
@@ -2645,51 +2675,47 @@ function onConnClosed(){
     idleOverlay();
   }
 }
-
 function attachConn(c){
   G.conn = c;
   G.lastRecv = performance.now();
   G.opponentGone = false;
-
-  c.on('data', msg => {
-    G.lastRecv = performance.now();
-    handleMessage(msg);
-  });
+  c.on('data', msg => { G.lastRecv = performance.now(); handleMessage(msg); });
   c.on('close', onConnClosed);
   c.on('error', () => {});
-
   startHeartbeat();
 }
 
 function handleMessage(msg){
   if (!msg || typeof msg !== 'object') return;
-
   switch (msg.t){
-
-    case 'ping':
-      break;
-
-    case 'bye':
-      onConnClosed();
-      break;
+    case 'ping': break;
+    case 'bye': onConnClosed(); break;
 
     case 'seed':
       G.config = msg.config || G.config;
-      startMatch(msg.seed, 'guest');
+      G.mySeed = (msg.seedHost >>> 0) || newSeed();
+      G.theirSeed = (msg.seedGuest >>> 0) || newSeed();
+      G.seed = G.mySeed;
+      startMatch(msg.seedHost >>> 0, 'guest');
       break;
 
     case 'cur':
       if (G.them) G.them.cursor = { r: msg.r, c: msg.c };
       break;
 
+    case 'layout':
+      if (G.config.mode !== 'duel') break;
+      if (!G.theirBoardLayout) break;
+      rebuildBoardFromMines(G.theirBoardLayout, msg.mines || [], G.config.style);
+      break;
+
     case 'board': {
+      if (G.config.mode !== 'coop') break;
       if (!G.boardPending) break;
       const d = dimsFor(G.config);
-      const mode = G.config.mode;
-      let starts = [{ r: (d.rows >> 1), c: (d.cols >> 1) }];
-      if (mode === 'territory') starts = territoryStarts(d.rows, d.cols);
       G.board = genBoardDeferred(msg.seed, G.config.style, d.cols, d.rows, d.mines,
-                                 msg.clickR, msg.clickC, starts);
+                                 msg.clickR, msg.clickC,
+                                 [{ r: (d.rows >> 1), c: (d.cols >> 1) }]);
       G.boardSeed = msg.seed;
       G.boardPending = false;
       if (G.pendingDig){
@@ -2703,19 +2729,10 @@ function handleMessage(msg){
 
     case 'dig': {
       if (G.role !== 'host') break;
-      if (G.config.mode === 'duel'){
-        if (G.boardPending){
-          ensureBoardReady(msg.r, msg.c);
-          send({ t:'board', seed: G.boardSeed, clickR: msg.r, clickC: msg.c });
-        }
-        break;
-      }
       if (G.config.mode !== 'coop' && G.config.mode !== 'territory') break;
       if (performance.now() < G.them.stunUntil) break;
-
       if (G.config.mode === 'territory' &&
           !canTouchTerritory(G.myBoard, G.board, msg.r, msg.c, G.theirOwner)) break;
-
       if (G.boardPending){
         ensureBoardReady(msg.r, msg.c);
         send({ t:'board', seed: G.boardSeed, clickR: msg.r, clickC: msg.c });
@@ -2762,13 +2779,14 @@ function handleMessage(msg){
       if (!G.theirBoard) break;
       {
         const now = performance.now();
+        const layout = G.theirBoardLayout || G.board;
         for (const pair of (msg.tiles || [])){
           const r = pair[0], c = pair[1];
           if (G.theirBoard.revealed[r][c]) continue;
           G.theirBoard.revealed[r][c] = true;
           G.theirBoard.revealAt[r][c] = now + Math.random() * 80;
           G.theirBoard.count++;
-          if (G.board && !G.board.mines.has(r + ',' + c)) G.theirBoard.safeRevealed++;
+          if (layout && !layout.mines.has(r + ',' + c)) G.theirBoard.safeRevealed++;
         }
       }
       break;
@@ -2780,6 +2798,7 @@ function handleMessage(msg){
         G.them.wasStunned = true;
         G.them.stunReason = 'bomb';
       }
+      G.theirDeathTile = { r: msg.r, c: msg.c };
       if (G.theirBoard && msg.r !== undefined && msg.c !== undefined){
         const now = performance.now();
         if (!G.theirBoard.revealed[msg.r][msg.c]){
@@ -2792,8 +2811,24 @@ function handleMessage(msg){
       SFX.oppStun();
       break;
 
-    case 'delta':
-      applyDelta(msg);
+    case 'swapmine': {
+      const layout = (G.config.mode === 'duel') ? G.theirBoardLayout : G.board;
+      if (!layout) break;
+      if (layout.mines.has(msg.r + ',' + msg.c)){
+        layout.mines.delete(msg.r + ',' + msg.c);
+        layout.mines.add(msg.sr + ',' + msg.sc);
+        recomputeAdjacency(layout);
+      }
+      break;
+    }
+
+    case 'delta': applyDelta(msg); break;
+
+    case 'unlock':
+      if (G.config.mode === 'territory' && !G.territoryUnlocked){
+        G.territoryUnlocked = true;
+        showUnlockPopup(msg.by === undefined ? G.theirOwner : msg.by);
+      }
       break;
 
     case 'stun': {
@@ -2819,9 +2854,15 @@ function handleMessage(msg){
 
     case 'win':
       if (G.state === 'playing' || G.state === 'countdown'){
-        endGame('lose', '💀', 'DEFEATED',
-          'Your opponent cleared their field first.',
-          performance.now() - G.startTime);
+        if (G.config.mode === 'coop'){
+          endGame('win', '🎉', 'FIELD CLEARED!',
+            'Together you swept every safe tile.',
+            performance.now() - G.startTime);
+        } else {
+          endGame('lose', '💀', 'DEFEATED',
+            'Your opponent cleared their field first.',
+            performance.now() - G.startTime);
+        }
       }
       break;
 
@@ -2839,7 +2880,6 @@ function applyDelta(msg){
   const bs = G.myBoard;
   if (!bs || !G.board) return;
   const now = performance.now();
-
   if (msg.rev){
     for (const pair of msg.rev){
       const r = pair[0], c = pair[1];
@@ -2851,7 +2891,6 @@ function applyDelta(msg){
       if (msg.own !== undefined && bs.owner) bs.owner[r][c] = msg.own ? msg.own : 0;
     }
   }
-
   if (msg.flg){
     for (const tri of msg.flg){
       const r = tri[0], c = tri[1], on = tri[2];
@@ -2865,12 +2904,10 @@ function applyDelta(msg){
       }
     }
   }
-
   if (msg.mine && bs.owner){
     const r = msg.mine[0], c = msg.mine[1];
     bs.owner[r][c] = (msg.own !== undefined) ? msg.own : 0;
   }
-
   if (msg.lose){
     handleCoopLoss(msg.r, msg.c, false, msg.by === G.myOwner);
   }
@@ -2889,7 +2926,6 @@ let menuError = '';
 
 function menuHTML(err){
   const cfg = G.config;
-
   const modeBtns = Object.keys(MODES).map(k => {
     const m = MODES[k];
     return '<button class="opt' + (cfg.mode === m.id ? ' active' : '') + '" data-mode="' + m.id + '">' +
@@ -2897,12 +2933,17 @@ function menuHTML(err){
       '<div class="opt-desc">' + m.desc + '</div>' +
     '</button>';
   }).join('');
-
   const styleBtns = Object.keys(STYLES).map(k => {
     const s = STYLES[k];
     return '<button class="opt' + (cfg.style === s.id ? ' active' : '') + '" data-style="' + s.id + '">' +
       '<div class="opt-name">' + s.name + '</div>' +
-      '<div class="opt-desc">' + styleDesc(s, cfg.mode === 'territory') + '</div>' +
+    '</button>';
+  }).join('');
+  const sizeBtns = Object.keys(SIZES).map(k => {
+    const s = SIZES[k];
+    return '<button class="opt' + (cfg.size === s.id ? ' active' : '') + '" data-size="' + s.id + '">' +
+      '<div class="opt-name">' + s.name + '</div>' +
+      '<div class="opt-desc">' + sizeDesc(s.id, cfg.mode, cfg.style) + '</div>' +
     '</button>';
   }).join('');
 
@@ -2923,7 +2964,8 @@ function menuHTML(err){
     '<h2>MINE<span>DUEL</span></h2>' +
     '<p>Race, co-operate or claim territory.<br>Same board, same seed — may the best sweeper win.</p>' +
     '<div class="config-section"><div class="config-label">MODE</div><div class="config-options">' + modeBtns + '</div></div>' +
-    '<div class="config-section"><div class="config-label">BOARD</div><div class="config-options">' + styleBtns + '</div></div>' +
+    '<div class="config-section"><div class="config-label">BOARD STYLE</div><div class="config-options">' + styleBtns + '</div></div>' +
+    '<div class="config-section"><div class="config-label">MAP SIZE</div><div class="config-options">' + sizeBtns + '</div></div>' +
     actions +
     '<div class="err" id="menuErr">' + (err || '') + '</div>' +
   '</div>';
@@ -2938,6 +2980,9 @@ function renderMenu(err){
   });
   overlay.querySelectorAll('[data-style]').forEach(b => {
     b.onclick = () => { G.config.style = b.dataset.style; menuError = ''; renderMenu(); };
+  });
+  overlay.querySelectorAll('[data-size]').forEach(b => {
+    b.onclick = () => { G.config.size = b.dataset.size; menuError = ''; renderMenu(); };
   });
 
   const btnStart = overlay.querySelector('#btnStart');
@@ -2967,6 +3012,7 @@ function idleOverlay(){
   G.state = 'lobby';
   G.role = 'none';
   G.board = null; G.myBoard = null; G.theirBoard = null;
+  G.theirBoardLayout = null;
   G.boardPending = false;
   G.pendingDig = null;
   G.me = null; G.them = null;
@@ -2977,6 +3023,12 @@ function idleOverlay(){
   G.opponentGone = false;
   G.lastRecv = 0;
   G.deathTile = null;
+  G.theirDeathTile = null;
+  G.territoryUnlocked = false;
+  G.reviewViews = [];
+  heldPan.w = heldPan.a = heldPan.s = heldPan.d = false;
+  const tu = document.querySelector('.terr-unlock');
+  if (tu) tu.remove();
   arena.innerHTML = '';
   controls.innerHTML = '';
   cleanupNet();
@@ -2992,7 +3044,6 @@ function waitHTML(icon, title, body){
     '<div class="ovbtns"><button class="ghost" id="btnCancel">CANCEL</button></div>' +
   '</div>';
 }
-
 function wireCancel(){
   const b = overlay.querySelector('#btnCancel');
   if (b) b.onclick = () => { cleanupNet(); idleOverlay(); };
@@ -3005,14 +3056,9 @@ function hostGame(){
 
   const code = makeCode();
   let peer;
-  try {
-    peer = new Peer(PREFIX + code, { debug: 0 });
-  } catch(e){
-    renderMenu('Could not start peer connection.');
-    return;
-  }
+  try { peer = new Peer(PREFIX + code, { debug: 0 }); }
+  catch(e){ renderMenu('Could not start peer connection.'); return; }
   G.peer = peer;
-
   let started = false;
 
   peer.on('open', () => {
@@ -3020,22 +3066,20 @@ function hostGame(){
     showCodeScreen(code);
     wireCancel();
   });
-
   peer.on('connection', c => {
     if (G.conn){ try { c.close(); } catch(e){} return; }
     attachConn(c);
-
     const begin = () => {
       if (started) return;
       started = true;
-      const seed = newSeed();
-      send({ t:'seed', seed, config: G.config });
-      startMatch(seed, 'host');
+      const seedHost = newSeed();
+      const seedGuest = newSeed();
+      send({ t:'seed', seedHost, seedGuest, config: G.config });
+      startMatch(seedHost, 'host', seedGuest);
     };
     c.on('open', begin);
     if (c.open) begin();
   });
-
   peer.on('error', err => {
     if (G.peer !== peer) return;
     cleanupNet();
@@ -3072,23 +3116,16 @@ function joinGame(code){
   setStatus('CONNECTING', 'warn');
   showOverlay(waitHTML('🔎', 'JOINING ' + code, '<span class="spin"></span>Looking for the room…'));
   wireCancel();
-
   let peer;
-  try {
-    peer = new Peer({ debug: 0 });
-  } catch(e){
-    renderMenu('Could not start peer connection.');
-    return;
-  }
+  try { peer = new Peer({ debug: 0 }); }
+  catch(e){ renderMenu('Could not start peer connection.'); return; }
   G.peer = peer;
-
   let joined = false;
 
   peer.on('open', () => {
     if (G.peer !== peer) return;
     const c = peer.connect(PREFIX + code, { reliable: true });
     attachConn(c);
-
     c.on('open', () => {
       if (joined) return;
       joined = true;
@@ -3098,7 +3135,6 @@ function joinGame(code){
       wireCancel();
     });
   });
-
   peer.on('error', err => {
     if (G.peer !== peer) return;
     cleanupNet();
@@ -3111,29 +3147,32 @@ function joinGame(code){
 /* ══════════════════════════════════════════════════════════════
    MATCH FLOW
    ══════════════════════════════════════════════════════════════ */
-function startMatch(seed, role){
+function startMatch(seed, role, seedGuest){
   G.role = role;
   G.seed = seed >>> 0;
   G.boardSeed = G.seed;
+  G.mySeed = (role === 'guest') ? (G.mySeed || G.seed) : G.seed;
+  G.theirSeed = (role === 'guest') ? (G.theirSeed || (seedGuest || G.seed)) : (seedGuest || G.seed);
   G.myOwner = (role === 'guest') ? 2 : 1;
   G.theirOwner = (role === 'guest') ? 1 : 2;
-  G.lossPending = false;
-  G.winSent = false;
-  G.opponentGone = false;
-  G.pendingDig = null;
-  G.lastRecv = performance.now();
-  G.deathTile = null;
+  G.lossPending = false; G.winSent = false; G.opponentGone = false;
+  G.pendingDig = null; G.lastRecv = performance.now();
+  G.deathTile = null; G.theirDeathTile = null;
+  G.territoryUnlocked = false; G.reviewViews = [];
+  heldPan.w = heldPan.a = heldPan.s = heldPan.d = false;
+
+  const oldPop = document.querySelector('.terr-unlock');
+  if (oldPop) oldPop.remove();
 
   const d = dimsFor(G.config);
   const mode = G.config.mode;
-
   let starts = [{ r: (d.rows >> 1), c: (d.cols >> 1) }];
   if (mode === 'territory') starts = territoryStarts(d.rows, d.cols);
 
   if (mode === 'territory'){
     const opening = starts.map(s => [s.r, s.c]);
     const res = generateSolvableBoard(
-      G.seed, G.config.style, d.cols, d.rows, d.mines,
+      G.mySeed, G.config.style, d.cols, d.rows, d.mines,
       undefined, undefined, starts, opening
     );
     G.board = res.board;
@@ -3146,6 +3185,9 @@ function startMatch(seed, role){
 
   G.myBoard = makeBoardState(d.rows, d.cols);
   G.theirBoard = makeBoardState(d.rows, d.cols);
+  G.theirBoardLayout = (mode === 'duel')
+    ? placeholderBoard(G.config.style, d.rows, d.cols)
+    : G.board;
 
   const myStart = starts.length > 1 ? starts[G.myOwner - 1] : starts[0];
   const theirStart = starts.length > 1 ? starts[G.theirOwner - 1] : starts[0];
@@ -3197,26 +3239,14 @@ function countdown(done){
 
 function buildControls(){
   controls.innerHTML = '';
-
   const row = document.createElement('div');
   row.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;justify-content:center;width:100%';
-
   const leave = document.createElement('button');
   leave.className = 'danger';
   leave.textContent = 'LEAVE MATCH';
   leave.onclick = onLeaveClick;
   row.appendChild(leave);
-
-  const rematch = document.createElement('button');
-  rematch.className = 'ghost';
-  rematch.textContent = 'REMATCH';
-  rematch.onclick = onRematchClick;
-  if (G.role === 'guest'){ rematch.disabled = true; rematch.style.opacity = '.4'; rematch.style.cursor = 'not-allowed'; }
-  row.appendChild(rematch);
-
   controls.appendChild(row);
-
-  /* Touch pad only on mobile devices. */
   if (isMobileDevice()){
     controls.appendChild(buildTouchpad());
   }
@@ -3227,12 +3257,10 @@ async function onLeaveClick(){
     const ok = await confirmDialog({
       title: 'LEAVE MATCH?',
       message: 'Your current match will be abandoned and your opponent will be disconnected.',
-      ok: 'LEAVE',
-      cancel: 'STAY'
+      ok: 'LEAVE', cancel: 'STAY'
     });
     if (!ok) return;
   }
-
   if (G.conn && G.conn.open && G.state !== 'lobby'){
     try { G.conn.send({ t:'bye' }); } catch(e){}
   }
@@ -3244,16 +3272,15 @@ function onRematchClick(){
   if (G.role === 'solo'){ startMatch(newSeed(), 'solo'); return; }
   if (G.role !== 'host') return;
   if (G.opponentGone){ idleOverlay(); return; }
-  const seed = newSeed();
-  send({ t:'seed', seed, config: G.config });
-  startMatch(seed, 'host');
+  const seedHost = newSeed();
+  const seedGuest = newSeed();
+  send({ t:'seed', seedHost, seedGuest, config: G.config });
+  startMatch(seedHost, 'host', seedGuest);
 }
 
 /* ══════════════════════════════════════════════════════════════
    MAP REVIEW
    ══════════════════════════════════════════════════════════════ */
-
-/* Full map: every tile is drawn — safe tiles, all mines, all flags. */
 function buildFullRevealState(baseState, board){
   const s = makeBoardState(board.rows, board.cols);
   for (let r = 0; r < board.rows; r++){
@@ -3265,10 +3292,6 @@ function buildFullRevealState(baseState, board){
   s.safeRevealed = board.safeCount;
   return s;
 }
-
-/* End state: same as the final in-game board, except revealed mines
-   other than the one the player actually pressed are hidden. Flags
-   stay visible, and the death bomb stays visible. */
 function buildEndReviewState(baseState, board, deathTile){
   const s = makeBoardState(board.rows, board.cols);
   for (let r = 0; r < board.rows; r++){
@@ -3278,8 +3301,6 @@ function buildEndReviewState(baseState, board, deathTile){
       const rev = baseState.revealed[r][c] && (!isMine || isDeath);
       s.revealed[r][c] = rev;
       s.flagged[r][c]  = baseState.flagged[r][c];
-      /* Seed flagAt so the flag animation is already complete when the
-         review renders (render passes now + 60000, so this fully draws). */
       s.flagAt[r][c]   = 1;
       if (baseState.owner) s.owner[r][c] = baseState.owner[r][c];
       if (rev && !isMine) s.safeRevealed++;
@@ -3291,24 +3312,51 @@ function buildEndReviewState(baseState, board, deathTile){
 let reviewRafId = null;
 function showMapReview(){
   if (!G.board || !G.myBoard) return;
+  const isDuel = (G.config.mode === 'duel') && !!G.theirBoard;
+  const myLayout = G.board;
+  const theirLayout = (G.config.mode === 'duel') ? (G.theirBoardLayout || G.board) : G.board;
 
-  const endState  = buildEndReviewState(G.myBoard, G.board, G.deathTile);
-  const fullState = buildFullRevealState(G.myBoard, G.board);
+  const meEnd  = buildEndReviewState(G.myBoard, myLayout, G.deathTile);
+  const meFull = buildFullRevealState(G.myBoard, myLayout);
+  let themEnd = null, themFull = null;
+  if (isDuel){
+    themEnd  = buildEndReviewState(G.theirBoard, theirLayout, G.theirDeathTile);
+    themFull = buildFullRevealState(G.theirBoard, theirLayout);
+  }
+
+  const cells =
+    '<div class="review-cell">' +
+      '<canvas data-review="me"></canvas>' +
+      (isDuel ? '<div class="review-label me">YOU</div>' : '') +
+    '</div>' +
+    (isDuel
+      ? '<div class="review-cell">' +
+          '<canvas data-review="them"></canvas>' +
+          '<div class="review-label them">OPPONENT</div>' +
+        '</div>'
+      : '');
 
   modal.innerHTML =
     '<div class="ovbox mapreview">' +
       '<h2>MAP <span>REVIEW</span></h2>' +
-      '<div class="mapreview-canvas"><canvas id="reviewCanvas"></canvas></div>' +
+      '<div class="mapreview-canvas' + (isDuel ? ' two' : '') + '">' + cells + '</div>' +
       '<div class="mapreview-foot">' +
         '<button id="btnToggleView">SHOW FULL MAP</button>' +
+        '<button class="ghost" id="btnResetView">RESET VIEW</button>' +
         '<button class="ghost" id="btnCloseReview">CLOSE</button>' +
       '</div>' +
     '</div>';
   modal.classList.remove('hidden');
 
-  const canvas = modal.querySelector('#reviewCanvas');
-  const view = new BoardView(canvas);
-  view.setConfig(viewConfig());
+  const vc = viewConfig();
+  const views = [];
+  modal.querySelectorAll('canvas[data-review]').forEach(c => {
+    const v = new BoardView(c);
+    v.setConfig(vc);
+    bindCanvasInput(v, false);
+    views.push(v);
+  });
+  G.reviewViews = views;
 
   let showingFull = false;
   const highlights = G.deathTile
@@ -3317,13 +3365,23 @@ function showMapReview(){
 
   const draw = (now) => {
     reviewRafId = requestAnimationFrame(draw);
-    const boardState = showingFull ? fullState : endState;
-    view.render(now + 60000, {
-      board: G.board,
-      boardState,
-      cursors: [],
-      highlights
-    });
+    const t = now + 60000;
+    if (views[0]){
+      views[0].render(t, {
+        board: myLayout,
+        boardState: showingFull ? meFull : meEnd,
+        cursors: [],
+        highlights
+      });
+    }
+    if (views[1]){
+      views[1].render(t, {
+        board: theirLayout,
+        boardState: showingFull ? themFull : themEnd,
+        cursors: [],
+        highlights: []
+      });
+    }
   };
   reviewRafId = requestAnimationFrame(draw);
 
@@ -3333,16 +3391,18 @@ function showMapReview(){
     toggleBtn.textContent = showingFull ? 'SHOW END STATE' : 'SHOW FULL MAP';
     toggleBtn.classList.toggle('primary', showingFull);
   };
-
+  modal.querySelector('#btnResetView').onclick = () => {
+    views.forEach(v => v.resetView());
+  };
   const closeReview = () => {
     if (reviewRafId){ cancelAnimationFrame(reviewRafId); reviewRafId = null; }
-    view.destroy();
+    views.forEach(v => v.destroy());
+    G.reviewViews = [];
     modal.classList.add('hidden');
     modal.innerHTML = '';
     document.removeEventListener('keydown', onKey);
   };
   const onKey = e => { if (e.key === 'Escape') closeReview(); };
-
   modal.querySelector('#btnCloseReview').onclick = closeReview;
   modal.addEventListener('click', e => { if (e.target === modal) closeReview(); });
   document.addEventListener('keydown', onKey);
@@ -3355,6 +3415,7 @@ function endGame(result, icon, title, sub, elapsed, cards){
   if (G.state === 'over') return;
   G.state = 'over';
   if (G.me) G.me.done = true;
+  heldPan.w = heldPan.a = heldPan.s = heldPan.d = false;
 
   const statusMap = {
     win:        ['VICTORY', 'live'],
@@ -3366,7 +3427,6 @@ function endGame(result, icon, title, sub, elapsed, cards){
   setStatus(s[0], s[1]);
 
   const secs = Math.max(0, elapsed) / 1000;
-
   let cardsHtml = cards;
   if (!cardsHtml){
     cardsHtml =
@@ -3399,48 +3459,43 @@ function endGame(result, icon, title, sub, elapsed, cards){
   const again = overlay.querySelector('#btnAgain');
   if (again) again.onclick = () => {
     if (G.role === 'solo'){ startMatch(newSeed(), 'solo'); return; }
-    const seed = newSeed();
-    send({ t:'seed', seed, config: G.config });
-    startMatch(seed, 'host');
+    const seedHost = newSeed();
+    const seedGuest = newSeed();
+    send({ t:'seed', seedHost, seedGuest, config: G.config });
+    startMatch(seedHost, 'host', seedGuest);
   };
-
   const review = overlay.querySelector('#btnReview');
   if (review) review.onclick = () => showMapReview();
-
-  overlay.querySelector('#btnMenu').onclick = () => {
-    cleanupNet();
-    idleOverlay();
-  };
+  overlay.querySelector('#btnMenu').onclick = () => { cleanupNet(); idleOverlay(); };
 
   if (result === 'win') SFX.win();
   else if (result === 'lose' || result === 'disconnect') SFX.lose();
 }
 
 /* ══════════════════════════════════════════════════════════════
-   RENDER LOOP + HUD
+   RENDER LOOP
    ══════════════════════════════════════════════════════════════ */
 function renderAll(now){
   if (!G.viewMe || !G.myBoard || !G.board || !G.me) return;
-
   const myColor = '#4dd8ff';
   const cursors = [{ r: G.me.cursor.r, c: G.me.cursor.c, color: myColor }];
-
   G.viewMe.render(now, { board: G.board, boardState: G.myBoard, cursors });
 
   if (G.viewThem && G.theirBoard){
+    const layout = (G.config.mode === 'duel')
+      ? (G.theirBoardLayout || G.board)
+      : G.board;
     G.viewThem.render(now, {
-      board: G.board,
+      board: layout,
       boardState: G.theirBoard,
       cursors: []
     });
   }
-
   updateHUD(now);
 }
 
 function updateHUD(now){
   if (!G.board || !G.myBoard || !G.me) return;
-
   const mode = G.config.mode;
   const bs = G.myBoard;
   const elapsed = (G.state === 'playing' || G.state === 'over')
@@ -3461,9 +3516,8 @@ function updateHUD(now){
       setText(els.mines, Math.max(0, G.board.mineCount - bs.flagCount));
       setText(els.time, (elapsed / 1000).toFixed(1));
       setText(els.hits, G.me.hits);
-      if (els.bar) els.bar.style.width = (bs.safeRevealed / G.board.safeCount * 100).toFixed(1) + '%';
+      if (els.bar) els.bar.style.width = (bs.safeRevealed / Math.max(1, G.board.safeCount) * 100).toFixed(1) + '%';
     }
-
     if (els.stun){
       const rem = G.me.stunUntil - now;
       if (rem > 0 && G.state === 'playing'){
@@ -3474,7 +3528,6 @@ function updateHUD(now){
         els.stun.classList.remove('on');
       }
     }
-
     if (els.oppStun){
       const rem = G.them ? (G.them.stunUntil - now) : 0;
       if (rem > 0 && G.state === 'playing'){
@@ -3489,14 +3542,15 @@ function updateHUD(now){
       }
     }
   }
-
   if (G.panelThem && G.panelThem._els && G.theirBoard){
+    const layout = (G.config.mode === 'duel') ? (G.theirBoardLayout || G.board) : G.board;
     const te = G.panelThem._els;
-    setText(te.mines, Math.max(0, G.board.mineCount - G.theirBoard.flagCount));
+    setText(te.mines, Math.max(0, (layout ? layout.mineCount : 0) - G.theirBoard.flagCount));
     setText(te.time, (elapsed / 1000).toFixed(1));
     setText(te.hits, G.them ? G.them.hits : 0);
-    if (te.bar) te.bar.style.width = (G.theirBoard.safeRevealed / G.board.safeCount * 100).toFixed(1) + '%';
-
+    if (te.bar && layout) {
+      te.bar.style.width = (G.theirBoard.safeRevealed / Math.max(1, layout.safeCount) * 100).toFixed(1) + '%';
+    }
     if (te.stun){
       const rem = G.them ? (G.them.stunUntil - now) : 0;
       if (rem > 0 && G.state === 'playing'){
@@ -3510,8 +3564,15 @@ function updateHUD(now){
   }
 }
 
+let lastFrameTime = 0;
 function loop(now){
   requestAnimationFrame(loop);
+  if (!lastFrameTime) lastFrameTime = now;
+  const elapsed = now - lastFrameTime;
+  if (elapsed < FRAME_MIN_MS) return;
+  lastFrameTime = now - (elapsed % FRAME_MIN_MS);
+  const dt = Math.min(elapsed, 100);
+  try { updatePanFromKeys(dt); } catch(e){}
   try { renderAll(now); } catch(e){}
 }
 requestAnimationFrame(loop);
@@ -3526,21 +3587,23 @@ window.addEventListener('resize', () => {
     if (!G.viewMe) return;
     const vc = viewConfig();
     try {
-      G.viewMe.setConfig(vc);
-      if (G.viewThem) G.viewThem.setConfig(vc);
+      G.viewMe.setConfig(vc, true);
+      if (G.viewThem) G.viewThem.setConfig(vc, true);
     } catch(e){}
+    if (G.reviewViews && G.reviewViews.length){
+      for (const v of G.reviewViews) {
+        try { v.setConfig(vc, true); } catch(e){}
+      }
+    }
   }, 120);
 });
-
 window.addEventListener('orientationchange', () => {
   setTimeout(() => window.dispatchEvent(new Event('resize')), 260);
 });
-
 document.addEventListener('gesturestart', e => e.preventDefault());
 document.addEventListener('dblclick', e => {
   if (e.target && e.target.tagName === 'CANVAS') e.preventDefault();
 }, { passive:false });
-
 window.addEventListener('pointerdown', function unlock(){
   try {
     if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
@@ -3548,7 +3611,6 @@ window.addEventListener('pointerdown', function unlock(){
   } catch(e){}
   window.removeEventListener('pointerdown', unlock);
 }, { once:true });
-
 window.addEventListener('beforeunload', e => {
   if (G.conn && G.conn.open && G.state !== 'lobby'){
     try { G.conn.send({ t:'bye' }); } catch(err){}
@@ -3559,7 +3621,6 @@ window.addEventListener('beforeunload', e => {
     return '';
   }
 });
-
 window.addEventListener('pagehide', () => {
   if (G.conn && G.conn.open && G.state !== 'lobby'){
     try { G.conn.send({ t:'bye' }); } catch(err){}

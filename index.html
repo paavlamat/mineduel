@@ -516,8 +516,9 @@ const TARGET_FPS = 120;
 const FRAME_MIN_MS = 1000 / TARGET_FPS;
 const PAN_SPEED_CSS = 900;
 
-const SOLVER_MAX_ATTEMPTS = 8;
-const SOLVER_BUDGET_MS    = 10;
+/* Deterministic solver effort: we walk attempts in a fixed order so host &
+   guest always derive the same board from the same seed. */
+const SOLVER_MAX_ATTEMPTS = 40;
 
 /* ── Per-style bomb density ───────────────────────────────────
    Square   : 1 bomb per 4 tiles
@@ -685,6 +686,7 @@ function beep(freq, dur, type, vol){
 const SFX = {
   click(){ beep(720, 0.035, 'triangle', 0.028); },
   clickSoft(){ beep(520, 0.03, 'sine', 0.022); },
+  denied(){ beep(180, 0.09, 'square', 0.03); },
   reveal(val){
     const v = clamp(val || 0, 0, 8);
     beep(500 + v * 60, 0.04, 'square', 0.02);
@@ -796,6 +798,17 @@ function genBoardDeferred(seed, style, cols, rows, mineCount, clickR, clickC, st
   };
 }
 
+/* ── NO-GUESS SOLVER ──────────────────────────────────────────
+   Mirrors the real game's information flow:
+     • a revealed 0 tile flood-reveals its neighbours
+     • single-cell rule:  flags == n      → reveal hidden
+     • single-cell rule:  flags + hidden == n → flag hidden
+     • subset rule:  constraint A ⊆ B  →  the difference must hold
+                      (B.rem - A.rem == 0        → reveal diff)
+                      (B.rem - A.rem == |diff|   → flag diff)
+   Anything it can prove, the player can prove.  If it reaches every
+   safe tile, the board is guaranteed guess-free.
+   ═════════════════════════════════════════════════════════════ */
 function solveBoard(board, opening){
   const rows = board.rows, cols = board.cols;
   const revealed = new Set();
@@ -803,11 +816,12 @@ function solveBoard(board, opening){
   for (let i = 0; i < opening.length; i++)
     revealed.add(opening[i][0] + ',' + opening[i][1]);
 
-  const MAX_ITER = 300;
-  let changed = true, iter = 0;
-  while (changed && iter < MAX_ITER){
-    changed = false;
-    iter++;
+  const MAX_ITER = 250;
+
+  for (let iter = 0; iter < MAX_ITER; iter++){
+    let changed = false;
+
+    /* ── pass 1: local rules ── */
     for (let r = 0; r < rows; r++){
       for (let c = 0; c < cols; c++){
         const k = r + ',' + c;
@@ -820,29 +834,79 @@ function solveBoard(board, opening){
         for (let i = 0; i < nbs.length; i++){
           const nk = nbs[i][0] + ',' + nbs[i][1];
           if (flagged.has(nk)) flags++;
-          else if (!revealed.has(nk)) hidden.push(nbs[i]);
+          else if (!revealed.has(nk)) hidden.push(nk);
         }
         if (!hidden.length) continue;
-        if (flags === a){
-          for (let i = 0; i < hidden.length; i++){
-            revealed.add(hidden[i][0] + ',' + hidden[i][1]);
-            changed = true;
-          }
+        if (a === 0 || flags === a){
+          for (let i = 0; i < hidden.length; i++){ revealed.add(hidden[i]); changed = true; }
         } else if (flags + hidden.length === a){
-          for (let i = 0; i < hidden.length; i++){
-            flagged.add(hidden[i][0] + ',' + hidden[i][1]);
-            changed = true;
-          }
+          for (let i = 0; i < hidden.length; i++){ flagged.add(hidden[i]); changed = true; }
         }
       }
     }
+    if (changed) continue;
+
+    /* ── pass 2: subset rule ── */
+    const constraints = [];
+    for (let r = 0; r < rows; r++){
+      for (let c = 0; c < cols; c++){
+        const k = r + ',' + c;
+        if (!revealed.has(k)) continue;
+        const a = board.adj[r][c];
+        if (a <= 0) continue;
+        const nbs = board.neighbors(r, c, rows, cols);
+        let flags = 0;
+        const hidden = [];
+        for (let i = 0; i < nbs.length; i++){
+          const nk = nbs[i][0] + ',' + nbs[i][1];
+          if (flagged.has(nk)) flags++;
+          else if (!revealed.has(nk)) hidden.push(nk);
+        }
+        if (!hidden.length) continue;
+        const rem = a - flags;
+        if (rem < 0 || rem > hidden.length) continue;
+        constraints.push({ hidden, rem });
+      }
+    }
+
+    outer:
+    for (let i = 0; i < constraints.length; i++){
+      const A = constraints[i];
+      for (let j = 0; j < constraints.length; j++){
+        if (i === j) continue;
+        const B = constraints[j];
+        if (A.hidden.length >= B.hidden.length) continue;
+        let isSubset = true;
+        for (let x = 0; x < A.hidden.length; x++){
+          if (B.hidden.indexOf(A.hidden[x]) === -1){ isSubset = false; break; }
+        }
+        if (!isSubset) continue;
+        const diff = [];
+        for (let x = 0; x < B.hidden.length; x++){
+          if (A.hidden.indexOf(B.hidden[x]) === -1) diff.push(B.hidden[x]);
+        }
+        if (!diff.length) continue;
+        const remDiff = B.rem - A.rem;
+        if (remDiff === 0){
+          for (let x = 0; x < diff.length; x++) revealed.add(diff[x]);
+          changed = true;
+          break outer;
+        } else if (remDiff === diff.length){
+          for (let x = 0; x < diff.length; x++) flagged.add(diff[x]);
+          changed = true;
+          break outer;
+        }
+      }
+    }
+    if (!changed) break;
   }
   return revealed;
 }
 
+/* Deterministic: identical (seed, style, dims, click, starts) always
+   yields the identical board, so host & guest stay in lock-step. */
 function generateSolvableBoard(seed, style, cols, rows, mineCount,
                                clickR, clickC, starts, opening){
-  const t0 = performance.now();
   let best = null, bestSeed = seed, bestScore = -1;
   for (let attempt = 0; attempt < SOLVER_MAX_ATTEMPTS; attempt++){
     const s = (seed + Math.imul(attempt, 0x9E3779B9)) >>> 0;
@@ -850,7 +914,6 @@ function generateSolvableBoard(seed, style, cols, rows, mineCount,
     const score = solveBoard(b, opening).size;
     if (score > bestScore){ bestScore = score; best = b; bestSeed = s; }
     if (score >= b.safeCount) return { board: b, seed: s };
-    if (attempt >= 2 && (performance.now() - t0) > SOLVER_BUDGET_MS) break;
   }
   return { board: best, seed: bestSeed };
 }
@@ -2443,6 +2506,11 @@ function localFlag(){
   const mode = G.config.mode;
   if (mode === 'territory'){
     if (!canTouchTerritory(bs, G.board, r, c, G.myOwner)) return;
+    /* You can never un-flag a tile that belongs to your opponent. */
+    if (bs.flagged[r][c] && bs.owner[r][c] && bs.owner[r][c] !== G.myOwner){
+      SFX.denied();
+      return;
+    }
     if (G.role === 'host') hostApplyTerritoryFlag(r, c, G.myOwner);
     else {
       bs.flagged[r][c] ? SFX.unflag() : SFX.flag();
@@ -2509,20 +2577,30 @@ function localChord(){
 
 /* ══════════════════════════════════════════════════════════════
    TERRITORY UNLOCK
+   Runs on every client so the banner fires the instant a player
+   is boxed in — no extra tile placement required.
    ══════════════════════════════════════════════════════════════ */
 function checkTerritoryUnlock(){
   if (G.config.mode !== 'territory') return;
   if (G.territoryUnlocked) return;
   if (G.state !== 'playing') return;
-  if (G.role !== 'host' && G.role !== 'solo') return;
   if (!G.myBoard || !G.board) return;
   const myBlocked    = !hasAvailableMove(G.myBoard, G.board, G.myOwner);
   const theirBlocked = !hasAvailableMove(G.myBoard, G.board, G.theirOwner);
   if (!myBlocked && !theirBlocked) return;
   G.territoryUnlocked = true;
   const byOwner = myBlocked ? G.myOwner : G.theirOwner;
-  send({ t:'unlock', by: byOwner });
+  if (G.role === 'host' || G.role === 'solo') send({ t:'unlock', by: byOwner });
   showUnlockPopup(byOwner);
+}
+let lastUnlockCheck = 0;
+function maybeCheckTerritoryUnlock(now){
+  if (G.config.mode !== 'territory') return;
+  if (G.state !== 'playing') return;
+  if (G.territoryUnlocked) return;
+  if (now - lastUnlockCheck < 250) return;
+  lastUnlockCheck = now;
+  checkTerritoryUnlock();
 }
 function showUnlockPopup(byOwner){
   const prev = document.querySelector('.terr-unlock');
@@ -2587,16 +2665,23 @@ function hostApplyFlag(r, c){
 function hostApplyTerritoryFlag(r, c, owner){
   const bs = G.myBoard;
   if (bs.revealed[r][c]) return;
+
   if (bs.flagged[r][c]){
+    /* ── Flags belonging to the opponent are untouchable. ── */
+    if (bs.owner && bs.owner[r][c] && bs.owner[r][c] !== owner){
+      if (owner === G.myOwner) SFX.denied();
+      return;
+    }
     bs.flagged[r][c] = false;
     bs.flagAt[r][c] = performance.now();
     bs.flagCount = Math.max(0, bs.flagCount - 1);
     if (bs.owner && bs.owner[r][c] === owner) bs.owner[r][c] = 0;
     send({ t:'delta', flg: [[r, c, 0]], own: 0 });
-    SFX.unflag();
+    if (owner === G.myOwner) SFX.unflag();
     checkTerritoryUnlock();
     return;
   }
+
   const isMine = G.board.mines.has(r + ',' + c);
   if (isMine){
     bs.flagged[r][c] = true;
@@ -2604,7 +2689,7 @@ function hostApplyTerritoryFlag(r, c, owner){
     bs.flagCount++;
     if (bs.owner) bs.owner[r][c] = owner;
     send({ t:'delta', flg: [[r, c, 1]], own: owner });
-    SFX.flag();
+    if (owner === G.myOwner) SFX.flag();
     checkTerritoryUnlock();
   } else {
     bs.revealed[r][c] = true;
@@ -2691,13 +2776,17 @@ function handleMessage(msg){
     case 'ping': break;
     case 'bye': onConnClosed(); break;
 
-    case 'seed':
+    case 'seed': {
       G.config = msg.config || G.config;
-      G.mySeed = (msg.seedHost >>> 0) || newSeed();
-      G.theirSeed = (msg.seedGuest >>> 0) || newSeed();
-      G.seed = G.mySeed;
-      startMatch(msg.seedHost >>> 0, 'guest');
+      const seedHost  = (msg.seedHost  >>> 0) || newSeed();
+      const seedGuest = (msg.seedGuest >>> 0) || newSeed();
+      /* Duel: each player gets their own independent board seed.
+         Co-op / Territory: both players must build the SAME shared board,
+         so both use the host seed. */
+      if (G.config.mode === 'duel') startMatch(seedGuest, 'guest', seedHost);
+      else                          startMatch(seedHost,  'guest', seedHost);
       break;
+    }
 
     case 'cur':
       if (G.them) G.them.cursor = { r: msg.r, c: msg.c };
@@ -3026,6 +3115,7 @@ function idleOverlay(){
   G.theirDeathTile = null;
   G.territoryUnlocked = false;
   G.reviewViews = [];
+  lastUnlockCheck = 0;
   heldPan.w = heldPan.a = heldPan.s = heldPan.d = false;
   const tu = document.querySelector('.terr-unlock');
   if (tu) tu.remove();
@@ -3150,15 +3240,16 @@ function joinGame(code){
 function startMatch(seed, role, seedGuest){
   G.role = role;
   G.seed = seed >>> 0;
-  G.boardSeed = G.seed;
-  G.mySeed = (role === 'guest') ? (G.mySeed || G.seed) : G.seed;
-  G.theirSeed = (role === 'guest') ? (G.theirSeed || (seedGuest || G.seed)) : (seedGuest || G.seed);
+  G.mySeed = seed >>> 0;
+  G.theirSeed = (seedGuest >>> 0) || newSeed();
+  G.boardSeed = G.mySeed;
   G.myOwner = (role === 'guest') ? 2 : 1;
   G.theirOwner = (role === 'guest') ? 1 : 2;
   G.lossPending = false; G.winSent = false; G.opponentGone = false;
   G.pendingDig = null; G.lastRecv = performance.now();
   G.deathTile = null; G.theirDeathTile = null;
   G.territoryUnlocked = false; G.reviewViews = [];
+  lastUnlockCheck = 0;
   heldPan.w = heldPan.a = heldPan.s = heldPan.d = false;
 
   const oldPop = document.querySelector('.terr-unlock');
@@ -3492,6 +3583,7 @@ function renderAll(now){
     });
   }
   updateHUD(now);
+  maybeCheckTerritoryUnlock(now);
 }
 
 function updateHUD(now){

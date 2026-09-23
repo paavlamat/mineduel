@@ -5113,7 +5113,7 @@ function menuHTML(err){
   const actions =
     '<div class="ovbtns">' +
       (solo ? '<button class="primary" id="btnStart">START SOLO</button>' : '') +
-      '<button class="' + (solo ? '' : 'primary') + '" id="btnHost">CREATE MATCH</button>' +
+      (solo ? '' : '<button class="primary" id="btnHost">CREATE MATCH</button>') +
       '<button id="btnJoin">JOIN MATCH</button>' +
     '</div>' +
     '<div class="joinrow hidden" id="joinRow">' +

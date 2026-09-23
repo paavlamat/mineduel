@@ -285,7 +285,8 @@
   .overlay{
     position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;
     background:rgba(3,6,12,.87);
-    padding:56px 16px 16px;overflow-y:auto;-webkit-overflow-scrolling:touch;
+    padding:clamp(46px,6.5vh,70px) clamp(8px,1.8vw,22px) clamp(8px,1.8vh,20px);
+    overflow-y:auto;-webkit-overflow-scrolling:touch;
   }
   .overlay.hidden{display:none}
   .ovbox{
@@ -418,53 +419,100 @@
   .opt-desc{font-size:11px;color:#7c8aa5;letter-spacing:.05em;line-height:1.5}
   .opt-desc:empty{display:none}
 
-  /* ── Compact layout only for the MAIN MENU / HOTKEYS overlays ── */
+  /* ══════════════════════════════════════════════════════════
+     MAIN MENU / HOTKEYS / HOW-TO overlays
+     Everything here scales with the viewport (vh/vw based clamps)
+     so the menu grows on large screens and shrinks on small ones
+     without ever forcing the user to scroll on normal displays.
+     ══════════════════════════════════════════════════════════ */
   .ovbox.menu-pop{
-    max-width:880px;
-    padding:20px 26px 20px;
-    border-radius:22px;
+    max-width:min(100%, 1200px);
+    max-height:calc(100dvh - 84px);
+    overflow-y:auto;
+    -webkit-overflow-scrolling:touch;
+    scrollbar-width:thin;
+    padding:clamp(12px,2.4vh,30px) clamp(16px,2.6vw,44px);
+    border-radius:clamp(16px,2.6vh,28px);
   }
   .ovbox.menu-pop .big{
-    font-size:clamp(46px,8vw,68px);
-    margin-bottom:2px;
+    font-size:clamp(34px,7.2vh,80px);
+    line-height:1;
+    margin-bottom:clamp(0px,.6vh,6px);
   }
   .ovbox.menu-pop h2{
-    font-size:clamp(20px,3.4vw,32px);
-    margin:0 0 4px;
+    font-size:clamp(17px,4vh,42px);
+    margin:0 0 clamp(2px,.8vh,8px);
   }
   .ovbox.menu-pop > p{
-    font-size:11.5px;
+    font-size:clamp(10px,1.7vh,15px);
     line-height:1.5;
-    margin:0 0 12px;
+    margin:0 0 clamp(6px,1.4vh,18px);
   }
   .ovbox.menu-pop .config-section{
-    margin:8px 0;
-    padding:9px 14px 11px;
-    border-radius:14px;
+    margin:clamp(4px,1vh,12px) 0;
+    padding:clamp(7px,1.5vh,18px) clamp(11px,1.6vw,22px) clamp(8px,1.7vh,20px);
+    border-radius:clamp(10px,1.7vh,17px);
   }
-  .ovbox.menu-pop .config-section + .config-section{margin-top:8px}
+  .ovbox.menu-pop .config-section + .config-section{margin-top:clamp(4px,1vh,12px)}
   .ovbox.menu-pop .config-label{
-    font-size:9.5px;
-    margin-bottom:7px;
+    font-size:clamp(8.5px,1.45vh,12px);
+    margin-bottom:clamp(4px,1vh,12px);
     letter-spacing:.28em;
   }
-  .ovbox.menu-pop .config-options{gap:8px}
+  .ovbox.menu-pop .config-options{gap:clamp(6px,1vh,10px)}
   .ovbox.menu-pop .opt{
-    flex:1 1 130px;
-    padding:9px 12px;
-    border-radius:11px;
+    flex:1 1 clamp(110px,18vw,190px);
+    padding:clamp(7px,1.25vh,15px) clamp(10px,1.2vw,17px);
+    border-radius:clamp(9px,1.5vh,15px);
   }
-  .ovbox.menu-pop .opt-name{font-size:12.5px;margin-bottom:2px}
-  .ovbox.menu-pop .opt-desc{font-size:10px;line-height:1.3}
-  .ovbox.menu-pop .opt.active::before{top:8px;right:10px;font-size:12px}
+  .ovbox.menu-pop .opt-name{
+    font-size:clamp(11px,1.9vh,16px);
+    margin-bottom:clamp(0px,.5vh,4px);
+  }
+  .ovbox.menu-pop .opt-desc{font-size:clamp(9px,1.45vh,12.5px);line-height:1.35}
+  .ovbox.menu-pop .opt.active::before{
+    top:clamp(5px,.9vh,10px);
+    right:clamp(6px,1vw,12px);
+    font-size:clamp(10px,1.6vh,14px);
+  }
   .ovbox.menu-pop .ovbtns{
-    margin-top:10px;
-    gap:8px;
+    margin-top:clamp(5px,1.2vh,14px);
+    gap:clamp(6px,1vh,10px);
   }
+  .ovbox.menu-pop .ovbtns.sub{margin-top:clamp(4px,1vh,12px)}
   .ovbox.menu-pop button{
-    padding:10px 18px;
-    font-size:11.5px;
-    border-radius:11px;
+    padding:clamp(7px,1.5vh,15px) clamp(11px,1.7vw,24px);
+    font-size:clamp(10px,1.65vh,14px);
+    border-radius:clamp(9px,1.5vh,14px);
+  }
+  .ovbox.menu-pop .err{
+    font-size:clamp(10px,1.5vh,12.5px);
+    margin-top:clamp(4px,1vh,10px);
+  }
+  .ovbox.menu-pop .joinrow{margin-top:clamp(8px,1.6vh,18px);gap:clamp(6px,1vh,10px)}
+  .ovbox.menu-pop .joinrow input{
+    font-size:clamp(15px,2.2vh,21px);
+    padding:clamp(7px,1.3vh,13px) clamp(8px,1.2vw,12px);
+    border-radius:clamp(10px,1.6vh,15px);
+  }
+  .ovbox.menu-pop .ht-text{
+    font-size:clamp(10.5px,1.75vh,15px);
+    line-height:1.8;
+    color:#cfe4ff;
+    letter-spacing:.03em;
+  }
+  .ovbox.menu-pop .hk-row{
+    padding:clamp(5px,1vh,10px) clamp(8px,1.2vw,14px);
+    margin-bottom:clamp(4px,.9vh,8px);
+    border-radius:clamp(8px,1.3vh,12px);
+    gap:clamp(6px,1vw,12px);
+  }
+  .ovbox.menu-pop .hk-label{font-size:clamp(9.5px,1.5vh,12.5px)}
+  .ovbox.menu-pop .hk-key{
+    min-width:clamp(84px,14vw,145px);
+    padding:clamp(5px,1vh,10px) clamp(9px,1.4vw,16px);
+    font-size:clamp(10px,1.5vh,13px);
+    border-radius:clamp(7px,1.2vh,11px);
   }
 
   /* ══ HOTKEY ROWS ══ */
@@ -584,7 +632,7 @@
     .dpad button{font-size:14px;border-radius:10px}
     .tp-actions{min-width:92px;gap:6px}
     .tp-actions button{padding:8px 10px;font-size:10px}
-    .overlay{padding:52px 10px 10px}
+    .overlay{padding:48px 8px 8px}
     .ovbox{padding:26px 18px 22px;border-radius:20px}
     .ovbox h2{font-size:clamp(20px,7vw,30px)}
     .big{font-size:clamp(48px,17vw,78px);margin-bottom:12px}
@@ -597,8 +645,8 @@
     .hk-label{flex:1 1 100%;font-size:10px}
     .hk-key{flex:1 1 100%;min-width:0;padding:7px 10px;font-size:11px}
     .codeval{font-size:clamp(26px,10vw,40px);padding:12px 14px 12px 24px}
-    .ovbox.menu-pop{padding:16px 14px 16px;max-width:100%}
-    .ovbox.menu-pop .big{font-size:clamp(38px,12vw,52px)}
+    /* keep the menu two-up on phones so it stays compact */
+    .ovbox.menu-pop .opt{flex:1 1 calc(50% - 5px)}
   }
 </style>
 </head>
@@ -695,10 +743,12 @@ function sizeDesc(sizeId, mode, styleId){
   return d.cols + ' × ' + d.rows + ' · ' + d.mines + ' mines (1/' + per + ')';
 }
 
+/* Mode order shown in the menu:
+   Solo → Co-op → Duel → Territorial */
 const MODES = {
-  duel:      { id:'duel',      name:'Duel',        desc:'Race · bomb = 10s freeze' },
-  coop:      { id:'coop',      name:'Co-op',       desc:'Shared board · bomb = loss' },
   solo:      { id:'solo',      name:'Solo',        desc:'Practise · bomb = loss' },
+  coop:      { id:'coop',      name:'Co-op',       desc:'Shared board · bomb = loss' },
+  duel:      { id:'duel',      name:'Duel',        desc:'Race · bomb = 10s freeze' },
   territory: { id:'territory', name:'Territorial', desc:'Claim land · adjacent only · bomb = freeze' }
 };
 
@@ -3576,7 +3626,7 @@ function menuHTML(err){
     '<div class="config-section"><div class="config-label">BOARD STYLE</div><div class="config-options">' + styleBtns + '</div></div>' +
     '<div class="config-section"><div class="config-label">MAP SIZE</div><div class="config-options">' + sizeBtns + '</div></div>' +
     actions +
-    '<div class="ovbtns" style="margin-top:10px">' +
+    '<div class="ovbtns sub">' +
       '<button class="ghost" id="btnHowTo">📖 HOW TO PLAY</button>' +
       '<button class="ghost" id="btnHotkeys">⌨ HOTKEYS</button>' +
     '</div>' +
@@ -3628,14 +3678,14 @@ function howToHTML(){
     '<p>Clear every safe tile. Don\'t hit a mine.</p>' +
     '<div class="config-section">' +
       '<div class="config-label">READING THE NUMBERS</div>' +
-      '<div style="font-size:12.5px;line-height:1.85;color:#cfe4ff;letter-spacing:.03em">' +
+      '<div class="ht-text">' +
         'A number tells you <b style="color:#4dd8ff">how many bombs touch that tile</b>.<br>' +
         '<b style="color:#ffd166">Diagonals count too.</b> So a <b>"2"</b> means two of the eight tiles around it hide a bomb — corners included.' +
       '</div>' +
     '</div>' +
     '<div class="config-section">' +
       '<div class="config-label">THE CONTROLS</div>' +
-      '<div style="font-size:12.5px;line-height:1.85;color:#cfe4ff;letter-spacing:.03em">' +
+      '<div class="ht-text">' +
         '<b style="color:#4dd8ff">DIG</b> a tile to reveal it.<br>' +
         '<b style="color:#ff3d81">FLAG</b> a tile when you think it\'s a bomb.<br>' +
         'Clear every safe tile to win.' +

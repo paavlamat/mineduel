@@ -195,46 +195,67 @@
     -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;
   }
 
+  /* ── STUN OVERLAY (player frozen) ─────────────────────────
+     Blurred + heavily darkened so the board cannot be read
+     while the player is stunned. Pointer events are captured
+     so pan/zoom is disabled too.                            */
   .stun{
     position:absolute;inset:0;display:none;flex-direction:column;
-    align-items:center;justify-content:center;gap:6px;border-radius:12px;
-    background:radial-gradient(circle at 50% 45%, rgba(239,68,68,.72), rgba(239,68,68,.5) 55%, rgba(80,15,30,.7));
+    align-items:center;justify-content:center;gap:8px;border-radius:12px;
+    background:radial-gradient(circle at 50% 45%,
+      rgba(239,68,68,.92),
+      rgba(190,40,60,.88) 55%,
+      rgba(60,10,22,.97));
     pointer-events:none;
-    border:2px solid rgba(255,120,150,.55);
+    border:2px solid rgba(255,120,150,.65);
+    box-shadow:inset 0 0 80px rgba(0,0,0,.55);
+    -webkit-backdrop-filter:blur(18px) saturate(.35) brightness(.5);
+    backdrop-filter:blur(18px) saturate(.35) brightness(.5);
   }
-  .stun.on{display:flex}
-  .stun-emoji{font-size:clamp(1.8rem,5.5vw,3.4rem);line-height:1;animation:stunpulse 1.4s ease-in-out infinite}
+  .stun.on{display:flex;pointer-events:auto}
+  .stun-emoji{font-size:clamp(2.4rem,7vw,4.8rem);line-height:1;animation:stunpulse 1.4s ease-in-out infinite}
   .stun-title{
-    font-size:clamp(.75rem,2vw,1.2rem);letter-spacing:.4em;color:#fff;font-weight:900;
-    text-shadow:0 0 16px #ef4444;
+    font-size:clamp(1rem,2.7vw,1.7rem);letter-spacing:.4em;color:#fff;font-weight:900;
+    text-shadow:0 0 18px #ef4444;
     padding-left:.4em;
   }
   .stun-timer{
     font-family:'Courier New',monospace;
-    font-size:clamp(1.6rem,5vw,2.8rem);font-weight:900;line-height:1;
-    color:#fff;text-shadow:0 0 18px #ef4444;
+    font-size:clamp(2.2rem,6.6vw,3.9rem);font-weight:900;line-height:1;
+    color:#fff;text-shadow:0 0 22px #ef4444;
     font-variant-numeric:tabular-nums;margin-top:2px;
   }
-  .stun-sub{font-size:9.5px;letter-spacing:.32em;color:#ffb1c7;font-weight:800;margin-top:4px;padding-left:.32em}
+  .stun-sub{font-size:11.5px;letter-spacing:.32em;color:#ffb1c7;font-weight:800;margin-top:6px;padding-left:.32em}
   .stun.ice{
-    background:radial-gradient(circle at 50% 45%, rgba(56,189,248,.72), rgba(56,189,248,.5) 55%, rgba(10,40,72,.72));
-    border-color:rgba(140,220,255,.6);
+    background:radial-gradient(circle at 50% 45%,
+      rgba(56,189,248,.92),
+      rgba(30,120,180,.88) 55%,
+      rgba(8,32,58,.97));
+    border-color:rgba(140,220,255,.7);
   }
-  .stun.ice .stun-title{text-shadow:0 0 16px #38bdf8}
-  .stun.ice .stun-timer{text-shadow:0 0 18px #38bdf8}
+  .stun.ice .stun-title{text-shadow:0 0 18px #38bdf8}
+  .stun.ice .stun-timer{text-shadow:0 0 22px #38bdf8}
   .stun.ice .stun-sub{color:#a5e8ff}
   @keyframes stunpulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.08);opacity:.85}}
 
+  /* ── OPPONENT FROZEN PILL (top right, bigger) ────────────── */
   .oppstun{
-    position:absolute;top:10px;right:10px;display:none;
-    padding:6px 12px;border-radius:99px;
-    background:rgba(255,61,129,.22);border:1px solid rgba(255,61,129,.55);
-    color:#ffb1c7;font-size:10px;letter-spacing:.14em;font-weight:900;
-    pointer-events:none;z-index:2;
+    position:absolute;top:12px;right:12px;display:none;
+    padding:10px 18px;border-radius:99px;
+    background:rgba(255,61,129,.30);border:1.5px solid rgba(255,61,129,.7);
+    color:#ffb1c7;font-size:13px;letter-spacing:.16em;font-weight:900;
+    text-transform:uppercase;
+    pointer-events:none;z-index:3;
+    box-shadow:0 6px 22px rgba(255,61,129,.35), 0 0 26px rgba(255,61,129,.22);
+    white-space:nowrap;
   }
   .oppstun.on{display:block}
-  .oppstun b{color:#fff;font-size:12px}
-  .oppstun.ice{background:rgba(56,189,248,.22);border-color:rgba(140,220,255,.6);color:#a5e8ff}
+  .oppstun b{color:#fff;font-size:16px;font-variant-numeric:tabular-nums}
+  .oppstun.ice{
+    background:rgba(56,189,248,.30);border-color:rgba(140,220,255,.75);
+    color:#a5e8ff;
+    box-shadow:0 6px 22px rgba(56,189,248,.35), 0 0 26px rgba(56,189,248,.22);
+  }
 
   .controls{flex:none;display:flex;flex-direction:column;gap:8px;width:100%;align-items:center}
   .controls > div{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;width:100%}
@@ -827,6 +848,8 @@
     .codeval{font-size:clamp(26px,10vw,40px);padding:12px 14px 12px 24px}
     .ovbox.menu-pop .opt{flex:1 1 calc(50% - 5px)}
     .name-btn{min-width:100%}
+    .oppstun{font-size:11px;padding:8px 14px}
+    .oppstun b{font-size:13px}
   }
 </style>
 </head>
@@ -957,7 +980,7 @@ const STYLES = {
     terrCols:24, terrRows:24
   },
   hex: {
-    id:'hex', name:'Neon Hex',
+    id:'hex', name:'Hex Grid',
     cols:18, rows:15,
     terrCols:26, terrRows:20
   }
@@ -1010,10 +1033,10 @@ function sizeDesc(sizeId, mode, styleId){
 }
 
 const MODES = {
-  solo:      { id:'solo',      name:'Solo',        desc:'Practise · bomb = loss' },
-  coop:      { id:'coop',      name:'Co-op',       desc:'Shared board · bomb = loss' },
-  duel:      { id:'duel',      name:'Duel',        desc:'Race · bomb = 10s freeze' },
-  territory: { id:'territory', name:'Territorial', desc:'Claim land · adjacent only · bomb = freeze' }
+  solo:      { id:'solo',      name:'Solo',        desc:'🏃‍♂️‍➡️Race<br>💣Bomb = loss💥' },
+  coop:      { id:'coop',      name:'Co-op',       desc:'🙌Shared board<br>💣Bomb = loss💥' },
+  duel:      { id:'duel',      name:'Duel',        desc:'⚔️1VS1<br>💣Bomb = 10s stun⚡️' },
+  territory: { id:'territory', name:'Territorial', desc:'🏞️Claim land<br>💣Bomb = 10s stun⚡️' }
 };
 
 /* ══════════════════════════════════════════════════════════════
@@ -3266,7 +3289,7 @@ function makePanel(cls, name, color){
   panel.innerHTML =
     '<div class="phead">' +
       '<span class="dot"></span>' +
-      '<span class="pname">' + name + '</span>' +
+      '<span class="pname" style="color:' + color + '">' + escapeHtml(name) + '</span>' +
       '<span class="pkeys"></span>' +
     '</div>' +
     '<div class="pstats">' +
@@ -3290,10 +3313,10 @@ function makeTerritoryPanel(){
   panel.innerHTML =
     '<div class="phead">' +
       '<span class="dot" style="background:#4dd8ff"></span>' +
-      '<span class="pname" style="color:#4dd8ff">YOU</span>' +
+      '<span class="pname" style="color:#4dd8ff" data-nameme>YOU</span>' +
       '<span class="pname" style="color:#6b7a94;font-size:11px">VS</span>' +
       '<span class="dot" style="background:#ff3d81"></span>' +
-      '<span class="pname" style="color:#ff3d81">OPPONENT</span>' +
+      '<span class="pname" style="color:#ff3d81" data-namethem>OPPONENT</span>' +
       '<span class="pkeys"></span>' +
     '</div>' +
     '<div class="pstats">' +
@@ -3308,10 +3331,50 @@ function makeTerritoryPanel(){
     '<div class="boardwrap">' +
       '<canvas></canvas>' +
       STUN_HTML +
-      '<div class="oppstun"><span data-oemoji>💥</span> OPPONENT FROZEN <b>10.0</b></div>' +
+      '<div class="oppstun"><span data-oemoji>💥</span> <span data-oname>OPPONENT</span> FROZEN <b>10.0</b></div>' +
       '<div class="zoom-badge" data-zoombadge>⤢ 1.0×</div>' +
     '</div>';
   return panel;
+}
+
+/* ── Player-name helpers + panel header refresh ─────────────── */
+function myNameText(){
+  if (isGuest) return 'YOU';
+  return getPlayerName() || 'YOU';
+}
+function theirNameText(){
+  return G.theirName || 'OPPONENT';
+}
+
+function updatePanelNames(){
+  const myName = myNameText();
+  const theirName = theirNameText();
+  const mode = G.config.mode;
+
+  if (G.panelMe && G.panelMe._els){
+    const e = G.panelMe._els;
+    if (mode === 'solo'){
+      if (e.nameEl) e.nameEl.textContent = 'SOLO';
+    } else if (mode === 'coop'){
+      if (e.nameEl){
+        /* Both teammates share the blue name — team colour. */
+        e.nameEl.innerHTML =
+          escapeHtml(myName) +
+          ' <span style="color:#6b7a94">&amp;</span> ' +
+          escapeHtml(theirName);
+      }
+    } else if (mode === 'territory'){
+      if (e.nameMeEl)   e.nameMeEl.textContent = myName;
+      if (e.nameThemEl) e.nameThemEl.textContent = theirName;
+      if (e.oppNameEl)  e.oppNameEl.textContent = theirName;
+    } else {
+      /* duel — player's own name in blue */
+      if (e.nameEl) e.nameEl.textContent = myName;
+    }
+  }
+  if (G.panelThem && G.panelThem._els && G.panelThem._els.nameEl){
+    G.panelThem._els.nameEl.textContent = theirName;
+  }
 }
 
 function viewConfig(){
@@ -3325,7 +3388,7 @@ function buildArena(){
   const mode = G.config.mode;
   arena.classList.toggle('solo', mode === 'solo');
   arena.classList.toggle('territory', mode === 'territory');
-  if (mode === 'territory'){ buildTerritoryArena(); return; }
+  if (mode === 'territory'){ buildTerritoryArena(); updatePanelNames(); return; }
   const isSolo = mode === 'solo';
   const isCoop = mode === 'coop';
 
@@ -3342,6 +3405,7 @@ function buildArena(){
     bar:   panelA.querySelector('.pbar i'),
     stun:  panelA.querySelector('.stun'),
     keys:  panelA.querySelector('.pkeys'),
+    nameEl: panelA.querySelector('.pname'),
     panel: panelA
   };
   if (isCoop) panelA._els.keys.textContent = 'SHARED · ' + panelKeysText();
@@ -3361,12 +3425,14 @@ function buildArena(){
       bar:   panelB.querySelector('.pbar i'),
       stun:  panelB.querySelector('.stun'),
       keys:  panelB.querySelector('.pkeys'),
+      nameEl: panelB.querySelector('.pname'),
       panel: panelB
     };
     panelB._els.keys.textContent = 'LIVE VIEW';
     G.panelThem = panelB;
   }
   G.panelMe = panelA;
+  updatePanelNames();
 }
 
 function buildTerritoryArena(){
@@ -3393,6 +3459,9 @@ function buildTerritoryArena(){
     theirBar:  panel.querySelector('[data-theirbar]'),
     stun:      panel.querySelector('.stun'),
     oppStun:   panel.querySelector('.oppstun'),
+    nameMeEl:   panel.querySelector('[data-nameme]'),
+    nameThemEl: panel.querySelector('[data-namethem]'),
+    oppNameEl:  panel.querySelector('[data-oname]'),
     panel:     panel
   };
   panel.querySelector('.pkeys').textContent = panelKeysText();
@@ -4508,6 +4577,7 @@ function handleMessage(msg){
 
     case 'name': {
       G.theirName = String(msg.name || '').slice(0, 32);
+      updatePanelNames();
       break;
     }
 
@@ -5067,7 +5137,7 @@ function menuHTML(err){
     '</div>' +
     '<div class="big">💣</div>' +
     '<h2>MINE<span>DUEL</span></h2>' +
-    '<p>Race, co-operate or claim territory.<br>Same board, same seed — may the best sweeper win.</p>' +
+    '<p>Race, co-operate and claim territory.<br>May the best sweeper win.</p>' +
     '<div class="menu-grid">' +
       '<div class="menu-main">' +
         '<div class="config-section"><div class="config-label">MODE</div><div class="config-options">' + modeBtns + '</div></div>' +

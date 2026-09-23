@@ -862,36 +862,42 @@
      Firestore rules required for this build:
 
      rules_version = '2';
+
      service cloud.firestore {
        match /databases/{database}/documents {
 
+         function signedIn() {
+           return request.auth != null;
+         }
+
+         // ── Name registry: one doc per lower-cased name ──
          match /names/{nameId} {
            allow read: if true;
-           allow create: if request.auth != null;
-           allow update: if request.auth != null && (
+           allow create: if signedIn();
+           allow update: if signedIn() && (
              resource.data.linkedUids.hasAny([request.auth.uid]) ||
              request.resource.data.linkedUids.hasAny([request.auth.uid])
            );
-           allow delete: if request.auth != null &&
+           allow delete: if signedIn() &&
                           resource.data.linkedUids.hasAny([request.auth.uid]);
          }
 
+         // ── User profile: one doc per uid ──
          match /users/{userId} {
            allow read: if true;
-           allow write: if request.auth != null &&
-                        request.auth.uid == userId;
+           allow write: if signedIn() && request.auth.uid == userId;
          }
 
+         // ── Leaderboard entries: one doc per uid per config ──
          match /leaderboards/{configKey}/entries/{userId} {
            allow read: if true;
-           allow create: if request.auth != null &&
-                         request.auth.uid == userId;
-           allow update: if request.auth != null && (
+           allow create, delete: if signedIn() &&
+                                  request.auth.uid == userId;
+           allow update: if signedIn() && (
              request.auth.uid == userId ||
-             request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name'])
+             request.resource.data.diff(resource.data)
+               .affectedKeys().hasOnly(['name'])
            );
-           allow delete: if request.auth != null &&
-                         request.auth.uid == userId;
          }
        }
      }
@@ -1709,6 +1715,35 @@ function initFirebase(){
 }
 initFirebase();
 
+/* Retry sign-in helper. Resolves to a user or null (never throws). */
+function trySignIn(){
+  return new Promise(resolve => {
+    if (!auth){ resolve(null); return; }
+    let done = false;
+    const finish = u => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      resolve(u || null);
+    };
+    const timer = setTimeout(() => {
+      console.warn('[fb] sign-in timed out');
+      finish(null);
+    }, 9000);
+    try {
+      auth.signInAnonymously()
+        .then(cred => { fbUser = cred.user; finish(cred.user); })
+        .catch(err => {
+          console.warn('[fb] sign-in failed:', err && (err.code || err.message));
+          finish(null);
+        });
+    } catch(e){
+      console.warn('[fb] sign-in threw:', e);
+      finish(null);
+    }
+  });
+}
+
 const LB_TTL = 45 * 1000;
 const lbCache = new Map();
 
@@ -1759,6 +1794,19 @@ function validateName(raw){
   return { name: trimmed, key: trimmed.toLowerCase() };
 }
 
+function firebaseErrorMessage(e){
+  const code = (e && e.code) || '';
+  if (code === 'auth/operation-not-allowed')
+    return 'Anonymous sign-in is disabled in Firebase (Authentication → Sign-in method).';
+  if (code === 'auth/network-request-failed')
+    return 'Network problem — check your connection and try again.';
+  if (code === 'permission-denied')
+    return 'Server rejected the request (check Firestore rules).';
+  if (code === 'unavailable')
+    return 'Server unavailable — try again in a moment.';
+  return (e && e.message) || 'Something went wrong';
+}
+
 function formatTime(ms){
   if (!ms || ms <= 0) return '—';
   const s = ms / 1000;
@@ -1784,16 +1832,91 @@ async function fetchLeaderboard(mode, style, size, cat){
   return out;
 }
 
+/* ══════════════════════════════════════════════════════════════
+   NAME REGISTRATION
+   ══════════════════════════════════════════════════════════════ */
+
+/*
+ * Registers / changes the player's name. Never throws for network
+ * reasons — it simply falls back to a local-only name so the player
+ * is never blocked from playing. It DOES throw for "name taken" and
+ * validation errors.
+ */
+async function registerName(raw, isChange){
+  const v = validateName(raw);
+  if (v.error) throw new Error(v.error);
+  const name = v.name;
+  const key  = v.key;
+
+  await fbReadyPromise;
+
+  if (!db || !auth){
+    // Firebase unavailable — local only.
+    setPlayerName(name); setPlayerNameKey(key);
+    return { name, offline: true };
+  }
+
+  let user = auth.currentUser;
+  if (!user) user = await trySignIn();
+
+  if (!user){
+    // Auth unreachable — keep it local so the player can still play.
+    console.warn('[fb] auth unavailable — name saved locally only');
+    setPlayerName(name); setPlayerNameKey(key);
+    return { name, offline: true };
+  }
+
+  if (isChange) await changePlayerName(name);
+  else          await reserveName(name, user.uid);
+
+  setPlayerName(name);
+  setPlayerNameKey(key);
+  return { name, offline: false };
+}
+
+/*
+ * Verifies the locally-stored name is a real, server-side ("logged")
+ * name linked to this browser's uid. Used before submitting a score.
+ */
+async function isNameRegisteredOnServer(){
+  if (!db || !auth || !auth.currentUser) return false;
+  const nameKey = getPlayerNameKey();
+  if (!nameKey) return false;
+  const uid = auth.currentUser.uid;
+  try {
+    const snap = await db.collection('names').doc(nameKey).get();
+    if (!snap.exists) return false;
+    const data = snap.data() || {};
+    return (data.linkedUids || []).indexOf(uid) !== -1;
+  } catch(e){
+    console.warn('[fb] name verification failed:', e && (e.code || e.message));
+    return false;
+  }
+}
+
 async function recordWin(mode, style, size, timeMs){
-  if (!db) return;
+  if (!db || !auth) return;
+
   /* Guest mode must NEVER register anything on the leaderboard. */
   if (isGuest) return;
+
   const name = getPlayerName();
   const nameKey = getPlayerNameKey();
   if (!name || !nameKey) return;
+
   await fbReadyPromise;
-  if (!auth || !auth.currentUser) return;
+  if (!auth.currentUser) return;
   const uid = auth.currentUser.uid;
+
+  /* ── REQUIREMENT ──────────────────────────────────────────────
+     Only submit the score if this name is a registered ("logged")
+     name on the server AND it belongs to this browser's uid.     */
+  const registered = await isNameRegisteredOnServer();
+  if (!registered){
+    console.warn('[fb] "' + name + '" is not a registered name — score not submitted');
+    return;
+  }
+
   const key = lbKey(mode, style, size);
   const ref = db.collection('leaderboards').doc(key).collection('entries').doc(uid);
   const isDuel = (mode === 'duel');
@@ -1835,13 +1958,11 @@ async function ensurePlayerName(){
   const localName = getPlayerName();
   const localKey = getPlayerNameKey();
   if (!localName || !localKey) return false;
-  if (!db || !auth) return true;
 
-  /* Wait for auth to be actually ready (user or definitive failure). */
   await fbReadyPromise;
 
-  /* No signed-in user — keep the local name as-is (offline fallback). */
-  if (!auth.currentUser) return true;
+  /* Offline / auth unavailable — trust the local name. */
+  if (!db || !auth || !auth.currentUser) return true;
 
   const uid = auth.currentUser.uid;
   try {
@@ -1849,7 +1970,8 @@ async function ensurePlayerName(){
     if (!snap.exists) return false;
     const data = snap.data() || {};
     const uids = data.linkedUids || [];
-    if (!uids.includes(uid)) return false;
+    if (uids.indexOf(uid) === -1) return false;
+
     await db.collection('users').doc(uid).set({
       name: localName,
       nameKey: localKey,
@@ -1857,7 +1979,7 @@ async function ensurePlayerName(){
     }, { merge: true });
     return true;
   } catch(e){
-    console.warn('[fb] ensurePlayerName:', e);
+    console.warn('[fb] ensurePlayerName:', e && (e.code || e.message));
     return true;
   }
 }
@@ -1876,7 +1998,7 @@ async function reserveName(rawName, uid){
     if (nameSnap.exists){
       const data = nameSnap.data() || {};
       const uids = data.linkedUids || [];
-      if (!uids.includes(uid)) throw new Error('That name is already taken');
+      if (uids.indexOf(uid) === -1) throw new Error('That name is already taken');
       tx.set(userRef, {
         name: data.displayName || name,
         nameKey: key,
@@ -1897,8 +2019,6 @@ async function reserveName(rawName, uid){
     });
   });
 
-  setPlayerName(name);
-  setPlayerNameKey(key);
   console.log('[fb] reserved name "' + name + '" for uid', uid);
   return { name, key };
 }
@@ -1931,7 +2051,7 @@ async function changePlayerName(newRaw){
     const newSnap = await tx.get(newRef);
     if (newSnap.exists){
       const nd = newSnap.data() || {};
-      if (!(nd.linkedUids || []).includes(uid)) throw new Error('That name is already taken');
+      if ((nd.linkedUids || []).indexOf(uid) === -1) throw new Error('That name is already taken');
     }
 
     let oldSnap = null;
@@ -1947,8 +2067,8 @@ async function changePlayerName(newRaw){
     } else {
       const nd = newSnap.data() || {};
       const uids = nd.linkedUids || [];
-      if (!uids.includes(uid)){
-        tx.update(newRef, { count: (nd.count || 0) + 1, linkedUids: [...uids, uid] });
+      if (uids.indexOf(uid) === -1){
+        tx.update(newRef, { count: (nd.count || 0) + 1, linkedUids: uids.concat([uid]) });
       }
     }
 
@@ -2003,10 +2123,10 @@ async function applyLinkedName(hostName, hostKey){
     displayName = nd.displayName || hostName;
     const uids = nd.linkedUids || [];
 
-    if (!uids.includes(uid)){
+    if (uids.indexOf(uid) === -1){
       tx.update(newRef, {
         count: (nd.count || 0) + 1,
-        linkedUids: [...uids, uid]
+        linkedUids: uids.concat([uid])
       });
     }
 
@@ -2195,13 +2315,6 @@ async function refreshLeaderboard(force){
     if (overlay.querySelector('.menu-lb')) updateLeaderboardDOM();
   }
 }
-
-fbReadyPromise.then(() => {
-  if (G.state === 'lobby' && G.config){
-    LB_STATE.error = null;
-    refreshLeaderboard(true);
-  }
-});
 
 /* ══════════════════════════════════════════════════════════════
    STATE
@@ -3495,6 +3608,38 @@ function countLand(boardState, owner){
       if (boardState.owner[r][c] === owner) n++;
   return n;
 }
+function countRevealedTiles(boardState){
+  if (!boardState) return 0;
+  let n = 0;
+  for (let r = 0; r < boardState.rows; r++)
+    for (let c = 0; c < boardState.cols; c++)
+      if (boardState.revealed[r][c]) n++;
+  return n;
+}
+
+/* ── % of the map each player has uncovered (multiplayer only) ── */
+function mapRevealStats(){
+  const mode = G.config.mode;
+  if (mode === 'solo') return null;
+  if (!G.board || !G.myBoard) return null;
+  const total = Math.max(1, G.board.rows * G.board.cols);
+
+  let mine, theirs;
+  if (mode === 'duel'){
+    mine   = countRevealedTiles(G.myBoard)    / total * 100;
+    theirs = countRevealedTiles(G.theirBoard) / total * 100;
+  } else {
+    const c1 = countLand(G.myBoard, 1);
+    const c2 = countLand(G.myBoard, 2);
+    mine   = ((G.myOwner === 1) ? c1 : c2) / total * 100;
+    theirs = ((G.myOwner === 1) ? c2 : c1) / total * 100;
+  }
+  return {
+    mine:   clamp(mine, 0, 100),
+    theirs: clamp(theirs, 0, 100)
+  };
+}
+
 function canTouchTerritoryRaw(boardState, board, r, c, owner){
   if (!boardState || !boardState.owner || !board) return true;
   if (boardState.owner[r][c] === owner) return true;
@@ -3799,7 +3944,9 @@ function endTerritoryScreen(land1, land2){
   if (G.state === 'over') return;
   const mine   = (G.myOwner === 1) ? land1 : land2;
   const theirs = (G.myOwner === 1) ? land2 : land1;
-  const total  = G.board ? G.board.safeCount : (mine + theirs);
+  const total  = Math.max(1, G.board ? (G.board.rows * G.board.cols) : (mine + theirs));
+  const minePct   = (mine   / total * 100);
+  const theirsPct = (theirs / total * 100);
 
   let result, icon, title, sub;
   if (mine > theirs){
@@ -3815,7 +3962,8 @@ function endTerritoryScreen(land1, land2){
   const cards =
     '<div class="statcard win"><div class="slabel">YOUR LAND</div><div class="sval">' + mine + '</div></div>' +
     '<div class="statcard lose"><div class="slabel">THEIR LAND</div><div class="sval">' + theirs + '</div></div>' +
-    '<div class="statcard"><div class="slabel">TOTAL</div><div class="sval">' + total + '</div></div>';
+    '<div class="statcard"><div class="slabel">YOU REVEALED</div><div class="sval">' + minePct.toFixed(0) + '%</div></div>' +
+    '<div class="statcard"><div class="slabel">THEY REVEALED</div><div class="sval">' + theirsPct.toFixed(0) + '%</div></div>';
   endGame(result, icon, title, sub, performance.now() - G.startTime, cards);
 }
 
@@ -4367,6 +4515,9 @@ let linkPeer = null;
 /* Session-only guest flag — deliberately NOT persisted to storage.
    Guest sessions never register leaderboard scores. */
 let isGuest = false;
+/* False until the initial Firebase/name check has finished. Prevents
+   the main menu from flashing before the name popup appears. */
+let booted = false;
 
 /* ── Name entry popup ─────────────────────────────────────────── */
 function showNameEntryPopup(opts){
@@ -4412,42 +4563,25 @@ function showNameEntryPopup(opts){
     errEl.textContent = '';
     btnSubmit.disabled = true;
     const raw = input ? input.value : '';
+
+    const v = validateName(raw);
+    if (v.error){
+      errEl.textContent = v.error;
+      btnSubmit.disabled = false;
+      return;
+    }
+
     try {
-      const v = validateName(raw);
-      if (v.error) throw new Error(v.error);
-
-      /* Wait for Firebase to be ready — the old code fell back to
-         localStorage whenever auth.currentUser was null, which was
-         the case while anonymous sign-in was still in-flight. */
-      await fbReadyPromise;
-
-      if (!db || !auth){
-        // Firebase SDK unavailable — save locally only.
-        setPlayerName(v.name);
-        setPlayerNameKey(v.key);
-        isGuest = false;
-        finish(v.name);
-        return;
-      }
-
-      // Make sure we have a signed-in user (retry once as safety net).
-      if (!auth.currentUser){
-        try {
-          const cred = await auth.signInAnonymously();
-          fbUser = cred.user;
-        } catch(e){
-          throw new Error('Could not reach the server. Check your connection and try again.');
-        }
-      }
-
-      const uid = auth.currentUser.uid;
-      let result;
-      if (isChange) result = await changePlayerName(raw);
-      else          result = await reserveName(raw, uid);
+      /* registerName() handles: validation, waiting for Firebase,
+         signing in if needed, and falling back to a local-only name
+         if the network / auth is unreachable — so the player is never
+         locked out by a transient server problem. It only throws for
+         real errors like "that name is already taken". */
+      await registerName(raw, isChange);
       isGuest = false;
-      finish(result.name);
+      finish(v.name);
     } catch(e){
-      errEl.textContent = (e && e.message) || 'Something went wrong';
+      errEl.textContent = firebaseErrorMessage(e);
       btnSubmit.disabled = false;
     }
   };
@@ -4917,8 +5051,24 @@ function idleOverlay(){
   controls.innerHTML = '';
   cleanupNet();
   setStatus('OFFLINE', '');
+
+  /* While the very first Firebase/name check is still running we
+     show a "Connecting…" splash instead of the menu, so the menu
+     never flashes before the name popup appears. */
+  if (!booted){ showBootScreen(); return; }
+
   renderMenu('');
   refreshLeaderboard(true);
+}
+
+function showBootScreen(){
+  showOverlay(
+    '<div class="ovbox menu-pop">' +
+      '<div class="big">💣</div>' +
+      '<h2>MINE<span>DUEL</span></h2>' +
+      '<p><span class="spin"></span>Connecting…</p>' +
+    '</div>'
+  );
 }
 
 function waitHTML(icon, title, body){
@@ -5390,7 +5540,8 @@ function endGame(result, icon, title, sub, elapsed, cards){
   if (G.me) G.me.done = true;
   clearHeldKeys();
 
-  /* ── Leaderboard: record a win (guests are skipped) ── */
+  /* ── Leaderboard: record a win (guests are skipped, and the
+        server-side name is verified inside recordWin()) ── */
   if (result === 'win' && G.config && elapsed > 0){
     try {
       recordWin(
@@ -5419,6 +5570,14 @@ function endGame(result, icon, title, sub, elapsed, cards){
       '<div class="statcard"><div class="slabel">YOUR HITS</div><div class="sval">' + (G.me ? G.me.hits : 0) + '</div></div>';
     if (G.them){
       cardsHtml += '<div class="statcard lose"><div class="slabel">THEIR HITS</div><div class="sval">' + G.them.hits + '</div></div>';
+    }
+    /* In every multiplayer mode, show how much of the map each
+       player has uncovered. */
+    const pct = mapRevealStats();
+    if (pct){
+      cardsHtml +=
+        '<div class="statcard win"><div class="slabel">YOU REVEALED</div><div class="sval">' + pct.mine.toFixed(0) + '%</div></div>' +
+        '<div class="statcard lose"><div class="slabel">THEY REVEALED</div><div class="sval">' + pct.theirs.toFixed(0) + '%</div></div>';
     }
   }
 
@@ -5619,31 +5778,40 @@ window.addEventListener('pagehide', () => {
    ══════════════════════════════════════════════════════════════ */
 idleOverlay();
 
-fbReadyPromise.then(async () => {
-  if (G.state !== 'lobby') return;
-  /* Guest mode is intentionally NOT remembered between visits — if the
-     browser has no saved name, we always prompt again on load. */
-  const ok = await ensurePlayerName();
-  if (!ok){
-    showNameEntryPopup({
-      onSuccess: () => {
-        menuView = 'main';
-        renderMenu('');
-        refreshLeaderboard(true);
-      },
-      onGuest: () => {
-        isGuest = true;
-        menuView = 'main';
-        renderMenu('');
-        refreshLeaderboard(true);
-      }
-    });
-  } else {
-    isGuest = false;
+(async function boot(){
+  try {
+    await fbReadyPromise;
+    const ok = await ensurePlayerName();
+
+    booted = true;
+
+    if (G.state !== 'lobby') return;
+
+    if (ok){
+      isGuest = false;
+      renderMenu('');
+      refreshLeaderboard(true);
+    } else {
+      showNameEntryPopup({
+        onSuccess: () => {
+          menuView = 'main';
+          renderMenu('');
+          refreshLeaderboard(true);
+        },
+        onGuest: () => {
+          isGuest = true;
+          menuView = 'main';
+          renderMenu('');
+          refreshLeaderboard(true);
+        }
+      });
+    }
+  } catch(e){
+    console.warn('[boot] failed:', e);
+    booted = true;
     renderMenu('');
-    refreshLeaderboard(true);
   }
-});
+})();
 
 })();
 </script>

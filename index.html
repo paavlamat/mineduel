@@ -35,7 +35,7 @@
   }
   .hidden{display:none !important}
   #app{
-    position:relative;z-index:1;
+    position:relative;
     width:100%;max-width:1900px;margin:0 auto;
     flex:1;min-height:0;
     display:flex;flex-direction:column;gap:8px;align-items:stretch;
@@ -45,6 +45,7 @@
   }
   header{
     flex:none;
+    position:relative;z-index:60;
     display:flex;align-items:center;justify-content:space-between;
     gap:10px;width:100%;flex-wrap:wrap;
     padding:2px 0;
@@ -62,24 +63,30 @@
   #statusbar{
     display:inline-flex;align-items:center;gap:8px;
     font-size:11px;letter-spacing:.2em;color:#8b9ab4;font-weight:800;
-    background:rgba(255,255,255,.035);
+    background:rgba(6,10,18,.72);
     border:1px solid rgba(255,255,255,.08);
     padding:8px 16px;border-radius:99px;
     transition:all .3s;
+    -webkit-backdrop-filter:blur(8px);
+    backdrop-filter:blur(8px);
   }
+  body.menu-open #statusbar{display:none}
   #statusbar .led{width:8px;height:8px;border-radius:50%;background:#64748b;transition:all .3s}
-  #statusbar.live{border-color:rgba(52,211,153,.4);background:rgba(52,211,153,.08);color:#a7f3d0}
+  #statusbar.live{border-color:rgba(52,211,153,.4);background:rgba(6,26,20,.8);color:#a7f3d0}
   #statusbar.live .led{background:#34d399;box-shadow:0 0 16px #34d399}
-  #statusbar.warn{border-color:rgba(251,191,36,.4);background:rgba(251,191,36,.08);color:#fde68a}
+  #statusbar.warn{border-color:rgba(251,191,36,.4);background:rgba(30,22,4,.8);color:#fde68a}
   #statusbar.warn .led{background:#fbbf24;box-shadow:0 0 16px #fbbf24}
-  #statusbar.bad{border-color:rgba(255,61,129,.4);background:rgba(255,61,129,.08);color:#ffb1c7}
+  #statusbar.bad{border-color:rgba(255,61,129,.4);background:rgba(30,6,14,.8);color:#ffb1c7}
   #statusbar.bad .led{background:#ff3d81;box-shadow:0 0 16px #ff3d81}
 
   .fs-btn{
-    width:38px;height:38px;padding:0;flex:none;
+    width:40px;height:40px;padding:0;flex:none;
     display:inline-flex;align-items:center;justify-content:center;
     font-size:18px;line-height:1;letter-spacing:0;
     border-radius:50%;
+    background:rgba(6,10,18,.72);
+    -webkit-backdrop-filter:blur(8px);
+    backdrop-filter:blur(8px);
   }
   .fs-btn svg{width:18px;height:18px;display:block;pointer-events:none}
   .fs-btn svg path,
@@ -278,28 +285,48 @@
   .overlay{
     position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;
     background:rgba(3,6,12,.87);
-    padding:16px;overflow-y:auto;-webkit-overflow-scrolling:touch;
+    padding:56px 16px 16px;overflow-y:auto;-webkit-overflow-scrolling:touch;
   }
   .overlay.hidden{display:none}
   .ovbox{
-    text-align:center;padding:32px 28px;border-radius:24px;max-width:640px;width:100%;
+    text-align:center;padding:38px 34px 34px;border-radius:28px;max-width:760px;width:100%;
     background:
-      radial-gradient(800px 480px at 50% 0%, rgba(77,216,255,.12), transparent 60%),
+      radial-gradient(900px 520px at 50% 0%, rgba(77,216,255,.13), transparent 62%),
       rgba(11,17,29,.97);
     border:1px solid rgba(255,255,255,.14);
     margin:auto;
+    box-shadow:0 50px 110px -50px #000, 0 0 0 1px rgba(77,216,255,.06) inset;
   }
-  .ovbox h2{margin:0 0 12px;font-size:clamp(20px,4vw,34px);letter-spacing:.16em;color:#fff;font-weight:900}
+  .ovbox h2{margin:0 0 14px;font-size:clamp(24px,4.6vw,44px);letter-spacing:.16em;color:#fff;font-weight:900}
   .ovbox h2 span{color:#4dd8ff}
-  .ovbox > p{margin:0 0 20px;font-size:13px;line-height:1.9;color:#8b9ab4;letter-spacing:.05em}
+  .ovbox > p{margin:0 0 22px;font-size:13.5px;line-height:1.9;color:#8b9ab4;letter-spacing:.05em}
   .ovbox > p b{font-weight:800}
   .ovbtns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:6px}
-  .big{font-size:clamp(48px,12vw,84px);line-height:1;margin-bottom:14px}
+  .big{font-size:clamp(58px,14vw,104px);line-height:1;margin-bottom:16px}
   .cd{
     font-size:clamp(80px,22vw,180px);font-weight:900;
     letter-spacing:.06em;color:#fff;line-height:1;
     text-shadow:0 0 34px #4dd8ff,0 0 80px #4dd8ff;
   }
+
+  /* ── menu pop-in animations ────────────────────────────── */
+  @keyframes ovPop{
+    0%{ transform:scale(.88) translateY(14px); opacity:0; }
+    55%{ transform:scale(1.015) translateY(-3px); opacity:1; }
+    100%{ transform:scale(1) translateY(0); opacity:1; }
+  }
+  /* Bomb drop: starts TINY and tilted LEFT, expands FAST while sweeping
+     the rotation to the RIGHT, then settles at full size. It never
+     shrinks back down after the growth phase. */
+  @keyframes bombDrop{
+    0%   { transform:translateY(-12px) scale(.10) rotate(-42deg); opacity:0; }
+    10%  { opacity:1; }
+    55%  { transform:translateY(0)     scale(1.06) rotate(6deg);  opacity:1; }
+    100% { transform:translateY(0)     scale(1)    rotate(0deg);  opacity:1; }
+  }
+
+  .ovbox.menu-pop{ animation:ovPop .30s cubic-bezier(.22,1.2,.4,1) both; }
+  .ovbox.menu-pop .big{ animation:bombDrop .45s cubic-bezier(.2,.9,.3,1) both; }
 
   .statrow{display:flex;gap:10px;justify-content:center;margin:16px 0 6px;flex-wrap:wrap}
   .statcard{flex:0 1 130px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);border-radius:12px;padding:10px 12px;text-align:center}
@@ -308,13 +335,16 @@
   .statcard.win .sval{color:#8affc1}
   .statcard.lose .sval{color:#ff6b8a}
 
-  .codebox{display:flex;gap:16px;align-items:center;justify-content:center;margin:20px 0 8px;flex-wrap:wrap}
+  .codebox{display:flex;gap:16px;align-items:center;justify-content:center;margin:22px 0 8px;flex-wrap:wrap}
   .codeval{
     font-size:clamp(32px,9vw,56px);font-weight:900;letter-spacing:.32em;
     padding:14px 20px 14px 32px;border-radius:18px;color:#4dd8ff;
     background:linear-gradient(180deg,rgba(77,216,255,.12),rgba(77,216,255,.05));
     border:2px dashed rgba(77,216,255,.55);
-    font-family:'Courier New',monospace;cursor:pointer;transition:all .2s;user-select:all;
+    font-family:'Courier New',monospace;cursor:pointer;transition:all .2s;
+    -webkit-user-select:none;user-select:none;
+    -webkit-touch-callout:none;
+    -webkit-tap-highlight-color:transparent;
   }
   .codeval:hover{
     background:linear-gradient(180deg,rgba(77,216,255,.2),rgba(77,216,255,.1));
@@ -338,12 +368,12 @@
     vertical-align:-3px;margin-right:8px;
   }
   @keyframes sp{to{transform:rotate(360deg)}}
-  .err{color:#ff6b8a;font-size:12px;letter-spacing:.08em;margin-top:12px;min-height:16px;font-weight:700}
+  .err{color:#ff6b8a;font-size:12px;letter-spacing:.08em;margin-top:10px;min-height:14px;font-weight:700}
 
-  /* ══ MENU CONFIG SECTIONS — MORE SEPARATED ══ */
+  /* ══ MENU CONFIG SECTIONS ══ */
   .config-section{
     margin:22px 0;
-    padding:16px 16px 18px;
+    padding:18px 18px 20px;
     border-radius:16px;
     background:rgba(255,255,255,.022);
     border:1px solid rgba(255,255,255,.06);
@@ -352,7 +382,7 @@
     text-align:left;
     position:relative;
   }
-  .config-section + .config-section{margin-top:26px}
+  .config-section + .config-section{margin-top:24px}
   .config-label{
     font-size:10.5px;letter-spacing:.32em;color:#7fb0e0;font-weight:900;
     margin-bottom:12px;
@@ -364,7 +394,7 @@
   }
   .config-options{display:flex;gap:10px;flex-wrap:wrap}
   .opt{
-    flex:1 1 140px;padding:14px 16px;text-align:left;border-radius:14px;
+    flex:1 1 150px;padding:14px 16px;text-align:left;border-radius:14px;
     background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.02));
     border:1px solid rgba(255,255,255,.12);
     cursor:pointer;transition:all .2s cubic-bezier(.4,0,.2,1);
@@ -388,15 +418,102 @@
   .opt-desc{font-size:11px;color:#7c8aa5;letter-spacing:.05em;line-height:1.5}
   .opt-desc:empty{display:none}
 
+  /* ── Compact layout only for the MAIN MENU / HOTKEYS overlays ── */
+  .ovbox.menu-pop{
+    max-width:880px;
+    padding:20px 26px 20px;
+    border-radius:22px;
+  }
+  .ovbox.menu-pop .big{
+    font-size:clamp(46px,8vw,68px);
+    margin-bottom:2px;
+  }
+  .ovbox.menu-pop h2{
+    font-size:clamp(20px,3.4vw,32px);
+    margin:0 0 4px;
+  }
+  .ovbox.menu-pop > p{
+    font-size:11.5px;
+    line-height:1.5;
+    margin:0 0 12px;
+  }
+  .ovbox.menu-pop .config-section{
+    margin:8px 0;
+    padding:9px 14px 11px;
+    border-radius:14px;
+  }
+  .ovbox.menu-pop .config-section + .config-section{margin-top:8px}
+  .ovbox.menu-pop .config-label{
+    font-size:9.5px;
+    margin-bottom:7px;
+    letter-spacing:.28em;
+  }
+  .ovbox.menu-pop .config-options{gap:8px}
+  .ovbox.menu-pop .opt{
+    flex:1 1 130px;
+    padding:9px 12px;
+    border-radius:11px;
+  }
+  .ovbox.menu-pop .opt-name{font-size:12.5px;margin-bottom:2px}
+  .ovbox.menu-pop .opt-desc{font-size:10px;line-height:1.3}
+  .ovbox.menu-pop .opt.active::before{top:8px;right:10px;font-size:12px}
+  .ovbox.menu-pop .ovbtns{
+    margin-top:10px;
+    gap:8px;
+  }
+  .ovbox.menu-pop button{
+    padding:10px 18px;
+    font-size:11.5px;
+    border-radius:11px;
+  }
+
+  /* ══ HOTKEY ROWS ══ */
+  .hk-row{
+    display:flex;align-items:center;gap:10px;
+    padding:7px 10px;border-radius:11px;
+    background:rgba(255,255,255,.03);
+    border:1px solid rgba(255,255,255,.07);
+    margin-bottom:6px;
+  }
+  .hk-row:last-child{margin-bottom:0}
+  .hk-label{
+    flex:1;min-width:0;
+    font-size:10.5px;letter-spacing:.16em;color:#b8cbe4;font-weight:800;
+  }
+  .hk-key{
+    min-width:108px;text-align:center;
+    padding:7px 12px;border-radius:9px;
+    font-family:'Courier New',monospace;
+    font-size:11.5px;font-weight:900;letter-spacing:.08em;
+    background:linear-gradient(180deg,rgba(77,216,255,.16),rgba(77,216,255,.06));
+    border:1px solid rgba(77,216,255,.5);
+    color:#4dd8ff;cursor:pointer;transition:all .18s;
+    -webkit-user-select:none;user-select:none;
+  }
+  .hk-key:hover{
+    background:linear-gradient(180deg,rgba(77,216,255,.28),rgba(77,216,255,.12));
+    transform:translateY(-1px);
+  }
+  .hk-key.listening{
+    background:linear-gradient(180deg,rgba(255,209,102,.30),rgba(255,209,102,.12));
+    border-color:#ffd166;color:#ffd166;
+    animation:hkPulse .85s ease-in-out infinite;
+  }
+  @keyframes hkPulse{0%,100%{opacity:1}50%{opacity:.5}}
+
   #modal{z-index:70}
-  .confirm{padding:28px 24px;max-width:440px}
+  .confirm{padding:28px 24px;max-width:460px}
   .confirm h2{font-size:clamp(18px,4vw,26px);margin-bottom:8px}
   .confirm p{margin-bottom:18px;font-size:12px;line-height:1.8}
 
   .ovbox.mapreview{
     max-width:min(96vw,1100px);width:min(96vw,1100px);
-    max-height:94dvh;height:94dvh;padding:16px;
+    max-height:min(94dvh, calc(100dvh - 80px));
+    height:min(94dvh, calc(100dvh - 80px));
+    padding:16px;
     display:flex;flex-direction:column;gap:12px;text-align:center;
+    border-radius:20px;
+    animation:none;
   }
   .mapreview h2{flex:none;font-size:clamp(14px,2.6vw,20px);margin:0;letter-spacing:.18em}
   .mapreview-canvas{
@@ -427,7 +544,7 @@
   .zoom-badge.on{display:inline-flex;align-items:center;gap:6px}
 
   .terr-unlock{
-    position:fixed;inset:0;z-index:60;
+    position:fixed;inset:0;z-index:65;
     display:flex;align-items:center;justify-content:center;
     pointer-events:none;padding:16px;
   }
@@ -457,7 +574,7 @@
     h1{font-size:15px;letter-spacing:.16em}
     #statusbar{padding:6px 12px;font-size:10px;letter-spacing:.16em}
     #statusbar .led{width:7px;height:7px}
-    .fs-btn{width:32px;height:32px}
+    .fs-btn{width:34px;height:34px}
     .fs-btn svg{width:16px;height:16px}
     .panel{padding:8px;border-radius:12px}
     .phead{margin-bottom:5px}
@@ -467,13 +584,21 @@
     .dpad button{font-size:14px;border-radius:10px}
     .tp-actions{min-width:92px;gap:6px}
     .tp-actions button{padding:8px 10px;font-size:10px}
-    .ovbox{padding:22px 16px;border-radius:18px}
-    .big{font-size:clamp(40px,10vw,64px);margin-bottom:10px}
+    .overlay{padding:52px 10px 10px}
+    .ovbox{padding:26px 18px 22px;border-radius:20px}
+    .ovbox h2{font-size:clamp(20px,7vw,30px)}
+    .big{font-size:clamp(48px,17vw,78px);margin-bottom:12px}
     .ovbtns{gap:8px}
     .statcard{flex:0 1 100px;padding:8px 10px}
     .statcard .sval{font-size:18px}
     .config-options .opt{flex:1 1 100%}
-    .config-section{padding:12px 12px 14px;margin:16px 0}
+    .config-section{padding:12px 12px 14px;margin:14px 0}
+    .hk-row{flex-wrap:wrap;gap:6px;padding:6px 9px}
+    .hk-label{flex:1 1 100%;font-size:10px}
+    .hk-key{flex:1 1 100%;min-width:0;padding:7px 10px;font-size:11px}
+    .codeval{font-size:clamp(26px,10vw,40px);padding:12px 14px 12px 24px}
+    .ovbox.menu-pop{padding:16px 14px 16px;max-width:100%}
+    .ovbox.menu-pop .big{font-size:clamp(38px,12vw,52px)}
   }
 </style>
 </head>
@@ -515,10 +640,9 @@ const HEARTBEAT_TIMEOUT = 5500;
 const TARGET_FPS = 120;
 const FRAME_MIN_MS = 1000 / TARGET_FPS;
 const PAN_SPEED_CSS = 900;
+const ZOOM_RATE = 2.4;          /* exp factor per second while held */
 
-/* Deterministic solver effort: we walk attempts in a fixed order so host &
-   guest always derive the same board from the same seed. */
-const SOLVER_MAX_ATTEMPTS = 40;
+const SOLVER_MAX_ATTEMPTS = 60;
 
 /* ── Per-style bomb density ───────────────────────────────────
    Square   : 1 bomb per 4 tiles
@@ -577,6 +701,80 @@ const MODES = {
   solo:      { id:'solo',      name:'Solo',        desc:'Practise · bomb = loss' },
   territory: { id:'territory', name:'Territorial', desc:'Claim land · adjacent only · bomb = freeze' }
 };
+
+/* ══════════════════════════════════════════════════════════════
+   HOTKEYS  (persisted on the device)
+   ══════════════════════════════════════════════════════════════ */
+const HOTKEY_STORE = 'mineduel-hotkeys-v1';
+
+const DEFAULT_HOTKEYS = {
+  up:      'ArrowUp',
+  down:    'ArrowDown',
+  left:    'ArrowLeft',
+  right:   'ArrowRight',
+  dig:     'Space',
+  flag:    'KeyF',
+  zoomIn:  'ControlLeft',
+  zoomOut: 'ShiftLeft'
+};
+
+const HOTKEYS = Object.assign({}, DEFAULT_HOTKEYS);
+
+function loadHotkeys(){
+  try {
+    const raw = localStorage.getItem(HOTKEY_STORE);
+    if (!raw) return;
+    const obj = JSON.parse(raw);
+    if (!obj || typeof obj !== 'object') return;
+    for (const k in DEFAULT_HOTKEYS){
+      if (typeof obj[k] === 'string' && obj[k]) HOTKEYS[k] = obj[k];
+    }
+  } catch(e){}
+}
+function saveHotkeys(){
+  try { localStorage.setItem(HOTKEY_STORE, JSON.stringify(HOTKEYS)); } catch(e){}
+}
+function resetHotkeys(){
+  for (const k in DEFAULT_HOTKEYS) HOTKEYS[k] = DEFAULT_HOTKEYS[k];
+  saveHotkeys();
+}
+loadHotkeys();
+
+const PRETTY = {
+  ArrowUp:'↑', ArrowDown:'↓', ArrowLeft:'←', ArrowRight:'→',
+  Space:'SPACE', ControlLeft:'L‑CTRL', ControlRight:'R‑CTRL',
+  ShiftLeft:'L‑SHIFT', ShiftRight:'R‑SHIFT',
+  AltLeft:'L‑ALT', AltRight:'R‑ALT',
+  MetaLeft:'L‑META', MetaRight:'R‑META',
+  Enter:'ENTER', Escape:'ESC', Tab:'TAB', Backspace:'BKSP',
+  CapsLock:'CAPS', Backquote:'`', Minus:'-', Equal:'=',
+  BracketLeft:'[', BracketRight:']', Backslash:'\\',
+  Semicolon:';', Quote:"'", Comma:',', Period:'.', Slash:'/'
+};
+
+function prettyKey(code){
+  if (!code) return '—';
+  if (PRETTY[code]) return PRETTY[code];
+  if (code.indexOf('Key') === 0) return code.slice(3);
+  if (code.indexOf('Digit') === 0) return code.slice(5);
+  if (code.indexOf('Numpad') === 0) return 'NUM ' + code.slice(6);
+  if (code.indexOf('F') === 0 && /^F\d+$/.test(code)) return code;
+  return code.toUpperCase();
+}
+
+function codeBoundToAction(code){
+  return code === HOTKEYS.up || code === HOTKEYS.down ||
+         code === HOTKEYS.left || code === HOTKEYS.right ||
+         code === HOTKEYS.dig || code === HOTKEYS.flag ||
+         code === HOTKEYS.zoomIn || code === HOTKEYS.zoomOut;
+}
+
+function panelKeysText(){
+  return prettyKey(HOTKEYS.up) + prettyKey(HOTKEYS.left) +
+         prettyKey(HOTKEYS.down) + prettyKey(HOTKEYS.right) +
+         ' MOVE · WASD PAN · ' + prettyKey(HOTKEYS.dig) + ' DIG · ' +
+         prettyKey(HOTKEYS.flag) + ' FLAG';
+}
 
 /* ══════════════════════════════════════════════════════════════
    UTILS
@@ -743,7 +941,6 @@ function placeholderBoard(style, rows, cols){
   };
 }
 
-/* Click-safe zone: clicked tile + its neighbours (shape-aware). */
 function openingSafeZone(rows, cols, neighbors, clickR, clickC){
   const safe = new Set();
   const add = (r, c) => {
@@ -798,128 +995,309 @@ function genBoardDeferred(seed, style, cols, rows, mineCount, clickR, clickC, st
   };
 }
 
-/* ── NO-GUESS SOLVER ──────────────────────────────────────────
-   Mirrors the real game's information flow:
-     • a revealed 0 tile flood-reveals its neighbours
-     • single-cell rule:  flags == n      → reveal hidden
-     • single-cell rule:  flags + hidden == n → flag hidden
-     • subset rule:  constraint A ⊆ B  →  the difference must hold
-                      (B.rem - A.rem == 0        → reveal diff)
-                      (B.rem - A.rem == |diff|   → flag diff)
-   Anything it can prove, the player can prove.  If it reaches every
-   safe tile, the board is guaranteed guess-free.
-   ═════════════════════════════════════════════════════════════ */
 function solveBoard(board, opening){
   const rows = board.rows, cols = board.cols;
-  const revealed = new Set();
-  const flagged  = new Set();
-  for (let i = 0; i < opening.length; i++)
-    revealed.add(opening[i][0] + ',' + opening[i][1]);
+  const N = rows * cols;
+  const state = new Uint8Array(N);
+  for (let i = 0; i < opening.length; i++){
+    const r = opening[i][0], c = opening[i][1];
+    if (r >= 0 && r < rows && c >= 0 && c < cols) state[r * cols + c] = 1;
+  }
 
-  const MAX_ITER = 250;
+  const nbrs = new Array(N);
+  const adjFlat = new Int16Array(N);
+  for (let r = 0; r < rows; r++){
+    for (let c = 0; c < cols; c++){
+      const i = r * cols + c;
+      const list = [];
+      const nlist = board.neighbors(r, c, rows, cols);
+      for (let k = 0; k < nlist.length; k++) list.push(nlist[k][0] * cols + nlist[k][1]);
+      nbrs[i] = list;
+      adjFlat[i] = board.adj[r][c];
+    }
+  }
+
+  const MAX_ITER = 400;
+  const hiddenBuf = new Int32Array(16);
 
   for (let iter = 0; iter < MAX_ITER; iter++){
     let changed = false;
 
-    /* ── pass 1: local rules ── */
-    for (let r = 0; r < rows; r++){
-      for (let c = 0; c < cols; c++){
-        const k = r + ',' + c;
-        if (!revealed.has(k)) continue;
-        const a = board.adj[r][c];
-        if (a < 0) continue;
-        const nbs = board.neighbors(r, c, rows, cols);
-        let flags = 0;
-        const hidden = [];
-        for (let i = 0; i < nbs.length; i++){
-          const nk = nbs[i][0] + ',' + nbs[i][1];
-          if (flagged.has(nk)) flags++;
-          else if (!revealed.has(nk)) hidden.push(nk);
-        }
-        if (!hidden.length) continue;
-        if (a === 0 || flags === a){
-          for (let i = 0; i < hidden.length; i++){ revealed.add(hidden[i]); changed = true; }
-        } else if (flags + hidden.length === a){
-          for (let i = 0; i < hidden.length; i++){ flagged.add(hidden[i]); changed = true; }
-        }
+    for (let i = 0; i < N; i++){
+      if (state[i] !== 1) continue;
+      const a = adjFlat[i];
+      if (a < 0) continue;
+      const nb = nbrs[i];
+      let flags = 0, hn = 0;
+      for (let k = 0; k < nb.length; k++){
+        const s = state[nb[k]];
+        if (s === 2) flags++;
+        else if (s === 0) hiddenBuf[hn++] = nb[k];
+      }
+      if (hn === 0) continue;
+      if (a === 0 || flags === a){
+        for (let k = 0; k < hn; k++) state[hiddenBuf[k]] = 1;
+        changed = true;
+      } else if (flags + hn === a){
+        for (let k = 0; k < hn; k++) state[hiddenBuf[k]] = 2;
+        changed = true;
       }
     }
     if (changed) continue;
 
-    /* ── pass 2: subset rule ── */
-    const constraints = [];
-    for (let r = 0; r < rows; r++){
-      for (let c = 0; c < cols; c++){
-        const k = r + ',' + c;
-        if (!revealed.has(k)) continue;
-        const a = board.adj[r][c];
-        if (a <= 0) continue;
-        const nbs = board.neighbors(r, c, rows, cols);
-        let flags = 0;
-        const hidden = [];
-        for (let i = 0; i < nbs.length; i++){
-          const nk = nbs[i][0] + ',' + nbs[i][1];
-          if (flagged.has(nk)) flags++;
-          else if (!revealed.has(nk)) hidden.push(nk);
-        }
-        if (!hidden.length) continue;
-        const rem = a - flags;
-        if (rem < 0 || rem > hidden.length) continue;
-        constraints.push({ hidden, rem });
+    const consHidden = [], consRem = [];
+    for (let i = 0; i < N; i++){
+      if (state[i] !== 1) continue;
+      const a = adjFlat[i];
+      if (a <= 0) continue;
+      const nb = nbrs[i];
+      let flags = 0;
+      const h = [];
+      for (let k = 0; k < nb.length; k++){
+        const s = state[nb[k]];
+        if (s === 2) flags++;
+        else if (s === 0) h.push(nb[k]);
+      }
+      if (!h.length) continue;
+      const rem = a - flags;
+      if (rem < 0 || rem > h.length) continue;
+      consHidden.push(h);
+      consRem.push(rem);
+    }
+    const cn = consHidden.length;
+    if (!cn) break;
+
+    const byCell = new Map();
+    for (let i = 0; i < cn; i++){
+      const h = consHidden[i];
+      for (let k = 0; k < h.length; k++){
+        let arr = byCell.get(h[k]);
+        if (!arr){ arr = []; byCell.set(h[k], arr); }
+        arr.push(i);
       }
     }
 
-    outer:
-    for (let i = 0; i < constraints.length; i++){
-      const A = constraints[i];
-      for (let j = 0; j < constraints.length; j++){
-        if (i === j) continue;
-        const B = constraints[j];
-        if (A.hidden.length >= B.hidden.length) continue;
-        let isSubset = true;
-        for (let x = 0; x < A.hidden.length; x++){
-          if (B.hidden.indexOf(A.hidden[x]) === -1){ isSubset = false; break; }
-        }
-        if (!isSubset) continue;
-        const diff = [];
-        for (let x = 0; x < B.hidden.length; x++){
-          if (A.hidden.indexOf(B.hidden[x]) === -1) diff.push(B.hidden[x]);
-        }
-        if (!diff.length) continue;
-        const remDiff = B.rem - A.rem;
-        if (remDiff === 0){
-          for (let x = 0; x < diff.length; x++) revealed.add(diff[x]);
-          changed = true;
-          break outer;
-        } else if (remDiff === diff.length){
-          for (let x = 0; x < diff.length; x++) flagged.add(diff[x]);
-          changed = true;
-          break outer;
+    const toReveal = [], toFlag = [];
+    const seenPairs = new Set();
+
+    byCell.forEach(list => {
+      const L = list.length;
+      for (let x = 0; x < L; x++){
+        for (let y = x + 1; y < L; y++){
+          let i = list[x], j = list[y];
+          const key = i < j ? (i * 8192 + j) : (j * 8192 + i);
+          if (seenPairs.has(key)) continue;
+          seenPairs.add(key);
+
+          let A = i, B = j;
+          if (consHidden[A].length >= consHidden[B].length){ A = j; B = i; }
+          if (consHidden[A].length >= consHidden[B].length) continue;
+
+          const ha = consHidden[A], hb = consHidden[B];
+          let subset = true;
+          for (let t = 0; t < ha.length; t++){
+            if (hb.indexOf(ha[t]) === -1){ subset = false; break; }
+          }
+          if (!subset) continue;
+
+          const remDiff = consRem[B] - consRem[A];
+          const dLen = hb.length - ha.length;
+          if (remDiff === 0){
+            for (let t = 0; t < hb.length; t++)
+              if (ha.indexOf(hb[t]) === -1) toReveal.push(hb[t]);
+          } else if (remDiff === dLen){
+            for (let t = 0; t < hb.length; t++)
+              if (ha.indexOf(hb[t]) === -1) toFlag.push(hb[t]);
+          }
         }
       }
+    });
+
+    if (toReveal.length){
+      for (let k = 0; k < toReveal.length; k++){
+        const idx = toReveal[k];
+        if (state[idx] === 0) state[idx] = 1;
+      }
+      changed = true;
+    }
+    if (toFlag.length){
+      for (let k = 0; k < toFlag.length; k++){
+        const idx = toFlag[k];
+        if (state[idx] === 0) state[idx] = 2;
+      }
+      changed = true;
     }
     if (!changed) break;
   }
-  return revealed;
+
+  let count = 0;
+  for (let i = 0; i < N; i++) if (state[i] === 1) count++;
+  return count;
 }
 
-/* Deterministic: identical (seed, style, dims, click, starts) always
-   yields the identical board, so host & guest stay in lock-step. */
 function generateSolvableBoard(seed, style, cols, rows, mineCount,
                                clickR, clickC, starts, opening){
   let best = null, bestSeed = seed, bestScore = -1;
   for (let attempt = 0; attempt < SOLVER_MAX_ATTEMPTS; attempt++){
     const s = (seed + Math.imul(attempt, 0x9E3779B9)) >>> 0;
     const b = genBoardDeferred(s, style, cols, rows, mineCount, clickR, clickC, starts);
-    const score = solveBoard(b, opening).size;
+    const score = solveBoard(b, opening);
     if (score > bestScore){ bestScore = score; best = b; bestSeed = s; }
-    if (score >= b.safeCount) return { board: b, seed: s };
+    if (score >= b.safeCount) return { board: b, seed: s, score: score };
   }
-  return { board: best, seed: bestSeed };
+  return { board: best, seed: bestSeed, score: bestScore };
 }
 
-function ensureBoardReady(clickR, clickC){
+function buildBoardWorkerSource(){
+  return [
+    "'use strict';",
+    'var SOLVER_MAX_ATTEMPTS = ' + SOLVER_MAX_ATTEMPTS + ';',
+    mulberry32.toString(),
+    'var HEX_DIRS = ' + JSON.stringify(HEX_DIRS) + ';',
+    hexNeighbors.toString(),
+    sqNeighbors.toString(),
+    'var neighborsFor = ' + neighborsFor.toString() + ';',
+    openingSafeZone.toString(),
+    genBoardDeferred.toString(),
+    solveBoard.toString(),
+    generateSolvableBoard.toString(),
+    'self.onmessage = function(ev){',
+    '  var d = ev.data || {};',
+    '  try {',
+    '    var res = generateSolvableBoard(d.seed >>> 0, d.style, d.cols, d.rows, d.mineCount,',
+    '                                    d.clickR, d.clickC, d.starts, d.opening);',
+    '    self.postMessage({',
+    '      id: d.id, ok: true,',
+    '      mines: Array.from(res.board.mines),',
+    '      seed: res.seed, score: res.score, safeCount: res.board.safeCount',
+    '    });',
+    '  } catch (err) {',
+    '    self.postMessage({ id: d.id, ok: false, error: String((err && err.message) || err) });',
+    '  }',
+    '};'
+  ].join('\n');
+}
+
+let boardWorker = null;
+let boardWorkerFailed = false;
+let boardWorkerSeq = 0;
+const boardWorkerPending = new Map();
+
+function ensureBoardWorker(){
+  if (boardWorker || boardWorkerFailed) return boardWorker;
+  if (typeof Worker === 'undefined' || typeof Blob === 'undefined' ||
+      typeof URL === 'undefined' || !URL.createObjectURL){
+    boardWorkerFailed = true;
+    return null;
+  }
+  try {
+    const url = URL.createObjectURL(new Blob([buildBoardWorkerSource()], { type: 'application/javascript' }));
+    const w = new Worker(url);
+    w.onmessage = ev => {
+      const d = ev.data || {};
+      const cb = boardWorkerPending.get(d.id);
+      if (!cb) return;
+      boardWorkerPending.delete(d.id);
+      cb(d);
+    };
+    w.onerror = () => {
+      boardWorkerFailed = true;
+      const pend = Array.from(boardWorkerPending.values());
+      boardWorkerPending.clear();
+      for (const cb of pend) cb({ ok: false });
+      try { w.terminate(); } catch(e){}
+      if (boardWorker === w) boardWorker = null;
+    };
+    boardWorker = w;
+  } catch(e){
+    boardWorkerFailed = true;
+    boardWorker = null;
+  }
+  return boardWorker;
+}
+
+function generateBoardSync(params){
+  const res = generateSolvableBoard(
+    params.seed, params.style, params.cols, params.rows, params.mineCount,
+    params.clickR, params.clickC, params.starts, params.opening
+  );
+  return {
+    ok: true,
+    mines: Array.from(res.board.mines),
+    seed: res.seed,
+    score: res.score,
+    safeCount: res.board.safeCount
+  };
+}
+
+function generateBoardAsync(params){
+  const w = ensureBoardWorker();
+  if (!w) return Promise.resolve(generateBoardSync(params));
+  return new Promise(resolve => {
+    const id = ++boardWorkerSeq;
+    boardWorkerPending.set(id, d => {
+      if (d && d.ok) resolve(d);
+      else resolve(generateBoardSync(params));
+    });
+    try {
+      w.postMessage({
+        id: id,
+        seed: params.seed, style: params.style,
+        cols: params.cols, rows: params.rows, mineCount: params.mineCount,
+        clickR: params.clickR, clickC: params.clickC,
+        starts: params.starts, opening: params.opening
+      });
+    } catch(e){
+      boardWorkerPending.delete(id);
+      resolve(generateBoardSync(params));
+    }
+  });
+}
+
+function applyGeneratedBoard(res, clickR, clickC){
+  const d = dimsFor(G.config);
+  const layout = placeholderBoard(G.config.style, d.rows, d.cols);
+  rebuildBoardFromMines(layout, res.mines, G.config.style);
+  const wasAlias = (G.theirBoardLayout === G.board);
+  G.board = layout;
+  if (wasAlias) G.theirBoardLayout = layout;
+  G.boardSeed = res.seed;
+  G.boardPending = false;
+  G.boardOpening = (clickR === undefined || clickC === undefined)
+    ? null : { r: clickR, c: clickC };
+}
+
+let pregenTarget = null;
+let pregenPromise = null;
+
+function cancelPregen(){
+  pregenTarget = null;
+  pregenPromise = null;
+}
+
+function kickPregen(){
+  cancelPregen();
   if (!G.boardPending) return;
+  if (G.config.mode === 'territory') return;
+  const d = dimsFor(G.config);
+  const r = d.rows >> 1, c = d.cols >> 1;
+  pregenTarget = { r: r, c: c };
+  pregenPromise = generateBoardAsync({
+    seed: G.mySeed >>> 0,
+    style: G.config.style,
+    cols: d.cols, rows: d.rows, mineCount: d.mines,
+    clickR: r, clickC: c,
+    starts: [{ r: r, c: c }],
+    opening: [[r, c]]
+  });
+}
+
+let genInFlight = null;
+
+function ensureBoardReadyAsync(clickR, clickC){
+  if (!G.boardPending) return genInFlight || Promise.resolve();
+  if (genInFlight) return genInFlight;
+
   const d = dimsFor(G.config);
   const mode = G.config.mode;
   let starts = [{ r: (d.rows >> 1), c: (d.cols >> 1) }];
@@ -927,13 +1305,39 @@ function ensureBoardReady(clickR, clickC){
   const opening = (clickR === undefined || clickC === undefined)
     ? starts.map(s => [s.r, s.c])
     : [[clickR, clickC]];
-  const res = generateSolvableBoard(
-    G.mySeed >>> 0, G.config.style, d.cols, d.rows, d.mines,
-    clickR, clickC, starts, opening
-  );
-  G.board = res.board;
-  G.boardSeed = res.seed;
-  G.boardPending = false;
+
+  let promise;
+  if (pregenTarget && pregenPromise &&
+      clickR !== undefined && clickC !== undefined &&
+      pregenTarget.r === clickR && pregenTarget.c === clickC){
+    promise = pregenPromise;
+  } else {
+    promise = generateBoardAsync({
+      seed: G.mySeed >>> 0,
+      style: G.config.style,
+      cols: d.cols, rows: d.rows, mineCount: d.mines,
+      clickR: clickR, clickC: clickC,
+      starts: starts, opening: opening
+    });
+  }
+  cancelPregen();
+
+  genInFlight = promise.then(res => {
+    genInFlight = null;
+    if (!G.boardPending) return;
+    applyGeneratedBoard(res, clickR, clickC);
+  }, () => {
+    genInFlight = null;
+    if (!G.boardPending) return;
+    applyGeneratedBoard(generateBoardSync({
+      seed: G.mySeed >>> 0,
+      style: G.config.style,
+      cols: d.cols, rows: d.rows, mineCount: d.mines,
+      clickR: clickR, clickC: clickC,
+      starts: starts, opening: opening
+    }), clickR, clickC);
+  });
+  return genInFlight;
 }
 
 function recomputeAdjacency(board){
@@ -986,7 +1390,7 @@ const G = {
   board: null,
   theirBoardLayout: null,
   seed: 0, mySeed: 0, theirSeed: 0, boardSeed: 0,
-  boardPending: false, pendingDig: null,
+  boardPending: false, boardOpening: null, pendingDig: null,
   role: 'none', state: 'lobby',
   myOwner: 1, theirOwner: 2,
   me: null, them: null,
@@ -998,6 +1402,7 @@ const G = {
   opponentGone: false, lastRecv: 0,
   deathTile: null, theirDeathTile: null,
   territoryUnlocked: false,
+  terrBoardReady: true,
   reviewViews: []
 };
 
@@ -1015,8 +1420,16 @@ const fsIcon     = document.getElementById('fsIcon');
 
 function setStatus(text, cls){ statusText.textContent = text; statusbar.className = cls || ''; }
 function setText(el, v){ if (!el) return; const s = String(v); if (el.textContent !== s) el.textContent = s; }
-function showOverlay(html){ overlay.innerHTML = html; overlay.classList.remove('hidden'); }
-function hideOverlay(){ overlay.classList.add('hidden'); overlay.innerHTML = ''; }
+function showOverlay(html){
+  overlay.innerHTML = html;
+  overlay.classList.remove('hidden');
+  document.body.classList.add('menu-open');
+}
+function hideOverlay(){
+  overlay.classList.add('hidden');
+  overlay.innerHTML = '';
+  document.body.classList.remove('menu-open');
+}
 
 overlay.addEventListener('click', e => { if (e.target.closest('button:not(:disabled)')) SFX.click(); }, true);
 modal.addEventListener('click', e => { if (e.target.closest('button:not(:disabled)')) SFX.click(); }, true);
@@ -1691,7 +2104,7 @@ function makeTerritoryPanel(){
       '<span class="pname" style="color:#6b7a94;font-size:11px">VS</span>' +
       '<span class="dot" style="background:#ff3d81"></span>' +
       '<span class="pname" style="color:#ff3d81">OPPONENT</span>' +
-      '<span class="pkeys">ARROWS · WASD PAN · SPACE · F</span>' +
+      '<span class="pkeys"></span>' +
     '</div>' +
     '<div class="pstats">' +
       '<div class="pstat" style="--pc:#4dd8ff"><span class="plabel">YOUR LAND</span><span class="pval" data-myland>0</span></div>' +
@@ -1741,9 +2154,8 @@ function buildArena(){
     keys:  panelA.querySelector('.pkeys'),
     panel: panelA
   };
-  if (isSolo)      panelA._els.keys.textContent = 'ARROWS · WASD PAN · SPACE · F';
-  else if (isCoop) panelA._els.keys.textContent = 'SHARED · ARROWS · WASD PAN · SPACE · F';
-  else             panelA._els.keys.textContent = 'ARROWS · WASD PAN · SPACE · F';
+  if (isCoop) panelA._els.keys.textContent = 'SHARED · ' + panelKeysText();
+  else        panelA._els.keys.textContent = panelKeysText();
 
   if (mode === 'duel'){
     const panelB = makePanel('them', 'OPPONENT', '#ff3d81');
@@ -1793,6 +2205,7 @@ function buildTerritoryArena(){
     oppStun:   panel.querySelector('.oppstun'),
     panel:     panel
   };
+  panel.querySelector('.pkeys').textContent = panelKeysText();
   G.panelMe = panel;
 }
 
@@ -1989,73 +2402,111 @@ function bindCanvasInput(view, gameplay){
 }
 
 /* ══════════════════════════════════════════════════════════════
-   INPUT — keyboard
+   INPUT — keyboard  (all bindings come from HOTKEYS)
    ══════════════════════════════════════════════════════════════ */
-const heldPan = { w:false, a:false, s:false, d:false };
+const heldPan = { KeyW:false, KeyA:false, KeyS:false, KeyD:false };
+const heldZoom = { in:false, out:false };
+
+function clearHeldKeys(){
+  heldPan.KeyW = heldPan.KeyA = heldPan.KeyS = heldPan.KeyD = false;
+  heldZoom.in = false;
+  heldZoom.out = false;
+}
+
+let hotkeyCapture = null;   /* action key currently being rebound */
 
 window.addEventListener('keydown', e => {
+  if (hotkeyCapture){
+    e.preventDefault();
+    if (e.key === 'Escape'){ hotkeyCapture = null; renderMenu(); return; }
+    const code = e.code;
+    if (code && code !== 'Escape'){
+      HOTKEYS[hotkeyCapture] = code;
+      saveHotkeys();
+      hotkeyCapture = null;
+      renderMenu();
+    }
+    return;
+  }
+
   const tag = (e.target && e.target.tagName) || '';
   if (tag === 'INPUT' || tag === 'TEXTAREA') return;
-  const k = e.key.toLowerCase();
 
-  if (k === 'w' || k === 'a' || k === 's' || k === 'd'){
+  const code = e.code || '';
+
+  if (code === HOTKEYS.zoomIn){ heldZoom.in = true; e.preventDefault(); return; }
+  if (code === HOTKEYS.zoomOut){ heldZoom.out = true; e.preventDefault(); return; }
+
+  if ((code === 'KeyW' || code === 'KeyA' || code === 'KeyS' || code === 'KeyD') &&
+      !codeBoundToAction(code)){
     const hasReview = G.reviewViews && G.reviewViews.length > 0;
     if (hasReview || (G.viewMe && G.state !== 'lobby')){
-      heldPan[k] = true;
+      heldPan[code] = true;
       e.preventDefault();
     }
     return;
   }
 
   if (G.state !== 'playing' || !G.me) return;
+
   let handled = true;
-  switch (k){
-    case 'arrowup':    moveCursor(-1, 0); break;
-    case 'arrowdown':  moveCursor(1, 0);  break;
-    case 'arrowleft':  moveCursor(0, -1); break;
-    case 'arrowright': moveCursor(0, 1);  break;
-    case ' ':
-      if (!e.repeat) localDig();
-      break;
-    case 'f':
-      if (!e.repeat) localFlag();
-      break;
-    case 'e': case 'q':
-      if (!e.repeat) localChord();
-      break;
-    case '0':
-      if (G.viewMe) G.viewMe.resetView();
-      break;
-    default:
-      handled = false;
-  }
+  if      (code === HOTKEYS.up)    moveCursor(-1, 0);
+  else if (code === HOTKEYS.down)  moveCursor(1, 0);
+  else if (code === HOTKEYS.left)  moveCursor(0, -1);
+  else if (code === HOTKEYS.right) moveCursor(0, 1);
+  else if (code === HOTKEYS.dig){ if (!e.repeat) localDig(); }
+  else if (code === HOTKEYS.flag){ if (!e.repeat) localFlag(); }
+  else if (code === 'KeyE' || code === 'KeyQ'){ if (!e.repeat) localChord(); }
+  else if (code === 'Digit0'){ if (G.viewMe) G.viewMe.resetView(); }
+  else handled = false;
   if (handled) e.preventDefault();
 }, { passive:false });
 
 window.addEventListener('keyup', e => {
-  const k = e.key.toLowerCase();
-  if (k === 'w' || k === 'a' || k === 's' || k === 'd') heldPan[k] = false;
+  const code = e.code || '';
+  if (code === HOTKEYS.zoomIn)  heldZoom.in = false;
+  if (code === HOTKEYS.zoomOut) heldZoom.out = false;
+  if (code === 'KeyW' || code === 'KeyA' || code === 'KeyS' || code === 'KeyD'){
+    heldPan[code] = false;
+  }
 });
-window.addEventListener('blur', () => {
-  heldPan.w = heldPan.a = heldPan.s = heldPan.d = false;
-});
+window.addEventListener('blur', clearHeldKeys);
+
+function activeViews(){
+  if (G.reviewViews && G.reviewViews.length) return G.reviewViews;
+  return G.viewMe ? [G.viewMe] : [];
+}
 
 function updatePanFromKeys(dtMs){
-  const targets = (G.reviewViews && G.reviewViews.length)
-    ? G.reviewViews
-    : (G.viewMe ? [G.viewMe] : []);
+  const targets = activeViews();
   if (!targets.length) return;
   let dx = 0, dy = 0;
-  if (heldPan.a) dx += 1;
-  if (heldPan.d) dx -= 1;
-  if (heldPan.w) dy += 1;
-  if (heldPan.s) dy -= 1;
+  if (heldPan.KeyA) dx += 1;
+  if (heldPan.KeyD) dx -= 1;
+  if (heldPan.KeyW) dy += 1;
+  if (heldPan.KeyS) dy -= 1;
   if (!dx && !dy) return;
   const dt = dtMs / 1000;
   for (const v of targets){
     if (v && v.metrics && v.zoom > 1.0001){
       v.panBy(dx * PAN_SPEED_CSS * dt, dy * PAN_SPEED_CSS * dt);
     }
+  }
+}
+
+function updateZoomFromKeys(dtMs){
+  if (!heldZoom.in && !heldZoom.out) return;
+  const targets = activeViews();
+  if (!targets.length) return;
+  const dt = Math.min(dtMs, 100) / 1000;
+  let factor = 1;
+  if (heldZoom.in)  factor *= Math.exp(ZOOM_RATE * dt);
+  if (heldZoom.out) factor *= Math.exp(-ZOOM_RATE * dt);
+  for (const v of targets){
+    if (!v || !v.metrics) continue;
+    const nz = clamp(v.zoom * factor, 1, v.maxZoom);
+    if (Math.abs(nz - v.zoom) < 0.0002) continue;
+    v.zoomAround(v.pw / 2, v.ph / 2, nz);
   }
 }
 
@@ -2285,8 +2736,12 @@ function localDigAt(r, c){ if (!canAct()) return; G.me.cursor = { r, c }; localD
 function localFlagAt(r, c){ if (!canAct()) return; G.me.cursor = { r, c }; localFlag(); }
 function localChordAt(r, c){ if (!canAct()) return; G.me.cursor = { r, c }; localChord(); }
 
-function localDig(){
+let digBusy = false;
+
+async function localDig(){
   if (!canAct()) return;
+  if (digBusy) return;
+
   const r = G.me.cursor.r, c = G.me.cursor.c;
   const mode = G.config.mode;
 
@@ -2294,24 +2749,32 @@ function localDig(){
   if (mode === 'territory' && !canTouchTerritory(G.myBoard, G.board, r, c, G.myOwner)) return;
 
   if (G.boardPending){
-    if (mode === 'solo'){
-      ensureBoardReady(r, c);
-    } else if (mode === 'duel'){
-      ensureBoardReady(r, c);
-      send({ t:'layout', mines: Array.from(G.board.mines) });
-    } else {
-      if (G.role === 'host'){
-        ensureBoardReady(r, c);
-        send({ t:'board', seed: G.boardSeed, clickR: r, clickC: c });
+    digBusy = true;
+    try {
+      if (mode === 'solo' || mode === 'duel'){
+        await ensureBoardReadyAsync(r, c);
+        if (mode === 'duel' && !G.boardPending){
+          send({ t:'layout', mines: Array.from(G.board.mines) });
+        }
+      } else if (G.role === 'host'){
+        await ensureBoardReadyAsync(r, c);
+        if (!G.boardPending){
+          const op = G.boardOpening || { r: r, c: c };
+          send({ t:'board', seed: G.boardSeed, clickR: op.r, clickC: op.c });
+        }
       } else {
-        send({ t:'dig', r, c });
-        G.pendingDig = { r, c };
+        send({ t:'dig', r: r, c: c });
+        G.pendingDig = { r: r, c: c };
         return;
       }
+    } finally {
+      digBusy = false;
     }
+    if (!canAct()) return;
   }
   doLocalDig(r, c);
 }
+
 function doLocalDig(r, c){
   const mode = G.config.mode;
   if (mode === 'coop' || mode === 'territory'){
@@ -2472,15 +2935,36 @@ function afterSharedReveal(){
       endGame('win', '🎉', 'FIELD CLEARED!', 'Together you swept every safe tile.', performance.now() - G.startTime);
     }
   } else if (G.config.mode === 'territory'){
-    if (checkWin(G.myBoard, G.board)){ finishTerritory(); return; }
+    if (checkWin(G.myBoard, G.board)){ finishTerritory(false); return; }
     checkTerritoryUnlock();
   }
 }
-function finishTerritory(){
+
+/* ── TERRITORIAL END ───────────────────────────────────────────
+   Only the host decides when territory ends. It broadcasts the
+   final land counts so the guest shows exactly one (opposite)
+   result screen — never both. */
+function finishTerritory(fromNetwork, land1, land2){
   if (G.state === 'over') return;
-  const mine   = countLand(G.myBoard, G.myOwner);
-  const theirs = countLand(G.myBoard, G.theirOwner);
-  const total  = G.board.safeCount;
+  if (!fromNetwork){
+    /* We are the authority (host/solo). Compute once, broadcast. */
+    const l1 = countLand(G.myBoard, 1);
+    const l2 = countLand(G.myBoard, 2);
+    if (G.role === 'host') send({ t:'terr_over', land1: l1, land2: l2 });
+    land1 = l1; land2 = l2;
+  } else if (G.role !== 'guest'){
+    /* Only guests accept a remote finish; hosts are authoritative. */
+    return;
+  }
+  endTerritoryScreen(land1 || 0, land2 || 0);
+}
+
+function endTerritoryScreen(land1, land2){
+  if (G.state === 'over') return;
+  const mine   = (G.myOwner === 1) ? land1 : land2;
+  const theirs = (G.myOwner === 1) ? land2 : land1;
+  const total  = G.board ? G.board.safeCount : (mine + theirs);
+
   let result, icon, title, sub;
   if (mine > theirs){
     result = 'win';  icon = '🏆'; title = 'LAND GRAB WON!';
@@ -2498,6 +2982,7 @@ function finishTerritory(){
     '<div class="statcard"><div class="slabel">TOTAL</div><div class="sval">' + total + '</div></div>';
   endGame(result, icon, title, sub, performance.now() - G.startTime, cards);
 }
+
 function localFlag(){
   if (!canAct()) return;
   const r = G.me.cursor.r, c = G.me.cursor.c;
@@ -2506,7 +2991,6 @@ function localFlag(){
   const mode = G.config.mode;
   if (mode === 'territory'){
     if (!canTouchTerritory(bs, G.board, r, c, G.myOwner)) return;
-    /* You can never un-flag a tile that belongs to your opponent. */
     if (bs.flagged[r][c] && bs.owner[r][c] && bs.owner[r][c] !== G.myOwner){
       SFX.denied();
       return;
@@ -2577,8 +3061,6 @@ function localChord(){
 
 /* ══════════════════════════════════════════════════════════════
    TERRITORY UNLOCK
-   Runs on every client so the banner fires the instant a player
-   is boxed in — no extra tile placement required.
    ══════════════════════════════════════════════════════════════ */
 function checkTerritoryUnlock(){
   if (G.config.mode !== 'territory') return;
@@ -2632,6 +3114,7 @@ function showUnlockPopup(byOwner){
    HOST-AUTHORITATIVE SHARED ACTIONS
    ══════════════════════════════════════════════════════════════ */
 function hostApplyDig(r, c, owner){
+  if (G.state !== 'playing') return;
   const bs = G.myBoard;
   const isMyDig = (owner === G.myOwner);
   const who = isMyDig ? G.me : G.them;
@@ -2653,6 +3136,7 @@ function hostApplyDig(r, c, owner){
   afterSharedReveal();
 }
 function hostApplyFlag(r, c){
+  if (G.state !== 'playing') return;
   const bs = G.myBoard;
   if (bs.revealed[r][c]) return;
   const on = bs.flagged[r][c] ? 0 : 1;
@@ -2663,11 +3147,11 @@ function hostApplyFlag(r, c){
   on ? SFX.flag() : SFX.unflag();
 }
 function hostApplyTerritoryFlag(r, c, owner){
+  if (G.state !== 'playing') return;
   const bs = G.myBoard;
   if (bs.revealed[r][c]) return;
 
   if (bs.flagged[r][c]){
-    /* ── Flags belonging to the opponent are untouchable. ── */
     if (bs.owner && bs.owner[r][c] && bs.owner[r][c] !== owner){
       if (owner === G.myOwner) SFX.denied();
       return;
@@ -2705,11 +3189,12 @@ function hostApplyTerritoryFlag(r, c, owner){
       view.boom(p.x, p.y, '#7fd8ff', 18, 160);
     }
     applyPenalty(owner, 'flag');
-    if (checkWin(bs, G.board)){ finishTerritory(); return; }
+    if (checkWin(bs, G.board)){ finishTerritory(false); return; }
     checkTerritoryUnlock();
   }
 }
 function hostApplyChord(r, c, owner){
+  if (G.state !== 'playing') return;
   const bs = G.myBoard;
   const res = applyChord(bs, G.board, r, c, owner);
   if (!res) return;
@@ -2722,6 +3207,16 @@ function hostApplyChord(r, c, owner){
   send({ t:'delta', rev: res.tiles, own: owner });
   afterRevealFeedback(res);
   afterSharedReveal();
+}
+
+function hostEnsureBoardThen(r, c, action){
+  if (!G.boardPending){ action(); return; }
+  ensureBoardReadyAsync(r, c).then(() => {
+    if (G.state !== 'playing' || G.boardPending) return;
+    const op = G.boardOpening || { r: r, c: c };
+    send({ t:'board', seed: G.boardSeed, clickR: op.r, clickC: op.c });
+    action();
+  }, () => {});
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -2780,11 +3275,23 @@ function handleMessage(msg){
       G.config = msg.config || G.config;
       const seedHost  = (msg.seedHost  >>> 0) || newSeed();
       const seedGuest = (msg.seedGuest >>> 0) || newSeed();
-      /* Duel: each player gets their own independent board seed.
-         Co-op / Territory: both players must build the SAME shared board,
-         so both use the host seed. */
       if (G.config.mode === 'duel') startMatch(seedGuest, 'guest', seedHost);
       else                          startMatch(seedHost,  'guest', seedHost);
+      break;
+    }
+
+    /* Authoritative territory board from the host — guarantees both
+       sides play on the exact same layout. */
+    case 'terr_board': {
+      if (G.config.mode !== 'territory') break;
+      if (G.role !== 'guest') break;
+      if (!G.board) break;
+      rebuildBoardFromMines(G.board, msg.mines || [], G.config.style);
+      G.theirBoardLayout = G.board;
+      if (!G.terrBoardReady){
+        G.terrBoardReady = true;
+        if (G.state === 'playing') revealTerritoryStart();
+      }
       break;
     }
 
@@ -2802,11 +3309,16 @@ function handleMessage(msg){
       if (G.config.mode !== 'coop') break;
       if (!G.boardPending) break;
       const d = dimsFor(G.config);
-      G.board = genBoardDeferred(msg.seed, G.config.style, d.cols, d.rows, d.mines,
-                                 msg.clickR, msg.clickC,
-                                 [{ r: (d.rows >> 1), c: (d.cols >> 1) }]);
+      const nb = genBoardDeferred(msg.seed, G.config.style, d.cols, d.rows, d.mines,
+                                  msg.clickR, msg.clickC,
+                                  [{ r: (d.rows >> 1), c: (d.cols >> 1) }]);
+      const wasAlias = (G.theirBoardLayout === G.board);
+      G.board = nb;
+      if (wasAlias) G.theirBoardLayout = nb;
       G.boardSeed = msg.seed;
       G.boardPending = false;
+      G.boardOpening = { r: msg.clickR, c: msg.clickC };
+      cancelPregen();
       if (G.pendingDig){
         const pd = G.pendingDig;
         G.pendingDig = null;
@@ -2818,19 +3330,18 @@ function handleMessage(msg){
 
     case 'dig': {
       if (G.role !== 'host') break;
+      if (G.state !== 'playing') break;
       if (G.config.mode !== 'coop' && G.config.mode !== 'territory') break;
       if (performance.now() < G.them.stunUntil) break;
       if (G.config.mode === 'territory' &&
           !canTouchTerritory(G.myBoard, G.board, msg.r, msg.c, G.theirOwner)) break;
-      if (G.boardPending){
-        ensureBoardReady(msg.r, msg.c);
-        send({ t:'board', seed: G.boardSeed, clickR: msg.r, clickC: msg.c });
-      }
-      hostApplyDig(msg.r, msg.c, G.theirOwner);
+      const dr = msg.r, dc = msg.c;
+      hostEnsureBoardThen(dr, dc, function(){ hostApplyDig(dr, dc, G.theirOwner); });
       break;
     }
 
     case 'flag':
+      if (G.state !== 'playing') break;
       if (G.config.mode === 'coop'){
         if (G.role !== 'host') break;
         if (performance.now() < G.them.stunUntil) break;
@@ -2851,18 +3362,17 @@ function handleMessage(msg){
       }
       break;
 
-    case 'chord':
+    case 'chord': {
       if (G.role !== 'host') break;
+      if (G.state !== 'playing') break;
       if (G.config.mode !== 'coop' && G.config.mode !== 'territory') break;
       if (performance.now() < G.them.stunUntil) break;
       if (G.config.mode === 'territory' &&
           !canTouchTerritory(G.myBoard, G.board, msg.r, msg.c, G.theirOwner)) break;
-      if (G.boardPending){
-        ensureBoardReady(msg.r, msg.c);
-        send({ t:'board', seed: G.boardSeed, clickR: msg.r, clickC: msg.c });
-      }
-      hostApplyChord(msg.r, msg.c, G.theirOwner);
+      const cr = msg.r, cc = msg.c;
+      hostEnsureBoardThen(cr, cc, function(){ hostApplyChord(cr, cc, G.theirOwner); });
       break;
+    }
 
     case 'rev':
       if (!G.theirBoard) break;
@@ -2917,6 +3427,15 @@ function handleMessage(msg){
       if (G.config.mode === 'territory' && !G.territoryUnlocked){
         G.territoryUnlocked = true;
         showUnlockPopup(msg.by === undefined ? G.theirOwner : msg.by);
+      }
+      break;
+
+    /* Host broadcast of the final territorial land counts. The guest
+       maps them to its own perspective and ends ONCE — this is what
+       stops both players from seeing a win/lose screen. */
+    case 'terr_over':
+      if (G.config.mode === 'territory'){
+        finishTerritory(true, msg.land1 || 0, msg.land2 || 0);
       }
       break;
 
@@ -3012,6 +3531,7 @@ function cleanupNet(){
    LOBBY / MENU
    ══════════════════════════════════════════════════════════════ */
 let menuError = '';
+let menuView = 'main';          /* 'main' | 'hotkeys' | 'howto' */
 
 function menuHTML(err){
   const cfg = G.config;
@@ -3048,7 +3568,7 @@ function menuHTML(err){
         '<button class="primary" id="btnJoinGo">GO</button>' +
       '</div>';
 
-  return '<div class="ovbox">' +
+  return '<div class="ovbox menu-pop">' +
     '<div class="big">💣</div>' +
     '<h2>MINE<span>DUEL</span></h2>' +
     '<p>Race, co-operate or claim territory.<br>Same board, same seed — may the best sweeper win.</p>' +
@@ -3056,12 +3576,108 @@ function menuHTML(err){
     '<div class="config-section"><div class="config-label">BOARD STYLE</div><div class="config-options">' + styleBtns + '</div></div>' +
     '<div class="config-section"><div class="config-label">MAP SIZE</div><div class="config-options">' + sizeBtns + '</div></div>' +
     actions +
+    '<div class="ovbtns" style="margin-top:10px">' +
+      '<button class="ghost" id="btnHowTo">📖 HOW TO PLAY</button>' +
+      '<button class="ghost" id="btnHotkeys">⌨ HOTKEYS</button>' +
+    '</div>' +
     '<div class="err" id="menuErr">' + (err || '') + '</div>' +
+  '</div>';
+}
+
+function hotkeysHTML(){
+  const rows = [
+    ['up',      'MOVE UP'],
+    ['down',    'MOVE DOWN'],
+    ['left',    'MOVE LEFT'],
+    ['right',   'MOVE RIGHT'],
+    ['dig',     'DIG / REVEAL'],
+    ['flag',    'FLAG'],
+    ['zoomIn',  'ZOOM IN'],
+    ['zoomOut', 'ZOOM OUT']
+  ].map(pair => {
+    const k = pair[0], label = pair[1];
+    const listening = (hotkeyCapture === k);
+    return '<div class="hk-row">' +
+      '<span class="hk-label">' + label + '</span>' +
+      '<button class="hk-key' + (listening ? ' listening' : '') + '" data-hk="' + k + '">' +
+        (listening ? 'PRESS A KEY…' : prettyKey(HOTKEYS[k])) +
+      '</button>' +
+    '</div>';
+  }).join('');
+
+  return '<div class="ovbox menu-pop">' +
+    '<div class="big">⌨️</div>' +
+    '<h2>HOTKEYS</h2>' +
+    '<p>Click a key to rebind it. Your hotkeys are saved on this device and remembered next time.</p>' +
+    '<div class="config-section">' +
+      '<div class="config-label">BINDINGS</div>' +
+      rows +
+    '</div>' +
+    '<div class="ovbtns">' +
+      '<button class="ghost" id="btnResetHk">RESET DEFAULTS</button>' +
+      '<button class="primary" id="btnBackMenu">BACK</button>' +
+    '</div>' +
+    '<div class="err" id="menuErr">' + (menuError || '') + '</div>' +
+  '</div>';
+}
+
+function howToHTML(){
+  return '<div class="ovbox menu-pop">' +
+    '<div class="big">📖</div>' +
+    '<h2>HOW TO <span>PLAY</span></h2>' +
+    '<p>Clear every safe tile. Don\'t hit a mine.</p>' +
+    '<div class="config-section">' +
+      '<div class="config-label">READING THE NUMBERS</div>' +
+      '<div style="font-size:12.5px;line-height:1.85;color:#cfe4ff;letter-spacing:.03em">' +
+        'A number tells you <b style="color:#4dd8ff">how many bombs touch that tile</b>.<br>' +
+        '<b style="color:#ffd166">Diagonals count too.</b> So a <b>"2"</b> means two of the eight tiles around it hide a bomb — corners included.' +
+      '</div>' +
+    '</div>' +
+    '<div class="config-section">' +
+      '<div class="config-label">THE CONTROLS</div>' +
+      '<div style="font-size:12.5px;line-height:1.85;color:#cfe4ff;letter-spacing:.03em">' +
+        '<b style="color:#4dd8ff">DIG</b> a tile to reveal it.<br>' +
+        '<b style="color:#ff3d81">FLAG</b> a tile when you think it\'s a bomb.<br>' +
+        'Clear every safe tile to win.' +
+      '</div>' +
+    '</div>' +
+    '<div class="ovbtns">' +
+      '<button class="primary" id="btnBackMenu">GOT IT</button>' +
+    '</div>' +
   '</div>';
 }
 
 function renderMenu(err){
   if (err !== undefined) menuError = err;
+
+  if (menuView === 'hotkeys'){
+    showOverlay(hotkeysHTML());
+    overlay.querySelectorAll('[data-hk]').forEach(b => {
+      b.onclick = () => {
+        hotkeyCapture = b.dataset.hk;
+        menuError = '';
+        renderMenu();
+      };
+    });
+    const back = overlay.querySelector('#btnBackMenu');
+    if (back) back.onclick = () => { hotkeyCapture = null; menuView = 'main'; renderMenu(''); };
+    const rst = overlay.querySelector('#btnResetHk');
+    if (rst) rst.onclick = () => {
+      resetHotkeys();
+      hotkeyCapture = null;
+      menuError = '';
+      renderMenu();
+    };
+    return;
+  }
+
+  if (menuView === 'howto'){
+    showOverlay(howToHTML());
+    const back = overlay.querySelector('#btnBackMenu');
+    if (back) back.onclick = () => { menuView = 'main'; menuError = ''; renderMenu(); };
+    return;
+  }
+
   showOverlay(menuHTML(menuError));
 
   overlay.querySelectorAll('[data-mode]').forEach(b => {
@@ -3095,6 +3711,12 @@ function renderMenu(err){
     menuError = ''; joinGame(code);
   };
   if (input) input.onkeydown = e => { if (e.key === 'Enter') btnGo.click(); };
+
+  const btnHk = overlay.querySelector('#btnHotkeys');
+  if (btnHk) btnHk.onclick = () => { hotkeyCapture = null; menuView = 'hotkeys'; menuError = ''; renderMenu(); };
+
+  const btnHow = overlay.querySelector('#btnHowTo');
+  if (btnHow) btnHow.onclick = () => { menuView = 'howto'; menuError = ''; renderMenu(); };
 }
 
 function idleOverlay(){
@@ -3103,6 +3725,7 @@ function idleOverlay(){
   G.board = null; G.myBoard = null; G.theirBoard = null;
   G.theirBoardLayout = null;
   G.boardPending = false;
+  G.boardOpening = null;
   G.pendingDig = null;
   G.me = null; G.them = null;
   G.viewMe = null; G.viewThem = null;
@@ -3114,9 +3737,14 @@ function idleOverlay(){
   G.deathTile = null;
   G.theirDeathTile = null;
   G.territoryUnlocked = false;
+  G.terrBoardReady = true;
   G.reviewViews = [];
   lastUnlockCheck = 0;
-  heldPan.w = heldPan.a = heldPan.s = heldPan.d = false;
+  clearHeldKeys();
+  hotkeyCapture = null;
+  menuView = 'main';
+  cancelPregen();
+  genInFlight = null;
   const tu = document.querySelector('.terr-unlock');
   if (tu) tu.remove();
   arena.innerHTML = '';
@@ -3249,8 +3877,13 @@ function startMatch(seed, role, seedGuest){
   G.pendingDig = null; G.lastRecv = performance.now();
   G.deathTile = null; G.theirDeathTile = null;
   G.territoryUnlocked = false; G.reviewViews = [];
+  G.boardOpening = null;
   lastUnlockCheck = 0;
-  heldPan.w = heldPan.a = heldPan.s = heldPan.d = false;
+  clearHeldKeys();
+  hotkeyCapture = null;
+
+  cancelPregen();
+  genInFlight = null;
 
   const oldPop = document.querySelector('.terr-unlock');
   if (oldPop) oldPop.remove();
@@ -3269,9 +3902,18 @@ function startMatch(seed, role, seedGuest){
     G.board = res.board;
     G.boardSeed = res.seed;
     G.boardPending = false;
+    /* Host is authoritative for territory — it will broadcast the
+       mine set right after startMatch runs so the guest's board can
+       never drift out of sync. The guest waits for that message
+       before revealing its starting tiles. */
+    G.terrBoardReady = (role === 'host');
+    if (role === 'host'){
+      send({ t:'terr_board', mines: Array.from(G.board.mines) });
+    }
   } else {
     G.board = placeholderBoard(G.config.style, d.rows, d.cols);
     G.boardPending = true;
+    G.terrBoardReady = true;
   }
 
   G.myBoard = makeBoardState(d.rows, d.cols);
@@ -3291,13 +3933,16 @@ function startMatch(seed, role, seedGuest){
   hideOverlay();
 
   G.state = 'countdown';
+
+  if (G.boardPending) setTimeout(kickPregen, 40);
+
   countdown(() => {
     G.state = 'playing';
     G.startTime = performance.now();
     lastCursorSent = 0;
     setStatus(role === 'solo' ? 'SOLO' : 'LIVE', 'live');
     SFX.go();
-    if (mode === 'territory') revealTerritoryStart();
+    if (mode === 'territory' && G.terrBoardReady) revealTerritoryStart();
   });
 }
 
@@ -3356,17 +4001,6 @@ async function onLeaveClick(){
     try { G.conn.send({ t:'bye' }); } catch(e){}
   }
   setTimeout(() => { cleanupNet(); idleOverlay(); }, 160);
-}
-
-function onRematchClick(){
-  if (G.state !== 'over' && G.state !== 'playing') return;
-  if (G.role === 'solo'){ startMatch(newSeed(), 'solo'); return; }
-  if (G.role !== 'host') return;
-  if (G.opponentGone){ idleOverlay(); return; }
-  const seedHost = newSeed();
-  const seedGuest = newSeed();
-  send({ t:'seed', seedHost, seedGuest, config: G.config });
-  startMatch(seedHost, 'host', seedGuest);
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -3506,7 +4140,7 @@ function endGame(result, icon, title, sub, elapsed, cards){
   if (G.state === 'over') return;
   G.state = 'over';
   if (G.me) G.me.done = true;
-  heldPan.w = heldPan.a = heldPan.s = heldPan.d = false;
+  clearHeldKeys();
 
   const statusMap = {
     win:        ['VICTORY', 'live'],
@@ -3665,6 +4299,7 @@ function loop(now){
   lastFrameTime = now - (elapsed % FRAME_MIN_MS);
   const dt = Math.min(elapsed, 100);
   try { updatePanFromKeys(dt); } catch(e){}
+  try { updateZoomFromKeys(dt); } catch(e){}
   try { renderAll(now); } catch(e){}
 }
 requestAnimationFrame(loop);

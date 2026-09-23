@@ -2207,12 +2207,18 @@ async function removeLeaderboardEntries(uid){
 }
 
 /*
- * Releases the current name from this browser's uid, decrements the
- * name doc's `count`, drops this uid from `linkedUids`, and deletes
- * the name doc entirely if this was the last browser holding it.
- * Also wipes this uid's leaderboard entries and clears the local
- * name. Works the same way the "change name" flow releases the old
- * name.
+ * Releases the current name from this browser's uid and wipes the
+ * local name. The server-side cleanup only happens when this was the
+ * LAST browser holding the name:
+ *
+ *   • count > 0 afterwards (another browser still uses the name)
+ *       → drop our uid from `linkedUids`, decrement `count`,
+ *         and LEAVE the leaderboard alone so the name keeps its
+ *         scores on the boards.
+ *
+ *   • count == 0 afterwards (we were the last holder)
+ *       → delete the `names/{key}` doc AND wipe this uid's
+ *         leaderboard entries.
  */
 async function removePlayerName(){
   const nameKey = getPlayerNameKey();
@@ -2230,6 +2236,8 @@ async function removePlayerName(){
       const uid = user.uid;
       const nameRef = db.collection('names').doc(nameKey);
       const userRef = db.collection('users').doc(uid);
+      let nameFullyReleased = false;
+
       try {
         await db.runTransaction(async tx => {
           const snap = await tx.get(nameRef);
@@ -2239,10 +2247,14 @@ async function removePlayerName(){
             /* Drop this browser's uid from the file. */
             const uids = linked.filter(u => u !== uid);
             if (uids.length === 0){
-              /* Last holder — remove the name doc entirely. */
+              /* Last holder — remove the name doc entirely and
+                 remember that we also need to purge scores. */
               tx.delete(nameRef);
+              nameFullyReleased = true;
             } else {
-              /* Otherwise just decrement count and update the list. */
+              /* Someone else still holds this name. Just decrement
+                 count and drop our uid; the leaderboard entries
+                 belong to the name, so leave them alone. */
               tx.update(nameRef, {
                 count: uids.length,
                 linkedUids: uids
@@ -2262,9 +2274,13 @@ async function removePlayerName(){
         console.warn('[fb] removePlayerName:', e && (e.code || e.message));
         /* fall through — still clear locally */
       }
-      /* Remove this uid's leaderboard entries so the old name
-         doesn't linger on the boards. */
-      await removeLeaderboardEntries(uid);
+
+      /* Only wipe THIS uid's leaderboard entries when the name
+         has no other holders left. If another browser still uses
+         the name, its scores must remain visible on the boards. */
+      if (nameFullyReleased){
+        await removeLeaderboardEntries(uid);
+      }
     }
   }
 

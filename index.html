@@ -905,6 +905,14 @@
            allow read: if true;
            allow write: if ownsName(nameKey);
          }
+
+         // ── Link codes (short-lived, name-transfer handshake) ──
+         match /linkCodes/{code} {
+           allow read:   if true;
+           allow create: if signedIn();
+           allow update: if signedIn();
+           allow delete: if signedIn();
+         }
        }
      }
 
@@ -962,14 +970,7 @@ const SIZES = {
 };
 
 /* ══════════════════════════════════════════════════════════════
-   PEER / WEBRTC CONFIGURATION  —  THE IMPORTANT FIX
-   ──────────────────────────────────────────────────────────────
-   Without explicit ICE servers, browser↔browser linking often
-   works only on the same LAN (host candidates). A phone on a
-   different network (cellular or a Wi-Fi with AP/client
-   isolation) needs a TURN relay to reach the host. We now hand
-   PeerJS a full ICE list: several public STUN servers for
-   direct paths, plus the PeerJS cloud TURN relays as a fallback.
+   PEER / WEBRTC CONFIGURATION
    ══════════════════════════════════════════════════════════════ */
 const PEER_OPTS = {
   debug: 0,
@@ -1925,14 +1926,6 @@ async function isNameRegisteredOnServer(){
  * Record a win / time on the leaderboard.
  *
  * Entries are keyed by NAME KEY (the lower-cased name), NOT by uid.
- * This means:
- *   • Every browser linked to the same name writes to the same entry.
- *   • A player who changes their name (while some other browser still
- *     holds the old one) keeps scoring under the NEW name only — the
- *     old name's record is left untouched for the other holder.
- *   • A player who was the last holder of their old name has their
- *     record migrated to the new name at change-time (see
- *     changePlayerName / applyLinkedName).
  */
 async function recordWin(mode, style, size, timeMs, partnerName, countAsWin){
   if (!db || !auth) return;
@@ -1947,8 +1940,6 @@ async function recordWin(mode, style, size, timeMs, partnerName, countAsWin){
   await fbReadyPromise;
   if (!auth.currentUser) return;
 
-  /* Only submit the score if this name is a registered ("logged")
-     name on the server AND it belongs to this browser's uid. */
   const registered = await isNameRegisteredOnServer();
   if (!registered){
     console.warn('[fb] "' + name + '" is not a registered name — score not submitted');
@@ -1956,7 +1947,6 @@ async function recordWin(mode, style, size, timeMs, partnerName, countAsWin){
   }
 
   const key = lbKey(mode, style, size);
-  /* ─── the doc id is the NAME KEY, not the uid ─── */
   const ref = db.collection('leaderboards').doc(key).collection('entries').doc(nameKey);
   const isDuel = (mode === 'duel');
   const joint  = (mode === 'coop' || mode === 'territory');
@@ -2071,12 +2061,7 @@ async function reserveName(rawName, uid){
   return { name, key };
 }
 
-/* ── Migrate a leaderboard entry from one name key to another ──
-   Called when a name is being retired but the person behind it is
-   still us (i.e. we were the LAST holder of the old name). The entry
-   simply follows us to the new name so the record stays tied to the
-   player. If the target name already has a record we merge: wins are
-   summed and the best time is kept. */
+/* ── Migrate a leaderboard entry from one name key to another ── */
 async function migrateLeaderboardEntry(oldKey, newKey, newName){
   if (!db || !oldKey || !newKey || oldKey === newKey) return;
   if (!auth || !auth.currentUser) return;
@@ -2106,7 +2091,6 @@ async function migrateLeaderboardEntry(oldKey, newKey, newName){
 
     if (newSnap && newSnap.exists){
       const nd = newSnap.data() || {};
-      /* Merge — same player, so accumulate wins & keep best time. */
       doc.wins = (nd.wins || 0) + (oldData.wins || 0);
       const times = [nd.bestTime, oldData.bestTime]
         .filter(t => typeof t === 'number' && t > 0);
@@ -2128,15 +2112,7 @@ async function migrateLeaderboardEntry(oldKey, newKey, newName){
   if (touched) lbCache.clear();
 }
 
-/* ── Change name ───────────────────────────────────────────────
-   Steps:
-     1. Claim the new name and point our profile at it (the old name
-        is NOT released yet — the security rules need it alive so we
-        can clean up its leaderboard entry).
-     2. If we were the last holder of the old name, migrate the
-        leaderboard entry from oldKey → newKey while we still own
-        both names.
-     3. Release the old name. */
+/* ── Change name ─────────────────────────────────────────────── */
 async function changePlayerName(newRaw){
   const v = validateName(newRaw);
   if (v.error) throw new Error(v.error);
@@ -2224,13 +2200,7 @@ async function changePlayerName(newRaw){
   return { name: newName, oldName };
 }
 
-/* ── Link this browser to an existing name ─────────────────────
-   Same three-step structure as changePlayerName: claim → migrate
-   (if our old name is dying) → release.
-
-   Made resilient: if the anonymous user hasn't settled yet, we
-   try to sign in once before giving up. This matters on mobile,
-   where the auth round‑trip can lag behind the WebRTC handshake. */
+/* ── Link this browser to an existing name ───────────────────── */
 async function applyLinkedName(hostName, hostKey){
   if (!auth){
     throw new Error('Auth not available');
@@ -2310,7 +2280,6 @@ async function applyLinkedName(hostName, hostKey){
 /* ── Wipe every leaderboard entry for a NAME KEY ────────────── */
 async function removeLeaderboardEntries(nameKey){
   if (!db || !nameKey) return;
-  /* Chunked so the rules' get() budget is never exceeded. */
   const CHUNK = 8;
   for (let i = 0; i < LB_CONFIG_KEYS.length; i += CHUNK){
     const slice = LB_CONFIG_KEYS.slice(i, i + CHUNK);
@@ -2331,20 +2300,7 @@ async function removeLeaderboardEntries(nameKey){
 
 /*
  * Releases the current name from this browser's uid and wipes the
- * local name. The server-side cleanup only happens when this was the
- * LAST browser holding the name:
- *
- *   • count > 0 afterwards (another browser still uses the name)
- *       → drop our uid from `linkedUids`, decrement `count`,
- *         and LEAVE the leaderboard alone so the name keeps its
- *         scores on the boards.
- *
- *   • count == 0 afterwards (we were the last holder)
- *       → delete the `names/{key}` doc AND wipe this name's
- *         leaderboard entries.
- *
- * Note: the entry wipe happens BEFORE the name doc is deleted so the
- * security rules (which look up names/{nameKey}) still allow it.
+ * local name.
  */
 async function removePlayerName(){
   const nameKey = getPlayerNameKey();
@@ -2361,8 +2317,6 @@ async function removePlayerName(){
       const nameRef = db.collection('names').doc(nameKey);
       const userRef = db.collection('users').doc(uid);
 
-      /* Determine whether we're the last holder BEFORE removing the
-         name doc, so we know whether to wipe the leaderboard. */
       let nameFullyReleased = false;
       try {
         const snap = await nameRef.get();
@@ -2373,8 +2327,6 @@ async function removePlayerName(){
         }
       } catch(e){}
 
-      /* Wipe the leaderboard entries FIRST — the rules need the name
-         doc to still exist for us to be allowed to write. */
       if (nameFullyReleased){
         await removeLeaderboardEntries(nameKey);
       }
@@ -2424,7 +2376,6 @@ function renderLeaderboardRows(mode, cat){
   const joint = (mode === 'coop' || mode === 'territory');
   const myKey = getPlayerNameKey();
   return LB_STATE.data.map((e, i) => {
-    /* Entry doc id is now the name key, so compare against ours. */
     const isMe = !isGuest && !!myKey && e.id === myKey;
     const val = (cat === 'time') ? formatTime(e.bestTime) : formatWins(e.wins);
     let nm = e.name || 'Anon';
@@ -4816,7 +4767,6 @@ function cleanupNet(){
    ══════════════════════════════════════════════════════════════ */
 let menuError = '';
 let menuView = 'main';
-let linkPeer = null;
 let isGuest = false;
 let booted = false;
 
@@ -4935,12 +4885,24 @@ function linkMenuHTML(){
   '</div>';
 }
 
+/* ══════════════════════════════════════════════════════════════
+   LINKING — FIREBASE RELAY (no WebRTC)
+   ══════════════════════════════════════════════════════════════
+   The old link flow used a PeerJS data channel. That works fine
+   between two computers on the same LAN but breaks the moment one
+   side is a phone on a different network. The linking handshake
+   is tiny (a name + a key), so we route it through Firestore
+   instead. No WebRTC, no ICE, no TURN, no in-app browser
+   restrictions — it just works everywhere Firebase is reachable.
+*/
+let linkUnsub = null;
+
 function cleanupLinkPeer(){
-  if (linkPeer){ try { linkPeer.destroy(); } catch(e){} linkPeer = null; }
+  if (linkUnsub){ try { linkUnsub(); } catch(e){} linkUnsub = null; }
 }
 
 function startLinking(){
-  if (!db || !auth || !auth.currentUser){
+  if (!db || !auth){
     menuError = 'Linking requires an online connection.';
     menuView = 'main';
     renderMenu(menuError);
@@ -4954,22 +4916,40 @@ function startLinking(){
     renderMenu(menuError);
     return;
   }
-  db.collection('names').doc(key).get().then(snap => {
-    if (!snap.exists){
-      menuError = 'Your name is no longer reserved. Please set it again.';
+  const proceed = (user) => {
+    if (!user){
+      menuError = 'Still connecting — try again in a moment.';
       menuView = 'main';
       renderMenu(menuError);
       return;
     }
-    doStartLinking(name, key);
-  }).catch(() => {
-    menuError = 'Could not verify name.';
-    menuView = 'main';
-    renderMenu(menuError);
-  });
+    db.collection('names').doc(key).get().then(snap => {
+      if (!snap.exists){
+        menuError = 'Your name is no longer reserved. Please set it again.';
+        menuView = 'main';
+        renderMenu(menuError);
+        return;
+      }
+      const nd = snap.data() || {};
+      const uids = nd.linkedUids || [];
+      if (uids.indexOf(user.uid) === -1){
+        menuError = 'Your name is not linked to this browser.';
+        menuView = 'main';
+        renderMenu(menuError);
+        return;
+      }
+      doStartLinking(name, key, user.uid);
+    }).catch(err => {
+      menuError = 'Could not verify name: ' + firebaseErrorMessage(err);
+      menuView = 'main';
+      renderMenu(menuError);
+    });
+  };
+  if (auth.currentUser) proceed(auth.currentUser);
+  else trySignIn().then(proceed);
 }
 
-function doStartLinking(name, key){
+function doStartLinking(name, key, hostUid){
   const code = makeCode();
   const codeEl = overlay.querySelector('#linkCode');
   const statusEl = overlay.querySelector('#linkStatus');
@@ -4983,38 +4963,34 @@ function doStartLinking(name, key){
       });
     };
   }
-  if (statusEl) statusEl.innerHTML = '<span class="spin"></span>Waiting for other device…';
+  if (statusEl) statusEl.innerHTML = '<span class="spin"></span>Publishing code…';
 
   cleanupLinkPeer();
-  let peer;
-  try { peer = new Peer(LINK_PREFIX + code, PEER_OPTS); }
-  catch(e){
-    if (statusEl) statusEl.textContent = 'Could not start link server.';
-    return;
-  }
-  linkPeer = peer;
-  let done = false;
+
+  const ref = db.collection('linkCodes').doc(code);
+  let cancelled = false;
 
   const cleanup = () => {
-    if (done) return;
-    done = true;
-    if (linkPeer) { try { linkPeer.destroy(); } catch(e){} linkPeer = null; }
+    if (cancelled) return;
+    cancelled = true;
+    if (linkUnsub){ try { linkUnsub(); } catch(e){} linkUnsub = null; }
+    ref.delete().catch(() => {});
   };
 
-  peer.on('open', () => {
-    if (linkPeer !== peer) return;
+  ref.set({
+    hostUid: hostUid,
+    hostName: name,
+    hostNameKey: key,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    status: 'waiting'
+  }).then(() => {
+    if (cancelled) return;
     if (statusEl) statusEl.innerHTML = '<span class="spin"></span>Waiting for other device…';
-  });
 
-  peer.on('connection', c => {
-    if (done) { try { c.close(); } catch(e){} return; }
-    c.on('open', () => {
-      if (statusEl) statusEl.innerHTML = '<span class="spin"></span>Linking…';
-      try { c.send({ t: 'link_name', name, nameKey: key }); } catch(e){}
-    });
-    c.on('data', msg => {
-      if (!msg || typeof msg !== 'object') return;
-      if (msg.t === 'link_ok'){
+    linkUnsub = ref.onSnapshot(snap => {
+      if (!snap.exists) return;
+      const data = snap.data() || {};
+      if (data.status === 'done'){
         if (statusEl) statusEl.innerHTML = '✅ Linked successfully!';
         SFX.win();
         setTimeout(() => {
@@ -5023,15 +4999,12 @@ function doStartLinking(name, key){
           renderMenu('');
           refreshLeaderboard(true);
         }, 1200);
-      } else if (msg.t === 'link_err'){
-        if (statusEl) statusEl.textContent = '❌ ' + (msg.error || 'Failed');
+      } else if (data.status === 'error'){
+        if (statusEl) statusEl.textContent = '❌ ' + (data.error || 'Failed');
       }
     });
-  });
-
-  peer.on('error', err => {
-    if (linkPeer !== peer) return;
-    if (statusEl) statusEl.textContent = 'Error: ' + ((err && err.type) || 'unknown');
+  }).catch(err => {
+    if (statusEl) statusEl.textContent = 'Error: ' + firebaseErrorMessage(err);
   });
 
   const cancel = overlay.querySelector('#btnCancelLink');
@@ -5476,11 +5449,73 @@ function showCodeScreen(code){
   wireCancel();
 }
 
-function joinGame(code){
+/* ══════════════════════════════════════════════════════════════
+   JOIN — Firestore link code first, then PeerJS room
+   ══════════════════════════════════════════════════════════════ */
+async function joinGame(code){
   setStatus('CONNECTING', 'warn');
   showOverlay(waitHTML('🔎', 'JOINING ' + code, '<span class="spin"></span>Looking for the room…'));
   wireCancel();
 
+  // 1) If this code matches a live link request in Firestore, handle
+  //    it entirely through Firestore — no WebRTC involved.
+  if (db && auth){
+    try {
+      const linkSnap = await db.collection('linkCodes').doc(code).get();
+      if (linkSnap.exists){
+        const data = linkSnap.data() || {};
+        if (data.status === 'waiting'){
+          await handleLinkCode(code, data);
+        } else {
+          showOverlay(waitHTML('❌', 'CODE ALREADY USED',
+            'Ask the other device to show a fresh code.'));
+          wireCancel();
+        }
+        return;
+      }
+    } catch(e){
+      console.warn('[link] Firestore check failed:', e);
+      // fall through to the room path
+    }
+  }
+
+  // 2) Otherwise treat it as a PeerJS room code.
+  joinRoomPeerJS(code);
+}
+
+async function handleLinkCode(code, data){
+  const ref = db.collection('linkCodes').doc(code);
+  try {
+    let user = auth.currentUser;
+    if (!user) user = await trySignIn();
+    if (!user) throw new Error('Not signed in — check your connection');
+
+    const res = await applyLinkedName(data.hostName, data.hostNameKey);
+    await ref.update({ status: 'done', joinerUid: user.uid });
+
+    isGuest = false;
+    showOverlay(
+      '<div class="ovbox"><div class="big">✅</div><h2>LINKED!</h2>' +
+      '<p>This device now uses the name <b style="color:#4dd8ff">' +
+        escapeHtml(res.name) + '</b>.</p>' +
+      '<div class="ovbtns"><button class="primary" id="btnLinkDone">BACK TO MENU</button></div></div>'
+    );
+    const b = overlay.querySelector('#btnLinkDone');
+    if (b) b.onclick = () => { idleOverlay(); };
+  } catch(e){
+    try { await ref.update({ status: 'error', error: (e && e.message) || 'Failed' }); }
+    catch(_){}
+    showOverlay(
+      '<div class="ovbox"><div class="big">❌</div><h2>LINK FAILED</h2>' +
+      '<p>' + escapeHtml((e && e.message) || 'Failed to link') + '</p>' +
+      '<div class="ovbtns"><button class="primary" id="btnLinkDone">BACK TO MENU</button></div></div>'
+    );
+    const b = overlay.querySelector('#btnLinkDone');
+    if (b) b.onclick = () => { idleOverlay(); };
+  }
+}
+
+function joinRoomPeerJS(code){
   let peer;
   try { peer = new Peer(PEER_OPTS); }
   catch(e){ renderMenu('Could not start peer connection.'); return; }
@@ -5488,129 +5523,47 @@ function joinGame(code){
 
   let settled = false;
   let roomConn = null;
-  let linkConn = null;
-  let roomDead = false;
-  let linkDead = false;
   let failTimer = 0;
-
-  const closeBoth = () => {
-    try { if (roomConn) roomConn.close(); } catch(e){}
-    try { if (linkConn) linkConn.close(); } catch(e){}
-  };
 
   const finishFail = (msg) => {
     if (settled) return;
     settled = true;
-    if (failTimer) { clearTimeout(failTimer); failTimer = 0; }
-    closeBoth();
-    if (G.peer === peer) cleanupNet();
-    showOverlay(waitHTML('❌', 'NOT FOUND', msg || 'No room or link code matched.'));
-    wireCancel();
-  };
-
-  /* 35 s: mobile ICE + TURN handshakes can take much longer than
-     the old 15 s, especially on cellular networks. */
-  failTimer = setTimeout(() => {
-    finishFail('No room or link code matched.');
-  }, 35000);
-
-  const maybeBothDead = () => {
-    if (settled) return;
-    if (roomDead && linkDead){
-      finishFail('No room or link code matched.');
-    }
-  };
-
-  const succeedRoom = (c) => {
-    if (settled) return;
-    settled = true;
-    if (failTimer) { clearTimeout(failTimer); failTimer = 0; }
-    try { if (linkConn) linkConn.close(); } catch(e){}
-    attachConn(c);
-    G.role = 'guest';
-    setStatus('WAITING', 'warn');
-    showOverlay(waitHTML('✅', 'CONNECTED', '<span class="spin"></span>Waiting for the host to start…'));
-    wireCancel();
-  };
-
-  const handleLinkData = async (msg, c) => {
-    if (!msg || typeof msg !== 'object') return;
-    if (msg.t !== 'link_name') return;
-    if (settled) return;
-    settled = true;
-    if (failTimer) { clearTimeout(failTimer); failTimer = 0; }
+    if (failTimer){ clearTimeout(failTimer); failTimer = 0; }
     try { if (roomConn) roomConn.close(); } catch(e){}
-
-    try {
-      const res = await applyLinkedName(msg.name, msg.nameKey);
-      try { c.send({ t: 'link_ok' }); } catch(e){}
-      isGuest = false;
-      showOverlay(
-        '<div class="ovbox"><div class="big">✅</div><h2>LINKED!</h2>' +
-        '<p>This device now uses the name <b style="color:#4dd8ff">' + escapeHtml(res.name) + '</b>.</p>' +
-        '<div class="ovbtns"><button class="primary" id="btnLinkDone">BACK TO MENU</button></div></div>'
-      );
-      const b = overlay.querySelector('#btnLinkDone');
-      if (b) b.onclick = () => { cleanupNet(); idleOverlay(); };
-    } catch(e){
-      try { c.send({ t:'link_err', error: (e && e.message) || 'Failed' }); } catch(_){}
-      showOverlay(
-        '<div class="ovbox"><div class="big">❌</div><h2>LINK FAILED</h2>' +
-        '<p>' + escapeHtml((e && e.message) || 'Failed to link') + '</p>' +
-        '<div class="ovbtns"><button class="primary" id="btnLinkDone">BACK TO MENU</button></div></div>'
-      );
-      const b = overlay.querySelector('#btnLinkDone');
-      if (b) b.onclick = () => { cleanupNet(); idleOverlay(); };
-    }
+    if (G.peer === peer) cleanupNet();
+    showOverlay(waitHTML('❌', 'NOT FOUND', msg || 'No room matched that code.'));
+    wireCancel();
   };
+
+  failTimer = setTimeout(() => {
+    finishFail('No room matched that code.');
+  }, 35000);
 
   peer.on('open', () => {
     if (G.peer !== peer || settled) return;
-
     try { roomConn = peer.connect(PREFIX + code, { reliable: true }); }
     catch(e){ roomConn = null; }
-    if (roomConn){
-      roomConn.on('open', () => succeedRoom(roomConn));
-      const roomFail = () => {
-        if (settled || roomDead) return;
-        roomDead = true;
-        maybeBothDead();
-      };
-      roomConn.on('error', roomFail);
-      roomConn.on('close', roomFail);
-    } else {
-      roomDead = true;
-    }
+    if (!roomConn){ finishFail('Could not open connection.'); return; }
 
-    try { linkConn = peer.connect(LINK_PREFIX + code, { reliable: true }); }
-    catch(e){ linkConn = null; }
-    if (linkConn){
-      let linkOpened = false;
-      linkConn.on('open', () => {
-        linkOpened = true;
-        if (settled){ try { linkConn.close(); } catch(e){} return; }
-        showOverlay(waitHTML('🔗', 'LINKING', '<span class="spin"></span>Receiving name…'));
-        wireCancel();
-      });
-      linkConn.on('data', m => handleLinkData(m, linkConn));
-      const linkFail = () => {
-        if (settled || linkDead) return;
-        linkDead = true;
-        maybeBothDead();
-      };
-      linkConn.on('error', linkFail);
-      linkConn.on('close', linkFail);
-    } else {
-      linkDead = true;
-    }
-
-    maybeBothDead();
+    roomConn.on('open', () => {
+      if (settled) return;
+      settled = true;
+      if (failTimer){ clearTimeout(failTimer); failTimer = 0; }
+      attachConn(roomConn);
+      G.role = 'guest';
+      setStatus('WAITING', 'warn');
+      showOverlay(waitHTML('✅', 'CONNECTED',
+        '<span class="spin"></span>Waiting for the host to start…'));
+      wireCancel();
+    });
+    roomConn.on('error', () => { finishFail('No room matched that code.'); });
+    roomConn.on('close', () => { if (!settled) finishFail('No room matched that code.'); });
   });
 
   peer.on('error', err => {
     if (G.peer !== peer) return;
     const t = err && err.type;
-    if (t === 'peer-unavailable') return;
+    if (t === 'peer-unavailable'){ finishFail('No room matched that code.'); return; }
     if (settled) return;
     if (t === 'network' || t === 'server-error' || t === 'socket-error' || t === 'socket-closed'){
       settled = true;

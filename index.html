@@ -859,6 +859,11 @@
      Firebase compat SDKs (Firestore + Auth)
      NOTE: Anonymous Auth must be enabled in Firebase console.
 
+     Leaderboard entries are keyed by **name key** (lower-cased
+     name), NOT by uid. A name is the public identity — every
+     browser linked to that name writes to the same entry, and the
+     entry follows the name through the leaderboards.
+
      Firestore rules required for this build:
 
      rules_version = '2';
@@ -868,6 +873,13 @@
 
          function signedIn() {
            return request.auth != null;
+         }
+
+         // true if the caller's uid is listed in names/{nameKey}
+         function ownsName(nameKey) {
+           return signedIn() &&
+             get(/databases/$(database)/documents/names/$(nameKey))
+               .data.linkedUids.hasAny([request.auth.uid]);
          }
 
          // ── Name registry: one doc per lower-cased name ──
@@ -888,22 +900,15 @@
            allow write: if signedIn() && request.auth.uid == userId;
          }
 
-         // ── Leaderboard entries: one doc per uid per config ──
-         match /leaderboards/{configKey}/entries/{userId} {
+         // ── Leaderboard entries: one doc per NAME (per config) ──
+         match /leaderboards/{configKey}/entries/{nameKey} {
            allow read: if true;
-           allow create, delete: if signedIn() &&
-                                  request.auth.uid == userId;
-           allow update: if signedIn() && (
-             request.auth.uid == userId ||
-             request.resource.data.diff(resource.data)
-               .affectedKeys().hasOnly(['name'])
-           );
+           allow write: if ownsName(nameKey);
          }
        }
      }
 
-     Also create a collection-group index on "name" for the
-     `entries` collection group.
+     No collection-group index is needed any more.
      ════════════════════════════════════════════════════════════ -->
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
@@ -954,6 +959,35 @@ const SIZES = {
   small:  { id:'small',  name:'Small',  scale:1.0 },
   medium: { id:'medium', name:'Medium', scale:1.4 },
   large:  { id:'large',  name:'Large',  scale:1.8 }
+};
+
+/* ══════════════════════════════════════════════════════════════
+   PEER / WEBRTC CONFIGURATION  —  THE IMPORTANT FIX
+   ──────────────────────────────────────────────────────────────
+   Without explicit ICE servers, browser↔browser linking often
+   works only on the same LAN (host candidates). A phone on a
+   different network (cellular or a Wi-Fi with AP/client
+   isolation) needs a TURN relay to reach the host. We now hand
+   PeerJS a full ICE list: several public STUN servers for
+   direct paths, plus the PeerJS cloud TURN relays as a fallback.
+   ══════════════════════════════════════════════════════════════ */
+const PEER_OPTS = {
+  debug: 0,
+  config: {
+    iceServers: [
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'stun:stun1.l.google.com:19302' },
+      { urls: 'stun:stun2.l.google.com:19302' },
+      { urls: 'stun:stun3.l.google.com:19302' },
+      { urls: 'stun:global.stun.twilio.com:3478' },
+      { urls: 'turn:eu-0.turn.peerjs.com:3478', username: 'peerjs', credential: 'peerjsp' },
+      { urls: 'turn:us-0.turn.peerjs.com:3478', username: 'peerjs', credential: 'peerjsp' },
+      { urls: 'stun:eu-0.turn.peerjs.com:3478' },
+      { urls: 'stun:us-0.turn.peerjs.com:3478' }
+    ],
+    sdpSemantics: 'unified-plan',
+    iceCandidatePoolSize: 10
+  }
 };
 
 function dimsFor(config){
@@ -1681,10 +1715,6 @@ function initFirebase(){
       if (!fbReady){ fbReady = true; fbResolve(); }
     };
 
-    /*
-     * We only settle once we actually have a user (sign-in
-     * succeeded) OR sign-in has definitively failed.
-     */
     auth.onAuthStateChanged(u => {
       fbUser = u || null;
       if (u) settle();
@@ -1707,7 +1737,6 @@ function initFirebase(){
 }
 initFirebase();
 
-/* Retry sign-in helper. Resolves to a user or null (never throws). */
 function trySignIn(){
   return new Promise(resolve => {
     if (!auth){ resolve(null); return; }
@@ -1740,7 +1769,7 @@ const LB_TTL = 45 * 1000;
 const lbCache = new Map();
 
 /* Every config key the leaderboard can ever use, so we can wipe a
-   player's entries in one batch when they remove their name. */
+   name's entries in one go when the name is fully released. */
 const LB_CONFIG_KEYS = (() => {
   const out = [];
   for (const mode of ['solo','coop','duel','territory']){
@@ -1842,12 +1871,6 @@ async function fetchLeaderboard(mode, style, size, cat){
    NAME REGISTRATION
    ══════════════════════════════════════════════════════════════ */
 
-/*
- * Registers / changes the player's name. Never throws for network
- * reasons — it simply falls back to a local-only name so the player
- * is never blocked from playing. It DOES throw for "name taken" and
- * validation errors.
- */
 async function registerName(raw, isChange){
   const v = validateName(raw);
   if (v.error) throw new Error(v.error);
@@ -1901,11 +1924,15 @@ async function isNameRegisteredOnServer(){
 /*
  * Record a win / time on the leaderboard.
  *
- * partnerName  – for co-op / territory: the other player's name, so
- *                the time entry can show both names.
- * countAsWin   – set to false if this should only record the time
- *                (used by territory losers — they participated in
- *                clearing the board but didn't claim the most land).
+ * Entries are keyed by NAME KEY (the lower-cased name), NOT by uid.
+ * This means:
+ *   • Every browser linked to the same name writes to the same entry.
+ *   • A player who changes their name (while some other browser still
+ *     holds the old one) keeps scoring under the NEW name only — the
+ *     old name's record is left untouched for the other holder.
+ *   • A player who was the last holder of their old name has their
+ *     record migrated to the new name at change-time (see
+ *     changePlayerName / applyLinkedName).
  */
 async function recordWin(mode, style, size, timeMs, partnerName, countAsWin){
   if (!db || !auth) return;
@@ -1919,7 +1946,6 @@ async function recordWin(mode, style, size, timeMs, partnerName, countAsWin){
 
   await fbReadyPromise;
   if (!auth.currentUser) return;
-  const uid = auth.currentUser.uid;
 
   /* Only submit the score if this name is a registered ("logged")
      name on the server AND it belongs to this browser's uid. */
@@ -1930,7 +1956,8 @@ async function recordWin(mode, style, size, timeMs, partnerName, countAsWin){
   }
 
   const key = lbKey(mode, style, size);
-  const ref = db.collection('leaderboards').doc(key).collection('entries').doc(uid);
+  /* ─── the doc id is the NAME KEY, not the uid ─── */
+  const ref = db.collection('leaderboards').doc(key).collection('entries').doc(nameKey);
   const isDuel = (mode === 'duel');
   const joint  = (mode === 'coop' || mode === 'territory');
   const timeVal = Math.max(1, Math.round(timeMs || 0));
@@ -1983,7 +2010,6 @@ async function ensurePlayerName(){
 
   await fbReadyPromise;
 
-  /* Offline / auth unavailable — trust the local name. */
   if (!db || !auth || !auth.currentUser) return true;
 
   const uid = auth.currentUser.uid;
@@ -2045,6 +2071,72 @@ async function reserveName(rawName, uid){
   return { name, key };
 }
 
+/* ── Migrate a leaderboard entry from one name key to another ──
+   Called when a name is being retired but the person behind it is
+   still us (i.e. we were the LAST holder of the old name). The entry
+   simply follows us to the new name so the record stays tied to the
+   player. If the target name already has a record we merge: wins are
+   summed and the best time is kept. */
+async function migrateLeaderboardEntry(oldKey, newKey, newName){
+  if (!db || !oldKey || !newKey || oldKey === newKey) return;
+  if (!auth || !auth.currentUser) return;
+
+  let touched = false;
+  for (const configKey of LB_CONFIG_KEYS){
+    const oldRef = db.collection('leaderboards').doc(configKey).collection('entries').doc(oldKey);
+    const newRef = db.collection('leaderboards').doc(configKey).collection('entries').doc(newKey);
+
+    let oldSnap;
+    try { oldSnap = await oldRef.get(); }
+    catch(e){ continue; }
+    if (!oldSnap.exists) continue;
+    const oldData = oldSnap.data() || {};
+
+    let newSnap = null;
+    try { newSnap = await newRef.get(); }
+    catch(e){ newSnap = null; }
+
+    const doc = {
+      name: newName,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+    if (typeof oldData.wins === 'number') doc.wins = oldData.wins;
+    if (typeof oldData.bestTime === 'number') doc.bestTime = oldData.bestTime;
+    if (oldData.partnerName) doc.partnerName = oldData.partnerName;
+
+    if (newSnap && newSnap.exists){
+      const nd = newSnap.data() || {};
+      /* Merge — same player, so accumulate wins & keep best time. */
+      doc.wins = (nd.wins || 0) + (oldData.wins || 0);
+      const times = [nd.bestTime, oldData.bestTime]
+        .filter(t => typeof t === 'number' && t > 0);
+      if (times.length) doc.bestTime = Math.min.apply(null, times);
+      else delete doc.bestTime;
+      if (!doc.partnerName && nd.partnerName) doc.partnerName = nd.partnerName;
+    }
+
+    try {
+      await newRef.set(doc);
+      await oldRef.delete();
+      touched = true;
+    } catch(e){
+      console.warn('[fb] migrate entry failed for', configKey,
+                   e && (e.code || e.message));
+    }
+  }
+
+  if (touched) lbCache.clear();
+}
+
+/* ── Change name ───────────────────────────────────────────────
+   Steps:
+     1. Claim the new name and point our profile at it (the old name
+        is NOT released yet — the security rules need it alive so we
+        can clean up its leaderboard entry).
+     2. If we were the last holder of the old name, migrate the
+        leaderboard entry from oldKey → newKey while we still own
+        both names.
+     3. Release the old name. */
 async function changePlayerName(newRaw){
   const v = validateName(newRaw);
   if (v.error) throw new Error(v.error);
@@ -2069,66 +2161,84 @@ async function changePlayerName(newRaw){
   const userRef = db.collection('users').doc(uid);
   const oldRef = oldKey ? db.collection('names').doc(oldKey) : null;
 
+  /* Step 1 — claim the new name & point profile at it. */
   await db.runTransaction(async tx => {
     const newSnap = await tx.get(newRef);
     if (newSnap.exists){
       const nd = newSnap.data() || {};
-      if ((nd.linkedUids || []).indexOf(uid) === -1) throw new Error('That name is already taken');
-    }
-
-    let oldSnap = null;
-    if (oldRef) oldSnap = await tx.get(oldRef);
-
-    if (!newSnap.exists){
+      const uids = nd.linkedUids || [];
+      if (uids.indexOf(uid) === -1) throw new Error('That name is already taken');
+    } else {
       tx.set(newRef, {
         displayName: newName,
         count: 1,
         linkedUids: [uid],
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       });
-    } else {
-      const nd = newSnap.data() || {};
-      const uids = nd.linkedUids || [];
-      if (uids.indexOf(uid) === -1){
-        tx.update(newRef, { count: (nd.count || 0) + 1, linkedUids: uids.concat([uid]) });
-      }
     }
-
     tx.set(userRef, {
       name: newName, nameKey: newKey,
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     }, { merge: true });
-
-    if (oldSnap && oldSnap.exists){
-      const data = oldSnap.data() || {};
-      const uids = (data.linkedUids || []).filter(u => u !== uid);
-      if (uids.length === 0){
-        tx.delete(oldRef);
-      } else {
-        tx.update(oldRef, { count: uids.length, linkedUids: uids });
-      }
-    }
   });
 
-  setPlayerName(newName);
-  setPlayerNameKey(newKey);
-
+  /* Step 2 — is our old name going to die with us? */
   let oldBecameEmpty = false;
   if (oldRef){
     try {
       const check = await oldRef.get();
-      oldBecameEmpty = !check.exists;
+      if (!check.exists){
+        oldBecameEmpty = true;
+      } else {
+        const data = check.data() || {};
+        const others = (data.linkedUids || []).filter(u => u !== uid);
+        oldBecameEmpty = (others.length === 0);
+      }
     } catch(e){}
   }
 
-  if (oldBecameEmpty && oldName && oldName !== newName){
-    migrateLeaderboardNames(oldName, newName).catch(()=>{});
+  /* Step 3 — migrate the leaderboard entry while both names exist. */
+  if (oldBecameEmpty && oldKey){
+    await migrateLeaderboardEntry(oldKey, newKey, newName).catch(()=>{});
   }
 
+  /* Step 4 — release the old name. */
+  if (oldRef){
+    try {
+      await db.runTransaction(async tx => {
+        const oldSnap = await tx.get(oldRef);
+        if (oldSnap && oldSnap.exists){
+          const data = oldSnap.data() || {};
+          const uids = (data.linkedUids || []).filter(u => u !== uid);
+          if (uids.length === 0) tx.delete(oldRef);
+          else tx.update(oldRef, { count: uids.length, linkedUids: uids });
+        }
+      });
+    } catch(e){
+      console.warn('[fb] release old name failed:', e && (e.code || e.message));
+    }
+  }
+
+  setPlayerName(newName);
+  setPlayerNameKey(newKey);
   return { name: newName, oldName };
 }
 
+/* ── Link this browser to an existing name ─────────────────────
+   Same three-step structure as changePlayerName: claim → migrate
+   (if our old name is dying) → release.
+
+   Made resilient: if the anonymous user hasn't settled yet, we
+   try to sign in once before giving up. This matters on mobile,
+   where the auth round‑trip can lag behind the WebRTC handshake. */
 async function applyLinkedName(hostName, hostKey){
+  if (!auth){
+    throw new Error('Auth not available');
+  }
+  if (!auth.currentUser){
+    const u = await trySignIn();
+    if (!u) throw new Error('Not signed in — check your connection');
+  }
   const uid = auth.currentUser.uid;
   const newRef = db.collection('names').doc(hostKey);
   const userRef = db.collection('users').doc(uid);
@@ -2138,6 +2248,7 @@ async function applyLinkedName(hostName, hostKey){
 
   let displayName = hostName;
 
+  /* Step 1 — claim the new name (already exists) & point profile. */
   await db.runTransaction(async tx => {
     const newSnap = await tx.get(newRef);
     if (!newSnap.exists) throw new Error('That name is no longer available');
@@ -2151,59 +2262,71 @@ async function applyLinkedName(hostName, hostKey){
         linkedUids: uids.concat([uid])
       });
     }
-
-    let oldSnap = null;
-    if (oldRef) oldSnap = await tx.get(oldRef);
-
     tx.set(userRef, {
       name: displayName, nameKey: hostKey,
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     }, { merge: true });
-
-    if (oldSnap && oldSnap.exists){
-      const data = oldSnap.data() || {};
-      const ouids = (data.linkedUids || []).filter(u => u !== uid);
-      if (ouids.length === 0){
-        tx.delete(oldRef);
-      } else {
-        tx.update(oldRef, { count: ouids.length, linkedUids: ouids });
-      }
-    }
   });
 
-  setPlayerName(displayName);
-  setPlayerNameKey(hostKey);
-
+  /* Step 2 — is our old name going to die with us? */
   let oldBecameEmpty = false;
   if (oldRef){
     try {
       const check = await oldRef.get();
-      oldBecameEmpty = !check.exists;
+      if (!check.exists) oldBecameEmpty = true;
+      else {
+        const data = check.data() || {};
+        const others = (data.linkedUids || []).filter(u => u !== uid);
+        oldBecameEmpty = (others.length === 0);
+      }
     } catch(e){}
   }
 
-  if (oldBecameEmpty && oldName && oldName !== displayName){
-    migrateLeaderboardNames(oldName, displayName).catch(()=>{});
+  /* Step 3 — migrate entry (old name → new name) while we own both. */
+  if (oldBecameEmpty && oldKey){
+    await migrateLeaderboardEntry(oldKey, hostKey, displayName).catch(()=>{});
   }
 
+  /* Step 4 — release old name. */
+  if (oldRef){
+    try {
+      await db.runTransaction(async tx => {
+        const oldSnap = await tx.get(oldRef);
+        if (oldSnap && oldSnap.exists){
+          const data = oldSnap.data() || {};
+          const uids = (data.linkedUids || []).filter(u => u !== uid);
+          if (uids.length === 0) tx.delete(oldRef);
+          else tx.update(oldRef, { count: uids.length, linkedUids: uids });
+        }
+      });
+    } catch(e){}
+  }
+
+  setPlayerName(displayName);
+  setPlayerNameKey(hostKey);
   return { name: displayName, oldName };
 }
 
-/* ── Remove name (unlink this browser) ────────────────────────── */
-async function removeLeaderboardEntries(uid){
-  if (!db || !uid) return;
-  try {
+/* ── Wipe every leaderboard entry for a NAME KEY ────────────── */
+async function removeLeaderboardEntries(nameKey){
+  if (!db || !nameKey) return;
+  /* Chunked so the rules' get() budget is never exceeded. */
+  const CHUNK = 8;
+  for (let i = 0; i < LB_CONFIG_KEYS.length; i += CHUNK){
+    const slice = LB_CONFIG_KEYS.slice(i, i + CHUNK);
     const batch = db.batch();
-    for (const key of LB_CONFIG_KEYS){
+    for (const key of slice){
       batch.delete(
-        db.collection('leaderboards').doc(key).collection('entries').doc(uid)
+        db.collection('leaderboards').doc(key).collection('entries').doc(nameKey)
       );
     }
-    await batch.commit();
-    lbCache.clear();
-  } catch(e){
-    console.warn('[fb] remove entries failed:', e && (e.code || e.message));
+    try {
+      await batch.commit();
+    } catch(e){
+      console.warn('[fb] remove entries chunk failed:', e && (e.code || e.message));
+    }
   }
+  lbCache.clear();
 }
 
 /*
@@ -2217,8 +2340,11 @@ async function removeLeaderboardEntries(uid){
  *         scores on the boards.
  *
  *   • count == 0 afterwards (we were the last holder)
- *       → delete the `names/{key}` doc AND wipe this uid's
+ *       → delete the `names/{key}` doc AND wipe this name's
  *         leaderboard entries.
+ *
+ * Note: the entry wipe happens BEFORE the name doc is deleted so the
+ * security rules (which look up names/{nameKey}) still allow it.
  */
 async function removePlayerName(){
   const nameKey = getPlayerNameKey();
@@ -2227,8 +2353,6 @@ async function removePlayerName(){
   await fbReadyPromise;
 
   if (db && auth && nameKey){
-    /* Make sure we actually have a signed-in user — otherwise the
-       server-side unlink would silently be skipped. */
     let user = auth.currentUser;
     if (!user) user = await trySignIn();
 
@@ -2236,7 +2360,24 @@ async function removePlayerName(){
       const uid = user.uid;
       const nameRef = db.collection('names').doc(nameKey);
       const userRef = db.collection('users').doc(uid);
+
+      /* Determine whether we're the last holder BEFORE removing the
+         name doc, so we know whether to wipe the leaderboard. */
       let nameFullyReleased = false;
+      try {
+        const snap = await nameRef.get();
+        if (snap.exists){
+          const data = snap.data() || {};
+          const linked = data.linkedUids || [];
+          nameFullyReleased = (linked.filter(u => u !== uid).length === 0);
+        }
+      } catch(e){}
+
+      /* Wipe the leaderboard entries FIRST — the rules need the name
+         doc to still exist for us to be allowed to write. */
+      if (nameFullyReleased){
+        await removeLeaderboardEntries(nameKey);
+      }
 
       try {
         await db.runTransaction(async tx => {
@@ -2244,25 +2385,13 @@ async function removePlayerName(){
           if (snap.exists){
             const data = snap.data() || {};
             const linked = data.linkedUids || [];
-            /* Drop this browser's uid from the file. */
             const uids = linked.filter(u => u !== uid);
             if (uids.length === 0){
-              /* Last holder — remove the name doc entirely and
-                 remember that we also need to purge scores. */
               tx.delete(nameRef);
-              nameFullyReleased = true;
             } else {
-              /* Someone else still holds this name. Just decrement
-                 count and drop our uid; the leaderboard entries
-                 belong to the name, so leave them alone. */
-              tx.update(nameRef, {
-                count: uids.length,
-                linkedUids: uids
-              });
+              tx.update(nameRef, { count: uids.length, linkedUids: uids });
             }
           }
-          /* Clear this browser's user profile so it no longer
-             points at the released name. */
           tx.set(userRef, {
             name: '',
             nameKey: '',
@@ -2272,39 +2401,12 @@ async function removePlayerName(){
         console.log('[fb] released name "' + oldName + '" from uid', uid);
       } catch(e){
         console.warn('[fb] removePlayerName:', e && (e.code || e.message));
-        /* fall through — still clear locally */
-      }
-
-      /* Only wipe THIS uid's leaderboard entries when the name
-         has no other holders left. If another browser still uses
-         the name, its scores must remain visible on the boards. */
-      if (nameFullyReleased){
-        await removeLeaderboardEntries(uid);
       }
     }
   }
 
   clearPlayerName();
   return { name: oldName };
-}
-
-async function migrateLeaderboardNames(oldName, newName){
-  if (!db || !oldName || !newName || oldName === newName) return;
-  try {
-    const snap = await db.collectionGroup('entries').where('name', '==', oldName).get();
-    if (snap.empty) return;
-    const docs = snap.docs;
-    for (let i = 0; i < docs.length; i += 400){
-      const batch = db.batch();
-      for (let j = i; j < Math.min(i + 400, docs.length); j++){
-        batch.update(docs[j].ref, { name: newName });
-      }
-      await batch.commit();
-    }
-    lbCache.clear();
-  } catch(e){
-    console.warn('[fb] migrateLeaderboardNames failed:', e);
-  }
 }
 
 /* ── Leaderboard rendering ────────────────────────────────────── */
@@ -2320,11 +2422,12 @@ function renderLeaderboardRows(mode, cat){
     return '<div class="lb-empty">No scores yet.<br>Be the first!</div>';
   }
   const joint = (mode === 'coop' || mode === 'territory');
+  const myKey = getPlayerNameKey();
   return LB_STATE.data.map((e, i) => {
-    const isMe = !isGuest && fbUser && e.id === fbUser.uid;
+    /* Entry doc id is now the name key, so compare against ours. */
+    const isMe = !isGuest && !!myKey && e.id === myKey;
     const val = (cat === 'time') ? formatTime(e.bestTime) : formatWins(e.wins);
     let nm = e.name || 'Anon';
-    /* For co-op / territory time entries, show both players. */
     if (joint && cat === 'time' && e.partnerName){
       nm = nm + ' & ' + e.partnerName;
     }
@@ -2388,7 +2491,6 @@ function attachLeaderboardHandlers(){
   });
   const unlock = overlay.querySelector('#lbUnlockBtn');
   if (unlock) unlock.onclick = () => {
-    /* Reload the page so the name popup shows again. */
     try { location.reload(); } catch(e){}
   };
 }
@@ -2504,11 +2606,7 @@ const fsIcon     = document.getElementById('fsIcon');
 function setStatus(text, cls){ statusText.textContent = text; statusbar.className = cls || ''; }
 function setText(el, v){ if (!el) return; const s = String(v); if (el.textContent !== s) el.textContent = s; }
 
-/* ── Menu auto-fit ─────────────────────────────────────────────
-   Scales an `.ovbox.menu-pop` down so it always fits the viewport
-   without an inner scrollbar. Uses CSS `zoom` (layout-affecting)
-   so flex centring still works. Falls back to scrolling on very
-   old browsers that don't support zoom. */
+/* ── Menu auto-fit ───────────────────────────────────────────── */
 let fitRaf1 = 0, fitRaf2 = 0;
 function fitMenuBox(){
   const box = overlay.querySelector('.ovbox.menu-pop');
@@ -2516,7 +2614,6 @@ function fitMenuBox(){
 
   box.style.zoom = '';
   box.style.maxHeight = 'none';
-  /* force layout */
   void box.offsetHeight;
 
   const ovStyle = getComputedStyle(overlay);
@@ -3804,7 +3901,6 @@ function countRevealedTiles(boardState){
   return n;
 }
 
-/* ── % of the map each player has uncovered (multiplayer only) ── */
 function mapRevealStats(){
   const mode = G.config.mode;
   if (mode === 'solo') return null;
@@ -4153,8 +4249,6 @@ function endTerritoryScreen(land1, land2){
     '<div class="statcard"><div class="slabel">THEY REVEALED</div><div class="sval">' + theirsPct.toFixed(0) + '%</div></div>';
   const elapsed = performance.now() - G.startTime;
 
-  /* Both players cleared the board together, so both record the
-     joint time. Only the actual winner counts it as a "win". */
   if (G.config && elapsed > 0 && !isGuest){
     const partner = G.theirName || '';
     const iWon = (result === 'win');
@@ -4446,9 +4540,6 @@ function attachConn(c){
   c.on('close', onConnClosed);
   c.on('error', () => {});
   startHeartbeat();
-  /* Announce our name as soon as the pipe is open so the other
-     side can display it (and so co-op / territory entries can
-     record both players' names). */
   const announce = () => {
     if (G.conn !== c) return;
     const nm = getPlayerName() || '';
@@ -4724,13 +4815,9 @@ function cleanupNet(){
    LOBBY / MENU
    ══════════════════════════════════════════════════════════════ */
 let menuError = '';
-let menuView = 'main';          /* 'main' | 'hotkeys' | 'howto' | 'name' | 'link' */
+let menuView = 'main';
 let linkPeer = null;
-/* Session-only guest flag — deliberately NOT persisted to storage.
-   Guest sessions never register leaderboard scores. */
 let isGuest = false;
-/* False until the initial Firebase/name check has finished. Prevents
-   the main menu from flashing before the name popup appears. */
 let booted = false;
 
 /* ── Name entry popup ─────────────────────────────────────────── */
@@ -4786,11 +4873,6 @@ function showNameEntryPopup(opts){
     }
 
     try {
-      /* registerName() handles: validation, waiting for Firebase,
-         signing in if needed, and falling back to a local-only name
-         if the network / auth is unreachable — so the player is never
-         locked out by a transient server problem. It only throws for
-         real errors like "that name is already taken". */
       await registerName(raw, isChange);
       isGuest = false;
       finish(v.name);
@@ -4905,7 +4987,7 @@ function doStartLinking(name, key){
 
   cleanupLinkPeer();
   let peer;
-  try { peer = new Peer(LINK_PREFIX + code, { debug: 0 }); }
+  try { peer = new Peer(LINK_PREFIX + code, PEER_OPTS); }
   catch(e){
     if (statusEl) statusEl.textContent = 'Could not start link server.';
     return;
@@ -4996,7 +5078,6 @@ function menuHTML(err){
       '<button class="primary" id="btnJoinGo">GO</button>' +
     '</div>';
 
-  /* When in guest mode we never show a name — just "GUEST MODE". */
   const displayName = isGuest
     ? 'GUEST MODE'
     : (getPlayerName() || 'SET NAME');
@@ -5147,7 +5228,6 @@ function renderMenu(err){
       renderMenu('');
     };
 
-    /* ── REMOVE NAME (with confirmation) ── */
     const btnRemove = overlay.querySelector('#btnRemoveName');
     if (btnRemove) btnRemove.onclick = async () => {
       const ok = await confirmDialog({
@@ -5169,7 +5249,6 @@ function renderMenu(err){
       }
       isGuest = false;
       menuError = '';
-      /* Ask for a brand new name right away. */
       showNameEntryPopup({
         onSuccess: () => {
           menuView = 'main';
@@ -5200,14 +5279,11 @@ function renderMenu(err){
 
   const nameBtn = overlay.querySelector('#nameBtn');
   if (nameBtn) nameBtn.onclick = () => {
-    /* Guest mode: the name button just refreshes the page so the user
-       can go through the name picker again. Nothing is saved. */
     if (isGuest){
       try { location.reload(); } catch(e){}
       return;
     }
     if (!getPlayerName()){
-      /* Edge case — should not happen, but treat like guest. */
       try { location.reload(); } catch(e){}
       return;
     }
@@ -5308,9 +5384,6 @@ function idleOverlay(){
   cleanupNet();
   setStatus('OFFLINE', '');
 
-  /* While the very first Firebase/name check is still running we
-     show a "Connecting…" splash instead of the menu, so the menu
-     never flashes before the name popup appears. */
   if (!booted){ showBootScreen(); return; }
 
   renderMenu('');
@@ -5347,7 +5420,7 @@ function hostGame(){
 
   const code = makeCode();
   let peer;
-  try { peer = new Peer(PREFIX + code, { debug: 0 }); }
+  try { peer = new Peer(PREFIX + code, PEER_OPTS); }
   catch(e){ renderMenu('Could not start peer connection.'); return; }
   G.peer = peer;
   let started = false;
@@ -5403,23 +5476,13 @@ function showCodeScreen(code){
   wireCancel();
 }
 
-/* ── Guest join (tries room code AND link code simultaneously) ──
-   Previously we tried the room peer ID first and only fell back to
-   the link peer when that attempt reported "peer-unavailable". On
-   mobile networks that fallback often never fired (the first
-   attempt just hung), which is why linking worked between two
-   computers but not from a phone.
-
-   Now we open BOTH connections in parallel, right after our own
-   peer registers with the signalling server. Whichever one opens
-   first wins; both attempts feed into the same handlers. */
 function joinGame(code){
   setStatus('CONNECTING', 'warn');
   showOverlay(waitHTML('🔎', 'JOINING ' + code, '<span class="spin"></span>Looking for the room…'));
   wireCancel();
 
   let peer;
-  try { peer = new Peer({ debug: 0 }); }
+  try { peer = new Peer(PEER_OPTS); }
   catch(e){ renderMenu('Could not start peer connection.'); return; }
   G.peer = peer;
 
@@ -5445,9 +5508,11 @@ function joinGame(code){
     wireCancel();
   };
 
+  /* 35 s: mobile ICE + TURN handshakes can take much longer than
+     the old 15 s, especially on cellular networks. */
   failTimer = setTimeout(() => {
     finishFail('No room or link code matched.');
-  }, 15000);
+  }, 35000);
 
   const maybeBothDead = () => {
     if (settled) return;
@@ -5502,7 +5567,6 @@ function joinGame(code){
   peer.on('open', () => {
     if (G.peer !== peer || settled) return;
 
-    /* Attempt 1: normal room peer */
     try { roomConn = peer.connect(PREFIX + code, { reliable: true }); }
     catch(e){ roomConn = null; }
     if (roomConn){
@@ -5518,7 +5582,6 @@ function joinGame(code){
       roomDead = true;
     }
 
-    /* Attempt 2: link peer (parallel) */
     try { linkConn = peer.connect(LINK_PREFIX + code, { reliable: true }); }
     catch(e){ linkConn = null; }
     if (linkConn){
@@ -5547,8 +5610,6 @@ function joinGame(code){
   peer.on('error', err => {
     if (G.peer !== peer) return;
     const t = err && err.type;
-    /* "peer-unavailable" just means one of the two targets is empty —
-       the other may still be alive, so keep waiting. */
     if (t === 'peer-unavailable') return;
     if (settled) return;
     if (t === 'network' || t === 'server-error' || t === 'socket-error' || t === 'socket-closed'){
@@ -5557,8 +5618,6 @@ function joinGame(code){
       cleanupNet();
       renderMenu('Connection error: ' + t);
     }
-    /* Any other error: leave the parallel attempts running; the
-       timeout will clean up. */
   });
 }
 
@@ -5840,10 +5899,6 @@ function endGame(result, icon, title, sub, elapsed, cards, opts){
 
   opts = opts || {};
 
-  /* ── Leaderboard: record a win (guests are skipped, and the
-        server-side name is verified inside recordWin()). For
-        co-op / territory the entry also stores the partner's
-        name so the time board can show both players. ── */
   if (!opts.skipRecord && result === 'win' && G.config && elapsed > 0){
     const mode = G.config.mode;
     const joint = (mode === 'coop' || mode === 'territory');
@@ -5878,8 +5933,6 @@ function endGame(result, icon, title, sub, elapsed, cards, opts){
     if (G.them){
       cardsHtml += '<div class="statcard lose"><div class="slabel">THEIR HITS</div><div class="sval">' + G.them.hits + '</div></div>';
     }
-    /* In every multiplayer mode, show how much of the map each
-       player has uncovered. */
     const pct = mapRevealStats();
     if (pct){
       cardsHtml +=
@@ -6035,7 +6088,6 @@ requestAnimationFrame(loop);
    ══════════════════════════════════════════════════════════════ */
 let resizeTimer = null;
 window.addEventListener('resize', () => {
-  /* Keep the menu fitted while the viewport changes. */
   if (!overlay.classList.contains('hidden')) fitMenuBox();
 
   clearTimeout(resizeTimer);

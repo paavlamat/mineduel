@@ -878,69 +878,6 @@
 <div id="overlay" class="overlay hidden"></div>
 <div id="modal" class="overlay hidden"></div>
 
-<!-- ════════════════════════════════════════════════════════════
-     Firebase compat SDKs (Firestore + Auth)
-     NOTE: Anonymous Auth must be enabled in Firebase console.
-
-     Leaderboard entries are keyed by **name key** (lower-cased
-     name), NOT by uid. A name is the public identity — every
-     browser linked to that name writes to the same entry, and the
-     entry follows the name through the leaderboards.
-
-     Firestore rules required for this build:
-
-     rules_version = '2';
-
-     service cloud.firestore {
-       match /databases/{database}/documents {
-
-         function signedIn() {
-           return request.auth != null;
-         }
-
-         // true if the caller's uid is listed in names/{nameKey}
-         function ownsName(nameKey) {
-           return signedIn() &&
-             get(/databases/$(database)/documents/names/$(nameKey))
-               .data.linkedUids.hasAny([request.auth.uid]);
-         }
-
-         // ── Name registry: one doc per lower-cased name ──
-         match /names/{nameId} {
-           allow read: if true;
-           allow create: if signedIn();
-           allow update: if signedIn() && (
-             resource.data.linkedUids.hasAny([request.auth.uid]) ||
-             request.resource.data.linkedUids.hasAny([request.auth.uid])
-           );
-           allow delete: if signedIn() &&
-                          resource.data.linkedUids.hasAny([request.auth.uid]);
-         }
-
-         // ── User profile: one doc per uid ──
-         match /users/{userId} {
-           allow read: if true;
-           allow write: if signedIn() && request.auth.uid == userId;
-         }
-
-         // ── Leaderboard entries: one doc per NAME (per config) ──
-         match /leaderboards/{configKey}/entries/{nameKey} {
-           allow read: if true;
-           allow write: if ownsName(nameKey);
-         }
-
-         // ── Link codes (short-lived, name-transfer handshake) ──
-         match /linkCodes/{code} {
-           allow read:   if true;
-           allow create: if signedIn();
-           allow update: if signedIn();
-           allow delete: if signedIn();
-         }
-       }
-     }
-
-     No collection-group index is needed any more.
-     ════════════════════════════════════════════════════════════ -->
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
@@ -953,7 +890,6 @@ const STUN_MS = 10000;
 const PREFIX  = 'mineduel-v5-';
 const LINK_PREFIX = 'mineduel-link-';
 const HEARTBEAT_MS      = 2000;
-/* Longer patience: opponent must go silent for 20s before we drop them. */
 const HEARTBEAT_TIMEOUT = 20000;
 
 const TARGET_FPS = 120;
@@ -961,7 +897,9 @@ const FRAME_MIN_MS = 1000 / TARGET_FPS;
 const PAN_SPEED_CSS = 900;
 const ZOOM_RATE = 2.4;
 
-const SOLVER_MAX_ATTEMPTS = 60;
+/* Bumped from 60 — with the exact solver we can afford more retries
+   and it makes finding a fully-solvable board almost certain. */
+const SOLVER_MAX_ATTEMPTS = 100;
 
 const TILES_PER_BOMB = {
   square: 4,
@@ -992,9 +930,6 @@ const SIZES = {
   large:  { id:'large',  name:'Large',  scale:1.8 }
 };
 
-/* ══════════════════════════════════════════════════════════════
-   PEER / WEBRTC CONFIGURATION
-   ══════════════════════════════════════════════════════════════ */
 const PEER_OPTS = {
   debug: 0,
   config: {
@@ -1039,9 +974,6 @@ const MODES = {
   territory: { id:'territory', name:'Territorial', desc:'🏞️Claim land<br>💣Bomb = 10s stun⚡️' }
 };
 
-/* ══════════════════════════════════════════════════════════════
-   HOTKEYS
-   ══════════════════════════════════════════════════════════════ */
 const HOTKEY_STORE = 'mineduel-hotkeys-v1';
 
 const DEFAULT_HOTKEYS = {
@@ -1113,9 +1045,6 @@ function panelKeysText(){
          prettyKey(HOTKEYS.flag) + ' FLAG';
 }
 
-/* ══════════════════════════════════════════════════════════════
-   UTILS
-   ══════════════════════════════════════════════════════════════ */
 function mulberry32(a){
   return function(){
     a |= 0; a = (a + 0x6D2B79F5) | 0;
@@ -1207,9 +1136,6 @@ function escapeHtml(s){
   ));
 }
 
-/* ══════════════════════════════════════════════════════════════
-   AUDIO
-   ══════════════════════════════════════════════════════════════ */
 let actx = null;
 function beep(freq, dur, type, vol){
   try {
@@ -1338,10 +1264,114 @@ function genBoardDeferred(seed, style, cols, rows, mineCount, clickR, clickC, st
   };
 }
 
+/* ══════════════════════════════════════════════════════════════
+   EXACT SOLVER
+   ══════════════════════════════════════════════════════════════
+   enumerateSolutions(n, constraints, maxSolutions)
+
+     n            — number of frontier cells (indices 0..n-1)
+     constraints  — [{ cells:[indices], mines:number }, ...]
+     maxSolutions — safety cap; returns null if exceeded.
+
+   Returns { count, mineCounts } or null.
+   mineCounts[i] = number of satisfying assignments where cell i is a mine.
+   From that: if mineCounts[i] === 0  -> cell i is safe in every solution.
+              if mineCounts[i] === count -> cell i is a mine in every solution.
+
+   Uses backtracking with per-constraint feasibility pruning.
+   Each cell assignment only re-checks the constraints it belongs to.
+   ══════════════════════════════════════════════════════════════ */
+function enumerateSolutions(n, constraints, maxSolutions){
+  if (n === 0) return { count: 1, mineCounts: new Int32Array(0) };
+  if (!maxSolutions) maxSolutions = 200000;
+
+  const nc = constraints.length;
+
+  // Sanity: any impossible constraint means this component is unsatisfiable.
+  for (let i = 0; i < nc; i++){
+    const c = constraints[i];
+    if (c.mines < 0 || c.mines > c.cells.length) return { count: 0, mineCounts: new Int32Array(n) };
+  }
+
+  const assignment = new Int8Array(n);
+  for (let i = 0; i < n; i++) assignment[i] = -1;
+  const mineCounts = new Int32Array(n);
+
+  // cell -> list of constraint indices it belongs to
+  const cellCons = new Array(n);
+  for (let i = 0; i < n; i++) cellCons[i] = [];
+  for (let ci = 0; ci < nc; ci++){
+    const cells = constraints[ci].cells;
+    for (let k = 0; k < cells.length; k++) cellCons[cells[k]].push(ci);
+  }
+
+  // Order cells by descending constraint count — most constrained first.
+  const order = new Array(n);
+  for (let i = 0; i < n; i++) order[i] = i;
+  order.sort(function(a, b){ return cellCons[b].length - cellCons[a].length; });
+
+  const conMines = new Int32Array(nc);       // mines already assigned in this constraint
+  const conUnassigned = new Int32Array(nc);  // cells not yet assigned in this constraint
+  for (let i = 0; i < nc; i++) conUnassigned[i] = constraints[i].cells.length;
+
+  let count = 0;
+  let overflow = false;
+
+  function tryAssign(cell, val){
+    assignment[cell] = val;
+    const list = cellCons[cell];
+    const nlist = list.length;
+    for (let k = 0; k < nlist; k++){
+      const ci = list[k];
+      conUnassigned[ci]--;
+      if (val === 1) conMines[ci]++;
+    }
+    for (let k = 0; k < nlist; k++){
+      const ci = list[k];
+      const need = constraints[ci].mines;
+      if (conMines[ci] > need) return false;
+      if (conMines[ci] + conUnassigned[ci] < need) return false;
+    }
+    return true;
+  }
+  function undoAssign(cell, val){
+    const list = cellCons[cell];
+    const nlist = list.length;
+    for (let k = 0; k < nlist; k++){
+      const ci = list[k];
+      conUnassigned[ci]++;
+      if (val === 1) conMines[ci]--;
+    }
+    assignment[cell] = -1;
+  }
+
+  function recurse(idx){
+    if (overflow) return;
+    if (idx === n){
+      count++;
+      if (count > maxSolutions){ overflow = true; return; }
+      for (let i = 0; i < n; i++) if (assignment[i] === 1) mineCounts[i]++;
+      return;
+    }
+    const cell = order[idx];
+    for (let v = 0; v <= 1; v++){
+      if (tryAssign(cell, v)){
+        recurse(idx + 1);
+      }
+      undoAssign(cell, v);
+      if (overflow) return;
+    }
+  }
+
+  recurse(0);
+  if (overflow) return null;
+  return { count: count, mineCounts: mineCounts };
+}
+
 function solveBoard(board, opening){
   const rows = board.rows, cols = board.cols;
   const N = rows * cols;
-  const state = new Uint8Array(N);
+  const state = new Uint8Array(N); // 0 = hidden, 1 = revealed, 2 = flagged
   for (let i = 0; i < opening.length; i++){
     const r = opening[i][0], c = opening[i][1];
     if (r >= 0 && r < rows && c >= 0 && c < cols) state[r * cols + c] = 1;
@@ -1366,6 +1396,10 @@ function solveBoard(board, opening){
   for (let iter = 0; iter < MAX_ITER; iter++){
     let changed = false;
 
+    /* ── Pass 1 — basic counting ─────────────────────────────
+       A revealed cell with adj == flags reveals all remaining
+       hidden neighbours; with adj == flags + hidden, flags them
+       all.                                                     */
     for (let i = 0; i < N; i++){
       if (state[i] !== 1) continue;
       const a = adjFlat[i];
@@ -1388,6 +1422,11 @@ function solveBoard(board, opening){
     }
     if (changed) continue;
 
+    /* ── Pass 2 — pairwise subset rule ────────────────────────
+       For every pair of constraints (A ⊆ B):
+         · if B has same remaining mines as A, then B\A is safe;
+         · if B has (A's remaining + |B\A|) mines, then B\A are all mines.
+    */
     const consHidden = [], consRem = [];
     for (let i = 0; i < N; i++){
       if (state[i] !== 1) continue;
@@ -1408,69 +1447,172 @@ function solveBoard(board, opening){
       consRem.push(rem);
     }
     const cn = consHidden.length;
-    if (!cn) break;
-
-    const byCell = new Map();
-    for (let i = 0; i < cn; i++){
-      const h = consHidden[i];
-      for (let k = 0; k < h.length; k++){
-        let arr = byCell.get(h[k]);
-        if (!arr){ arr = []; byCell.set(h[k], arr); }
-        arr.push(i);
-      }
-    }
-
-    const toReveal = [], toFlag = [];
-    const seenPairs = new Set();
-
-    byCell.forEach(list => {
-      const L = list.length;
-      for (let x = 0; x < L; x++){
-        for (let y = x + 1; y < L; y++){
-          let i = list[x], j = list[y];
-          const key = i < j ? (i * 8192 + j) : (j * 8192 + i);
-          if (seenPairs.has(key)) continue;
-          seenPairs.add(key);
-
-          let A = i, B = j;
-          if (consHidden[A].length >= consHidden[B].length){ A = j; B = i; }
-          if (consHidden[A].length >= consHidden[B].length) continue;
-
-          const ha = consHidden[A], hb = consHidden[B];
-          let subset = true;
-          for (let t = 0; t < ha.length; t++){
-            if (hb.indexOf(ha[t]) === -1){ subset = false; break; }
-          }
-          if (!subset) continue;
-
-          const remDiff = consRem[B] - consRem[A];
-          const dLen = hb.length - ha.length;
-          if (remDiff === 0){
-            for (let t = 0; t < hb.length; t++)
-              if (ha.indexOf(hb[t]) === -1) toReveal.push(hb[t]);
-          } else if (remDiff === dLen){
-            for (let t = 0; t < hb.length; t++)
-              if (ha.indexOf(hb[t]) === -1) toFlag.push(hb[t]);
-          }
+    if (cn){
+      const byCell = new Map();
+      for (let i = 0; i < cn; i++){
+        const h = consHidden[i];
+        for (let k = 0; k < h.length; k++){
+          let arr = byCell.get(h[k]);
+          if (!arr){ arr = []; byCell.set(h[k], arr); }
+          arr.push(i);
         }
       }
-    });
 
-    if (toReveal.length){
-      for (let k = 0; k < toReveal.length; k++){
-        const idx = toReveal[k];
-        if (state[idx] === 0) state[idx] = 1;
+      const toReveal = [], toFlag = [];
+      const seenPairs = new Set();
+
+      byCell.forEach(list => {
+        const L = list.length;
+        for (let x = 0; x < L; x++){
+          for (let y = x + 1; y < L; y++){
+            let i = list[x], j = list[y];
+            const key = i < j ? (i * 8192 + j) : (j * 8192 + i);
+            if (seenPairs.has(key)) continue;
+            seenPairs.add(key);
+
+            let A = i, B = j;
+            if (consHidden[A].length >= consHidden[B].length){ A = j; B = i; }
+            if (consHidden[A].length >= consHidden[B].length) continue;
+
+            const ha = consHidden[A], hb = consHidden[B];
+            let subset = true;
+            for (let t = 0; t < ha.length; t++){
+              if (hb.indexOf(ha[t]) === -1){ subset = false; break; }
+            }
+            if (!subset) continue;
+
+            const remDiff = consRem[B] - consRem[A];
+            const dLen = hb.length - ha.length;
+            if (remDiff === 0){
+              for (let t = 0; t < hb.length; t++)
+                if (ha.indexOf(hb[t]) === -1) toReveal.push(hb[t]);
+            } else if (remDiff === dLen){
+              for (let t = 0; t < hb.length; t++)
+                if (ha.indexOf(hb[t]) === -1) toFlag.push(hb[t]);
+            }
+          }
+        }
+      });
+
+      let subChanged = false;
+      if (toReveal.length){
+        for (let k = 0; k < toReveal.length; k++){
+          const idx = toReveal[k];
+          if (state[idx] === 0){ state[idx] = 1; subChanged = true; }
+        }
       }
-      changed = true;
-    }
-    if (toFlag.length){
-      for (let k = 0; k < toFlag.length; k++){
-        const idx = toFlag[k];
-        if (state[idx] === 0) state[idx] = 2;
+      if (toFlag.length){
+        for (let k = 0; k < toFlag.length; k++){
+          const idx = toFlag[k];
+          if (state[idx] === 0){ state[idx] = 2; subChanged = true; }
+        }
       }
-      changed = true;
+      if (subChanged) continue;
     }
-    if (!changed) break;
+
+    /* ── Pass 3 — exact enumeration of the frontier ──────────
+       Build the constraint graph from every revealed numbered
+       cell that still has hidden neighbours. Split into connected
+       components (union-find), then for each component enumerate
+       all mine assignments consistent with every constraint.
+       Any cell that is a mine in 0 solutions is safe (reveal);
+       any cell that is a mine in every solution is a mine (flag).
+    */
+    const allCons = [];
+    const hiddenSet = new Set();
+    for (let i = 0; i < N; i++){
+      if (state[i] !== 1) continue;
+      const a = adjFlat[i];
+      if (a <= 0) continue;
+      const nb = nbrs[i];
+      let flags = 0;
+      const h = [];
+      for (let k = 0; k < nb.length; k++){
+        const s = state[nb[k]];
+        if (s === 2) flags++;
+        else if (s === 0) h.push(nb[k]);
+      }
+      if (!h.length) continue;
+      const rem = a - flags;
+      if (rem < 0 || rem > h.length) continue;
+      allCons.push({ cells: h, mines: rem });
+      for (let k = 0; k < h.length; k++) hiddenSet.add(h[k]);
+    }
+
+    if (allCons.length && hiddenSet.size){
+      // Union-find over frontier cells.
+      const parent = new Map();
+      const find = function(x){
+        let r = x;
+        while (parent.get(r) !== r) r = parent.get(r);
+        while (parent.get(x) !== r){
+          const nx = parent.get(x);
+          parent.set(x, r);
+          x = nx;
+        }
+        return r;
+      };
+      hiddenSet.forEach(function(h){ parent.set(h, h); });
+      for (let ci = 0; ci < allCons.length; ci++){
+        const cells = allCons[ci].cells;
+        for (let k = 1; k < cells.length; k++){
+          const ra = find(cells[0]);
+          const rb = find(cells[k]);
+          if (ra !== rb) parent.set(ra, rb);
+        }
+      }
+
+      const comps = new Map();
+      for (let ci = 0; ci < allCons.length; ci++){
+        const c = allCons[ci];
+        const root = find(c.cells[0]);
+        let comp = comps.get(root);
+        if (!comp){ comp = { cells: new Set(), constraints: [] }; comps.set(root, comp); }
+        for (let k = 0; k < c.cells.length; k++) comp.cells.add(c.cells[k]);
+        comp.constraints.push(c);
+      }
+
+      let deduced = false;
+      comps.forEach(function(comp){
+        if (deduced) return;
+
+        const cells = [];
+        comp.cells.forEach(function(cell){ cells.push(cell); });
+        // Very large components are rare; cap for safety.
+        if (cells.length > 60) return;
+
+        const cellIndex = new Map();
+        for (let i = 0; i < cells.length; i++) cellIndex.set(cells[i], i);
+
+        const localCons = [];
+        for (let ci = 0; ci < comp.constraints.length; ci++){
+          const c = comp.constraints[ci];
+          const lc = [];
+          for (let k = 0; k < c.cells.length; k++) lc.push(cellIndex.get(c.cells[k]));
+          localCons.push({ cells: lc, mines: c.mines });
+        }
+
+        const res = enumerateSolutions(cells.length, localCons, 200000);
+        if (!res || res.count === 0) return;
+
+        for (let i = 0; i < cells.length; i++){
+          const cell = cells[i];
+          if (state[cell] !== 0) continue;
+          if (res.mineCounts[i] === 0){
+            state[cell] = 1;
+            deduced = true;
+          } else if (res.mineCounts[i] === res.count){
+            state[cell] = 2;
+            deduced = true;
+          }
+        }
+      });
+      if (deduced) continue;
+    }
+
+    // Nothing more can be deduced. Board is fully solved iff every
+    // safe cell is revealed — caller checks the returned count.
+    break;
   }
 
   let count = 0;
@@ -1502,6 +1644,7 @@ function buildBoardWorkerSource(){
     'var neighborsFor = ' + neighborsFor.toString() + ';',
     openingSafeZone.toString(),
     genBoardDeferred.toString(),
+    enumerateSolutions.toString(),
     solveBoard.toString(),
     generateSolvableBoard.toString(),
     'self.onmessage = function(ev){',
@@ -1792,8 +1935,6 @@ function trySignIn(){
 const LB_TTL = 45 * 1000;
 const lbCache = new Map();
 
-/* Every config key the leaderboard can ever use, so we can wipe a
-   name's entries in one go when the name is fully released. */
 const LB_CONFIG_KEYS = (() => {
   const out = [];
   for (const mode of ['solo','coop','duel','territory']){
@@ -1823,7 +1964,6 @@ function currentLbCategory(){
   return LB_STATE.category || 'time';
 }
 
-/* ── Local name storage ───────────────────────────────────────── */
 function getPlayerName(){
   try { return localStorage.getItem('mineduel-name') || ''; } catch(e){ return ''; }
 }
@@ -1891,10 +2031,6 @@ async function fetchLeaderboard(mode, style, size, cat){
   return out;
 }
 
-/* ══════════════════════════════════════════════════════════════
-   NAME REGISTRATION
-   ══════════════════════════════════════════════════════════════ */
-
 async function registerName(raw, isChange){
   const v = validateName(raw);
   if (v.error) throw new Error(v.error);
@@ -1925,10 +2061,6 @@ async function registerName(raw, isChange){
   return { name, offline: false };
 }
 
-/*
- * Verifies the locally-stored name is a real, server-side ("logged")
- * name linked to this browser's uid. Used before submitting a score.
- */
 async function isNameRegisteredOnServer(){
   if (!db || !auth || !auth.currentUser) return false;
   const nameKey = getPlayerNameKey();
@@ -1945,15 +2077,8 @@ async function isNameRegisteredOnServer(){
   }
 }
 
-/*
- * Record a win / time on the leaderboard.
- *
- * Entries are keyed by NAME KEY (the lower-cased name), NOT by uid.
- */
 async function recordWin(mode, style, size, timeMs, partnerName, countAsWin){
   if (!db || !auth) return;
-
-  /* Guest mode must NEVER register anything on the leaderboard. */
   if (isGuest) return;
 
   const name = getPlayerName();
@@ -2013,8 +2138,6 @@ async function recordWin(mode, style, size, timeMs, partnerName, countAsWin){
     console.warn('[fb] record win failed:', e && (e.code || e.message || e));
   }
 }
-
-/* ── Name reservation / change / linking / removal ────────────── */
 
 async function ensurePlayerName(){
   const localName = getPlayerName();
@@ -2084,7 +2207,6 @@ async function reserveName(rawName, uid){
   return { name, key };
 }
 
-/* ── Migrate a leaderboard entry from one name key to another ── */
 async function migrateLeaderboardEntry(oldKey, newKey, newName){
   if (!db || !oldKey || !newKey || oldKey === newKey) return;
   if (!auth || !auth.currentUser) return;
@@ -2135,7 +2257,6 @@ async function migrateLeaderboardEntry(oldKey, newKey, newName){
   if (touched) lbCache.clear();
 }
 
-/* ── Change name ─────────────────────────────────────────────── */
 async function changePlayerName(newRaw){
   const v = validateName(newRaw);
   if (v.error) throw new Error(v.error);
@@ -2160,7 +2281,6 @@ async function changePlayerName(newRaw){
   const userRef = db.collection('users').doc(uid);
   const oldRef = oldKey ? db.collection('names').doc(oldKey) : null;
 
-  /* Step 1 — claim the new name & point profile at it. */
   await db.runTransaction(async tx => {
     const newSnap = await tx.get(newRef);
     if (newSnap.exists){
@@ -2181,7 +2301,6 @@ async function changePlayerName(newRaw){
     }, { merge: true });
   });
 
-  /* Step 2 — is our old name going to die with us? */
   let oldBecameEmpty = false;
   if (oldRef){
     try {
@@ -2196,12 +2315,10 @@ async function changePlayerName(newRaw){
     } catch(e){}
   }
 
-  /* Step 3 — migrate the leaderboard entry while both names exist. */
   if (oldBecameEmpty && oldKey){
     await migrateLeaderboardEntry(oldKey, newKey, newName).catch(()=>{});
   }
 
-  /* Step 4 — release the old name. */
   if (oldRef){
     try {
       await db.runTransaction(async tx => {
@@ -2223,7 +2340,6 @@ async function changePlayerName(newRaw){
   return { name: newName, oldName };
 }
 
-/* ── Link this browser to an existing name ───────────────────── */
 async function applyLinkedName(hostName, hostKey){
   if (!auth){
     throw new Error('Auth not available');
@@ -2241,7 +2357,6 @@ async function applyLinkedName(hostName, hostKey){
 
   let displayName = hostName;
 
-  /* Step 1 — claim the new name (already exists) & point profile. */
   await db.runTransaction(async tx => {
     const newSnap = await tx.get(newRef);
     if (!newSnap.exists) throw new Error('That name is no longer available');
@@ -2261,7 +2376,6 @@ async function applyLinkedName(hostName, hostKey){
     }, { merge: true });
   });
 
-  /* Step 2 — is our old name going to die with us? */
   let oldBecameEmpty = false;
   if (oldRef){
     try {
@@ -2275,12 +2389,10 @@ async function applyLinkedName(hostName, hostKey){
     } catch(e){}
   }
 
-  /* Step 3 — migrate entry (old name → new name) while we own both. */
   if (oldBecameEmpty && oldKey){
     await migrateLeaderboardEntry(oldKey, hostKey, displayName).catch(()=>{});
   }
 
-  /* Step 4 — release old name. */
   if (oldRef){
     try {
       await db.runTransaction(async tx => {
@@ -2300,7 +2412,6 @@ async function applyLinkedName(hostName, hostKey){
   return { name: displayName, oldName };
 }
 
-/* ── Wipe every leaderboard entry for a NAME KEY ────────────── */
 async function removeLeaderboardEntries(nameKey){
   if (!db || !nameKey) return;
   const CHUNK = 8;
@@ -2321,10 +2432,6 @@ async function removeLeaderboardEntries(nameKey){
   lbCache.clear();
 }
 
-/*
- * Releases the current name from this browser's uid and wipes the
- * local name.
- */
 async function removePlayerName(){
   const nameKey = getPlayerNameKey();
   const oldName = getPlayerName();
@@ -2383,8 +2490,6 @@ async function removePlayerName(){
   clearPlayerName();
   return { name: oldName };
 }
-
-/* ── Leaderboard rendering ────────────────────────────────────── */
 
 function renderLeaderboardRows(mode, cat){
   if (LB_STATE.loading){
@@ -2519,9 +2624,6 @@ async function refreshLeaderboard(force){
   }
 }
 
-/* ══════════════════════════════════════════════════════════════
-   STATE
-   ══════════════════════════════════════════════════════════════ */
 function makeBoardState(rows, cols){
   return {
     rows, cols,
@@ -2565,9 +2667,6 @@ const G = {
   reviewViews: []
 };
 
-/* ══════════════════════════════════════════════════════════════
-   DOM
-   ══════════════════════════════════════════════════════════════ */
 const overlay    = document.getElementById('overlay');
 const modal      = document.getElementById('modal');
 const statusbar  = document.getElementById('statusbar');
@@ -2580,7 +2679,6 @@ const fsIcon     = document.getElementById('fsIcon');
 function setStatus(text, cls){ statusText.textContent = text; statusbar.className = cls || ''; }
 function setText(el, v){ if (!el) return; const s = String(v); if (el.textContent !== s) el.textContent = s; }
 
-/* ── Menu auto-fit ───────────────────────────────────────────── */
 let fitRaf1 = 0, fitRaf2 = 0;
 function fitMenuBox(){
   const box = overlay.querySelector('.ovbox.menu-pop');
@@ -2648,9 +2746,6 @@ overlay.addEventListener('click', e => { if (e.target.closest('button:not(:disab
 modal.addEventListener('click', e => { if (e.target.closest('button:not(:disabled)')) SFX.click(); }, true);
 fsBtn.addEventListener('click', () => SFX.click(), true);
 
-/* ══════════════════════════════════════════════════════════════
-   CONFIRM
-   ══════════════════════════════════════════════════════════════ */
 let confirmOpen = false;
 function confirmDialog(opts){
   const o = opts || {};
@@ -2686,9 +2781,6 @@ function confirmDialog(opts){
   });
 }
 
-/* ══════════════════════════════════════════════════════════════
-   FULLSCREEN
-   ══════════════════════════════════════════════════════════════ */
 const FS_ENTER_SVG =
   '<polyline points="4,9 4,4 9,4"/><polyline points="15,4 20,4 20,9"/>' +
   '<polyline points="20,15 20,20 15,20"/><polyline points="9,20 4,20 4,15"/>';
@@ -2717,9 +2809,6 @@ document.addEventListener('fullscreenchange', refreshFsIcon);
 document.addEventListener('webkitfullscreenchange', refreshFsIcon);
 refreshFsIcon();
 
-/* ══════════════════════════════════════════════════════════════
-   BOARD VIEW
-   ══════════════════════════════════════════════════════════════ */
 class BoardView {
   constructor(canvas){
     this.canvas = canvas;
@@ -3259,9 +3348,6 @@ function hexOrSqCenter(view, r, c){
   return { x: pad + c * (cell + gap) + cell/2, y: pad + r * (cell + gap) + cell/2 };
 }
 
-/* ══════════════════════════════════════════════════════════════
-   UI BUILD
-   ══════════════════════════════════════════════════════════════ */
 const STUN_HTML =
   '<div class="stun">' +
     '<div class="stun-emoji">💥</div>' +
@@ -3337,7 +3423,6 @@ function makeTerritoryPanel(){
   return panel;
 }
 
-/* ── Player-name helpers + panel header refresh ─────────────── */
 function myNameText(){
   if (isGuest) return 'YOU';
   return getPlayerName() || 'YOU';
@@ -3357,7 +3442,6 @@ function updatePanelNames(){
       if (e.nameEl) e.nameEl.textContent = 'SOLO';
     } else if (mode === 'coop'){
       if (e.nameEl){
-        /* Both teammates share the blue name — team colour. */
         e.nameEl.innerHTML =
           escapeHtml(myName) +
           ' <span style="color:#6b7a94">&amp;</span> ' +
@@ -3368,7 +3452,6 @@ function updatePanelNames(){
       if (e.nameThemEl) e.nameThemEl.textContent = theirName;
       if (e.oppNameEl)  e.oppNameEl.textContent = theirName;
     } else {
-      /* duel — player's own name in blue */
       if (e.nameEl) e.nameEl.textContent = myName;
     }
   }
@@ -3490,9 +3573,6 @@ function wireZoomBadge(panel, view){
   badge.addEventListener('pointerdown', e => e.stopPropagation());
 }
 
-/* ══════════════════════════════════════════════════════════════
-   INPUT — canvas
-   ══════════════════════════════════════════════════════════════ */
 function interactive(){
   return G.state === 'playing' && G.me && !G.me.done;
 }
@@ -3660,9 +3740,6 @@ function bindCanvasInput(view, gameplay){
   canvas.addEventListener('pointercancel', finishPointer);
 }
 
-/* ══════════════════════════════════════════════════════════════
-   INPUT — keyboard
-   ══════════════════════════════════════════════════════════════ */
 const heldPan = { KeyW:false, KeyA:false, KeyS:false, KeyD:false };
 const heldZoom = { in:false, out:false };
 
@@ -3769,9 +3846,6 @@ function updateZoomFromKeys(dtMs){
   }
 }
 
-/* ══════════════════════════════════════════════════════════════
-   INPUT — touch pad
-   ══════════════════════════════════════════════════════════════ */
 function holdButton(btn, fn){
   let t1 = null, t2 = null;
   const start = e => {
@@ -3812,9 +3886,6 @@ function buildTouchpad(){
   return pad;
 }
 
-/* ══════════════════════════════════════════════════════════════
-   GAME LOGIC
-   ══════════════════════════════════════════════════════════════ */
 function applyReveal(boardState, board, r, c, owner){
   owner = owner || 0;
   if (boardState.revealed[r][c]) return null;
@@ -3996,9 +4067,6 @@ function ensureFirstDigSafe(board, boardState, playerState, r, c, syncNetwork){
   return true;
 }
 
-/* ══════════════════════════════════════════════════════════════
-   LOCAL ACTIONS
-   ══════════════════════════════════════════════════════════════ */
 function canAct(){
   return G.state === 'playing' && G.me && !G.me.done && performance.now() >= G.me.stunUntil;
 }
@@ -4355,9 +4423,6 @@ function localChord(){
   }
 }
 
-/* ══════════════════════════════════════════════════════════════
-   TERRITORY UNLOCK
-   ══════════════════════════════════════════════════════════════ */
 function checkTerritoryUnlock(){
   if (G.config.mode !== 'territory') return;
   if (G.territoryUnlocked) return;
@@ -4406,9 +4471,6 @@ function showUnlockPopup(byOwner){
   }, 3600);
 }
 
-/* ══════════════════════════════════════════════════════════════
-   HOST-AUTHORITATIVE SHARED ACTIONS
-   ══════════════════════════════════════════════════════════════ */
 function hostApplyDig(r, c, owner){
   if (G.state !== 'playing') return;
   const bs = G.myBoard;
@@ -4515,9 +4577,6 @@ function hostEnsureBoardThen(r, c, action){
   }, () => {});
 }
 
-/* ══════════════════════════════════════════════════════════════
-   NETWORK
-   ══════════════════════════════════════════════════════════════ */
 function send(msg){
   if (G.conn && G.conn.open){
     try { G.conn.send(msg); } catch(e){}
@@ -4832,15 +4891,11 @@ function cleanupNet(){
   if (G.peer){ try { G.peer.destroy(); } catch(e){} G.peer = null; }
 }
 
-/* ══════════════════════════════════════════════════════════════
-   LOBBY / MENU
-   ══════════════════════════════════════════════════════════════ */
 let menuError = '';
 let menuView = 'main';
 let isGuest = false;
 let booted = false;
 
-/* ── Name entry popup ─────────────────────────────────────────── */
 function showNameEntryPopup(opts){
   opts = opts || {};
   const isChange = !!opts.isChange;
@@ -4918,7 +4973,6 @@ function showNameEntryPopup(opts){
   };
 }
 
-/* ── Name menu (clicking the name button) ─────────────────────── */
 function nameMenuHTML(){
   return '<div class="ovbox menu-pop">' +
     '<div class="big">🏷️</div>' +
@@ -4941,7 +4995,6 @@ function nameMenuHTML(){
   '</div>';
 }
 
-/* ── Link menu (host side) ────────────────────────────────────── */
 function linkMenuHTML(){
   return '<div class="ovbox menu-pop">' +
     '<div class="big">🔗</div>' +
@@ -4955,16 +5008,6 @@ function linkMenuHTML(){
   '</div>';
 }
 
-/* ══════════════════════════════════════════════════════════════
-   LINKING — FIREBASE RELAY (no WebRTC)
-   ══════════════════════════════════════════════════════════════
-   The old link flow used a PeerJS data channel. That works fine
-   between two computers on the same LAN but breaks the moment one
-   side is a phone on a different network. The linking handshake
-   is tiny (a name + a key), so we route it through Firestore
-   instead. No WebRTC, no ICE, no TURN, no in-app browser
-   restrictions — it just works everywhere Firebase is reachable.
-*/
 let linkUnsub = null;
 
 function cleanupLinkPeer(){
@@ -5085,7 +5128,6 @@ function doStartLinking(name, key, hostUid){
   };
 }
 
-/* ── Main menu HTML ──────────────────────────────────────────── */
 function menuHTML(err){
   const cfg = G.config;
   const modeBtns = Object.keys(MODES).map(k => {
@@ -5519,16 +5561,11 @@ function showCodeScreen(code){
   wireCancel();
 }
 
-/* ══════════════════════════════════════════════════════════════
-   JOIN — Firestore link code first, then PeerJS room
-   ══════════════════════════════════════════════════════════════ */
 async function joinGame(code){
   setStatus('CONNECTING', 'warn');
   showOverlay(waitHTML('🔎', 'JOINING ' + code, '<span class="spin"></span>Looking for the room…'));
   wireCancel();
 
-  // 1) If this code matches a live link request in Firestore, handle
-  //    it entirely through Firestore — no WebRTC involved.
   if (db && auth){
     try {
       const linkSnap = await db.collection('linkCodes').doc(code).get();
@@ -5545,11 +5582,9 @@ async function joinGame(code){
       }
     } catch(e){
       console.warn('[link] Firestore check failed:', e);
-      // fall through to the room path
     }
   }
 
-  // 2) Otherwise treat it as a PeerJS room code.
   joinRoomPeerJS(code);
 }
 
@@ -5644,9 +5679,6 @@ function joinRoomPeerJS(code){
   });
 }
 
-/* ══════════════════════════════════════════════════════════════
-   MATCH FLOW
-   ══════════════════════════════════════════════════════════════ */
 function startMatch(seed, role, seedGuest){
   G.role = role;
   G.seed = seed >>> 0;
@@ -5781,9 +5813,6 @@ async function onLeaveClick(){
   setTimeout(() => { cleanupNet(); idleOverlay(); }, 160);
 }
 
-/* ══════════════════════════════════════════════════════════════
-   MAP REVIEW
-   ══════════════════════════════════════════════════════════════ */
 function buildFullRevealState(baseState, board){
   const s = makeBoardState(board.rows, board.cols);
   for (let r = 0; r < board.rows; r++){
@@ -5911,9 +5940,6 @@ function showMapReview(){
   document.addEventListener('keydown', onKey);
 }
 
-/* ══════════════════════════════════════════════════════════════
-   END GAME
-   ══════════════════════════════════════════════════════════════ */
 function endGame(result, icon, title, sub, elapsed, cards, opts){
   if (G.state === 'over') return;
   G.state = 'over';
@@ -5999,9 +6025,6 @@ function endGame(result, icon, title, sub, elapsed, cards, opts){
   else if (result === 'lose' || result === 'disconnect') SFX.lose();
 }
 
-/* ══════════════════════════════════════════════════════════════
-   RENDER LOOP
-   ══════════════════════════════════════════════════════════════ */
 function renderAll(now){
   if (!G.viewMe || !G.myBoard || !G.board || !G.me) return;
   const myColor = '#4dd8ff';
@@ -6106,9 +6129,6 @@ function loop(now){
 }
 requestAnimationFrame(loop);
 
-/* ══════════════════════════════════════════════════════════════
-   WINDOW EVENTS
-   ══════════════════════════════════════════════════════════════ */
 let resizeTimer = null;
 window.addEventListener('resize', () => {
   if (!overlay.classList.contains('hidden')) fitMenuBox();
@@ -6159,9 +6179,6 @@ window.addEventListener('pagehide', () => {
   }
 });
 
-/* ══════════════════════════════════════════════════════════════
-   BOOT
-   ══════════════════════════════════════════════════════════════ */
 idleOverlay();
 
 (async function boot(){

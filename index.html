@@ -1682,15 +1682,7 @@ function initFirebase(){
     };
 
     /*
-     * IMPORTANT:
-     * The previous version resolved fbReadyPromise on the VERY FIRST
-     * onAuthStateChanged callback. That callback fires immediately
-     * (with user == null) BEFORE the anonymous sign-in completes, so
-     * auth.currentUser was still null when the name popup ran. The
-     * popup then silently fell back to localStorage and never wrote
-     * to Firestore — which is why the database stayed empty.
-     *
-     * Now we only settle once we actually have a user (sign-in
+     * We only settle once we actually have a user (sign-in
      * succeeded) OR sign-in has definitively failed.
      */
     auth.onAuthStateChanged(u => {
@@ -1746,6 +1738,20 @@ function trySignIn(){
 
 const LB_TTL = 45 * 1000;
 const lbCache = new Map();
+
+/* Every config key the leaderboard can ever use, so we can wipe a
+   player's entries in one batch when they remove their name. */
+const LB_CONFIG_KEYS = (() => {
+  const out = [];
+  for (const mode of ['solo','coop','duel','territory']){
+    for (const style of ['square','hex']){
+      for (const size of ['small','medium','large']){
+        out.push(mode + '_' + style + '_' + size);
+      }
+    }
+  }
+  return out;
+})();
 
 const LB_STATE = {
   category: 'time',
@@ -1851,7 +1857,6 @@ async function registerName(raw, isChange){
   await fbReadyPromise;
 
   if (!db || !auth){
-    // Firebase unavailable — local only.
     setPlayerName(name); setPlayerNameKey(key);
     return { name, offline: true };
   }
@@ -1860,7 +1865,6 @@ async function registerName(raw, isChange){
   if (!user) user = await trySignIn();
 
   if (!user){
-    // Auth unreachable — keep it local so the player can still play.
     console.warn('[fb] auth unavailable — name saved locally only');
     setPlayerName(name); setPlayerNameKey(key);
     return { name, offline: true };
@@ -1894,7 +1898,16 @@ async function isNameRegisteredOnServer(){
   }
 }
 
-async function recordWin(mode, style, size, timeMs){
+/*
+ * Record a win / time on the leaderboard.
+ *
+ * partnerName  – for co-op / territory: the other player's name, so
+ *                the time entry can show both names.
+ * countAsWin   – set to false if this should only record the time
+ *                (used by territory losers — they participated in
+ *                clearing the board but didn't claim the most land).
+ */
+async function recordWin(mode, style, size, timeMs, partnerName, countAsWin){
   if (!db || !auth) return;
 
   /* Guest mode must NEVER register anything on the leaderboard. */
@@ -1908,9 +1921,8 @@ async function recordWin(mode, style, size, timeMs){
   if (!auth.currentUser) return;
   const uid = auth.currentUser.uid;
 
-  /* ── REQUIREMENT ──────────────────────────────────────────────
-     Only submit the score if this name is a registered ("logged")
-     name on the server AND it belongs to this browser's uid.     */
+  /* Only submit the score if this name is a registered ("logged")
+     name on the server AND it belongs to this browser's uid. */
   const registered = await isNameRegisteredOnServer();
   if (!registered){
     console.warn('[fb] "' + name + '" is not a registered name — score not submitted');
@@ -1920,39 +1932,49 @@ async function recordWin(mode, style, size, timeMs){
   const key = lbKey(mode, style, size);
   const ref = db.collection('leaderboards').doc(key).collection('entries').doc(uid);
   const isDuel = (mode === 'duel');
+  const joint  = (mode === 'coop' || mode === 'territory');
   const timeVal = Math.max(1, Math.round(timeMs || 0));
+  const addWin = (countAsWin === undefined) ? true : !!countAsWin;
+  const partner = joint ? String(partnerName || '').trim().slice(0, 32) : '';
+
   try {
     const snap = await ref.get();
     if (!snap.exists){
       const doc = {
         name,
-        wins: 1,
+        wins: addWin ? 1 : 0,
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       };
+      if (joint && partner) doc.partnerName = partner;
       if (!isDuel) doc.bestTime = timeVal;
       await ref.set(doc);
     } else {
       const data = snap.data() || {};
       const upd = {
         name,
-        wins: (data.wins || 0) + 1,
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       };
+      if (addWin) upd.wins = (data.wins || 0) + 1;
       if (!isDuel){
         const prev = data.bestTime;
-        if (!prev || timeVal < prev) upd.bestTime = timeVal;
+        if (!prev || timeVal < prev){
+          upd.bestTime = timeVal;
+          if (joint && partner) upd.partnerName = partner;
+        }
+      } else if (joint && partner){
+        upd.partnerName = partner;
       }
       await ref.update(upd);
     }
     lbCache.delete(key + '_wins');
     lbCache.delete(key + '_time');
-    console.log('[fb] recorded win for', name, 'on', key);
+    console.log('[fb] recorded score for', name, 'on', key);
   } catch(e){
     console.warn('[fb] record win failed:', e && (e.code || e.message || e));
   }
 }
 
-/* ── Name reservation / change / linking ──────────────────────── */
+/* ── Name reservation / change / linking / removal ────────────── */
 
 async function ensurePlayerName(){
   const localName = getPlayerName();
@@ -2167,6 +2189,89 @@ async function applyLinkedName(hostName, hostKey){
   return { name: displayName, oldName };
 }
 
+/* ── Remove name (unlink this browser) ────────────────────────── */
+async function removeLeaderboardEntries(uid){
+  if (!db || !uid) return;
+  try {
+    const batch = db.batch();
+    for (const key of LB_CONFIG_KEYS){
+      batch.delete(
+        db.collection('leaderboards').doc(key).collection('entries').doc(uid)
+      );
+    }
+    await batch.commit();
+    lbCache.clear();
+  } catch(e){
+    console.warn('[fb] remove entries failed:', e && (e.code || e.message));
+  }
+}
+
+/*
+ * Releases the current name from this browser's uid, decrements the
+ * name doc's `count`, drops this uid from `linkedUids`, and deletes
+ * the name doc entirely if this was the last browser holding it.
+ * Also wipes this uid's leaderboard entries and clears the local
+ * name. Works the same way the "change name" flow releases the old
+ * name.
+ */
+async function removePlayerName(){
+  const nameKey = getPlayerNameKey();
+  const oldName = getPlayerName();
+
+  await fbReadyPromise;
+
+  if (db && auth && nameKey){
+    /* Make sure we actually have a signed-in user — otherwise the
+       server-side unlink would silently be skipped. */
+    let user = auth.currentUser;
+    if (!user) user = await trySignIn();
+
+    if (user){
+      const uid = user.uid;
+      const nameRef = db.collection('names').doc(nameKey);
+      const userRef = db.collection('users').doc(uid);
+      try {
+        await db.runTransaction(async tx => {
+          const snap = await tx.get(nameRef);
+          if (snap.exists){
+            const data = snap.data() || {};
+            const linked = data.linkedUids || [];
+            /* Drop this browser's uid from the file. */
+            const uids = linked.filter(u => u !== uid);
+            if (uids.length === 0){
+              /* Last holder — remove the name doc entirely. */
+              tx.delete(nameRef);
+            } else {
+              /* Otherwise just decrement count and update the list. */
+              tx.update(nameRef, {
+                count: uids.length,
+                linkedUids: uids
+              });
+            }
+          }
+          /* Clear this browser's user profile so it no longer
+             points at the released name. */
+          tx.set(userRef, {
+            name: '',
+            nameKey: '',
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          }, { merge: true });
+        });
+        console.log('[fb] released name "' + oldName + '" from uid', uid);
+      } catch(e){
+        console.warn('[fb] removePlayerName:', e && (e.code || e.message));
+        /* fall through — still clear locally */
+      }
+      /* Remove this uid's leaderboard entries so the old name
+         doesn't linger on the boards. */
+      await removeLeaderboardEntries(uid);
+    }
+  }
+
+  clearPlayerName();
+  return { name: oldName };
+}
+
 async function migrateLeaderboardNames(oldName, newName){
   if (!db || !oldName || !newName || oldName === newName) return;
   try {
@@ -2188,8 +2293,7 @@ async function migrateLeaderboardNames(oldName, newName){
 
 /* ── Leaderboard rendering ────────────────────────────────────── */
 
-function renderLeaderboardRows(){
-  const cat = currentLbCategory();
+function renderLeaderboardRows(mode, cat){
   if (LB_STATE.loading){
     return '<div class="lb-empty"><span class="spin"></span>Loading…</div>';
   }
@@ -2199,12 +2303,18 @@ function renderLeaderboardRows(){
   if (!LB_STATE.data.length){
     return '<div class="lb-empty">No scores yet.<br>Be the first!</div>';
   }
+  const joint = (mode === 'coop' || mode === 'territory');
   return LB_STATE.data.map((e, i) => {
     const isMe = !isGuest && fbUser && e.id === fbUser.uid;
     const val = (cat === 'time') ? formatTime(e.bestTime) : formatWins(e.wins);
+    let nm = e.name || 'Anon';
+    /* For co-op / territory time entries, show both players. */
+    if (joint && cat === 'time' && e.partnerName){
+      nm = nm + ' & ' + e.partnerName;
+    }
     return '<div class="lb-row' + (isMe ? ' me' : '') + (cat === 'wins' ? ' wins' : '') + '">' +
       '<span class="lb-rank">' + (i + 1) + '</span>' +
-      '<span class="lb-name">' + escapeHtml(e.name || 'Anon') + '</span>' +
+      '<span class="lb-name">' + escapeHtml(nm) + '</span>' +
       '<span class="lb-val">' + val + '</span>' +
     '</div>';
   }).join('');
@@ -2240,7 +2350,7 @@ function renderLeaderboardHTML(){
     '<div class="lb-config-name">' + escapeHtml(modeName) + ' · ' +
       escapeHtml(styleName) + ' · ' + escapeHtml(sizeName) + '</div>' +
     '<div class="lb-cats">' + catsHtml + '</div>' +
-    '<div class="lb-list">' + renderLeaderboardRows() + '</div>'
+    '<div class="lb-list">' + renderLeaderboardRows(mode, cat) + '</div>'
   );
 }
 
@@ -2249,6 +2359,7 @@ function updateLeaderboardDOM(){
   if (!el) return;
   el.innerHTML = renderLeaderboardHTML();
   attachLeaderboardHandlers();
+  requestAnimationFrame(fitMenuBox);
 }
 
 function attachLeaderboardHandlers(){
@@ -2349,6 +2460,7 @@ const G = {
   role: 'none', state: 'lobby',
   myOwner: 1, theirOwner: 2,
   me: null, them: null,
+  theirName: '',
   myBoard: null, theirBoard: null,
   viewMe: null, viewThem: null,
   panelMe: null, panelThem: null,
@@ -2375,10 +2487,69 @@ const fsIcon     = document.getElementById('fsIcon');
 
 function setStatus(text, cls){ statusText.textContent = text; statusbar.className = cls || ''; }
 function setText(el, v){ if (!el) return; const s = String(v); if (el.textContent !== s) el.textContent = s; }
+
+/* ── Menu auto-fit ─────────────────────────────────────────────
+   Scales an `.ovbox.menu-pop` down so it always fits the viewport
+   without an inner scrollbar. Uses CSS `zoom` (layout-affecting)
+   so flex centring still works. Falls back to scrolling on very
+   old browsers that don't support zoom. */
+let fitRaf1 = 0, fitRaf2 = 0;
+function fitMenuBox(){
+  const box = overlay.querySelector('.ovbox.menu-pop');
+  if (!box || !box.parentElement) return;
+
+  box.style.zoom = '';
+  box.style.maxHeight = 'none';
+  /* force layout */
+  void box.offsetHeight;
+
+  const ovStyle = getComputedStyle(overlay);
+  const padTop    = parseFloat(ovStyle.paddingTop)    || 0;
+  const padBottom = parseFloat(ovStyle.paddingBottom) || 0;
+  const padLeft   = parseFloat(ovStyle.paddingLeft)   || 0;
+  const padRight  = parseFloat(ovStyle.paddingRight)  || 0;
+
+  const availH = overlay.clientHeight - padTop - padBottom;
+  const availW = overlay.clientWidth  - padLeft - padRight;
+
+  const h = box.offsetHeight;
+  const w = box.offsetWidth;
+
+  let scale = 1;
+  if (availH > 0 && h > availH) scale = Math.min(scale, availH / h);
+  if (availW > 0 && w > availW) scale = Math.min(scale, availW / w);
+  scale = Math.max(scale, 0.55);
+
+  if (scale < 0.995 && supportsZoom()){
+    box.style.zoom = scale.toFixed(3);
+    box.style.maxHeight = 'none';
+  } else {
+    box.style.zoom = '';
+    box.style.maxHeight = '';
+  }
+}
+
+function scheduleMenuFit(){
+  if (fitRaf1) cancelAnimationFrame(fitRaf1);
+  if (fitRaf2) clearTimeout(fitRaf2);
+  fitRaf1 = requestAnimationFrame(() => { fitRaf1 = 0; fitMenuBox(); });
+  fitRaf2 = setTimeout(() => { fitRaf2 = 0; fitMenuBox(); }, 90);
+}
+
+let zoomSupported = null;
+function supportsZoom(){
+  if (zoomSupported !== null) return zoomSupported;
+  try {
+    zoomSupported = !!(window.CSS && CSS.supports && CSS.supports('zoom', '0.5'));
+  } catch(e){ zoomSupported = false; }
+  return zoomSupported;
+}
+
 function showOverlay(html){
   overlay.innerHTML = html;
   overlay.classList.remove('hidden');
   document.body.classList.add('menu-open');
+  scheduleMenuFit();
 }
 function hideOverlay(){
   overlay.classList.add('hidden');
@@ -3964,7 +4135,18 @@ function endTerritoryScreen(land1, land2){
     '<div class="statcard lose"><div class="slabel">THEIR LAND</div><div class="sval">' + theirs + '</div></div>' +
     '<div class="statcard"><div class="slabel">YOU REVEALED</div><div class="sval">' + minePct.toFixed(0) + '%</div></div>' +
     '<div class="statcard"><div class="slabel">THEY REVEALED</div><div class="sval">' + theirsPct.toFixed(0) + '%</div></div>';
-  endGame(result, icon, title, sub, performance.now() - G.startTime, cards);
+  const elapsed = performance.now() - G.startTime;
+
+  /* Both players cleared the board together, so both record the
+     joint time. Only the actual winner counts it as a "win". */
+  if (G.config && elapsed > 0 && !isGuest){
+    const partner = G.theirName || '';
+    const iWon = (result === 'win');
+    recordWin('territory', G.config.style, G.config.size,
+              Math.max(1, Math.round(elapsed)), partner, iWon).catch(()=>{});
+  }
+
+  endGame(result, icon, title, sub, elapsed, cards, { skipRecord: true });
 }
 
 function localFlag(){
@@ -4243,10 +4425,21 @@ function attachConn(c){
   G.conn = c;
   G.lastRecv = performance.now();
   G.opponentGone = false;
+  G.theirName = '';
   c.on('data', msg => { G.lastRecv = performance.now(); handleMessage(msg); });
   c.on('close', onConnClosed);
   c.on('error', () => {});
   startHeartbeat();
+  /* Announce our name as soon as the pipe is open so the other
+     side can display it (and so co-op / territory entries can
+     record both players' names). */
+  const announce = () => {
+    if (G.conn !== c) return;
+    const nm = getPlayerName() || '';
+    try { c.send({ t: 'name', name: nm }); } catch(e){}
+  };
+  if (c.open) announce();
+  else c.on('open', announce);
 }
 
 function handleMessage(msg){
@@ -4254,6 +4447,11 @@ function handleMessage(msg){
   switch (msg.t){
     case 'ping': break;
     case 'bye': onConnClosed(); break;
+
+    case 'name': {
+      G.theirName = String(msg.name || '').slice(0, 32);
+      break;
+    }
 
     case 'seed': {
       G.config = msg.config || G.config;
@@ -4618,6 +4816,7 @@ function nameMenuHTML(){
       '<button id="btnLinkName">🔗 LINK TO ANOTHER BROWSER</button>' +
     '</div>' +
     '<div class="ovbtns sub">' +
+      '<button class="danger" id="btnRemoveName">🗑 REMOVE NAME</button>' +
       '<button class="ghost" id="btnBackMenu">BACK</button>' +
     '</div>' +
     '<div class="err" id="menuErr">' + escapeHtml(menuError || '') + '</div>' +
@@ -4629,7 +4828,7 @@ function linkMenuHTML(){
   return '<div class="ovbox menu-pop">' +
     '<div class="big">🔗</div>' +
     '<h2>LINK <span>BROWSER</span></h2>' +
-    '<p>On your <b>other browser</b>, open the main menu, click <b>JOIN MATCH</b>, and enter the code below. That browser will then share your name.</p>' +
+    '<p>On your <b>other device</b> (computer <b>or phone</b>), open the main menu, click <b>JOIN MATCH</b>, and enter the code below. That device will then share your name.</p>' +
     '<div class="codebox"><div class="codeval" id="linkCode">····</div></div>' +
     '<p id="linkStatus"><span class="spin"></span>Preparing…</p>' +
     '<div class="ovbtns">' +
@@ -4686,7 +4885,7 @@ function doStartLinking(name, key){
       });
     };
   }
-  if (statusEl) statusEl.innerHTML = '<span class="spin"></span>Waiting for other browser…';
+  if (statusEl) statusEl.innerHTML = '<span class="spin"></span>Waiting for other device…';
 
   cleanupLinkPeer();
   let peer;
@@ -4706,7 +4905,7 @@ function doStartLinking(name, key){
 
   peer.on('open', () => {
     if (linkPeer !== peer) return;
-    if (statusEl) statusEl.innerHTML = '<span class="spin"></span>Waiting for other browser…';
+    if (statusEl) statusEl.innerHTML = '<span class="spin"></span>Waiting for other device…';
   });
 
   peer.on('connection', c => {
@@ -4931,6 +5130,45 @@ function renderMenu(err){
       menuError = '';
       renderMenu('');
     };
+
+    /* ── REMOVE NAME (with confirmation) ── */
+    const btnRemove = overlay.querySelector('#btnRemoveName');
+    if (btnRemove) btnRemove.onclick = async () => {
+      const ok = await confirmDialog({
+        title: 'REMOVE YOUR NAME?',
+        message:
+          'This will release <b style="color:#4dd8ff">' + escapeHtml(getPlayerName() || '') + '</b> from this browser, ' +
+          'delete your leaderboard entries, and clear it locally.<br><br>' +
+          'You will be asked to pick a new name afterwards. This cannot be undone.',
+        ok: 'REMOVE',
+        cancel: 'CANCEL'
+      });
+      if (!ok) return;
+
+      btnRemove.disabled = true;
+      try {
+        await removePlayerName();
+      } catch(e){
+        console.warn(e);
+      }
+      isGuest = false;
+      menuError = '';
+      /* Ask for a brand new name right away. */
+      showNameEntryPopup({
+        onSuccess: () => {
+          menuView = 'main';
+          renderMenu('');
+          refreshLeaderboard(true);
+        },
+        onGuest: () => {
+          isGuest = true;
+          menuView = 'main';
+          renderMenu('');
+          refreshLeaderboard(true);
+        }
+      });
+    };
+
     const back = overlay.querySelector('#btnBackMenu');
     if (back) back.onclick = () => { menuView = 'main'; menuError = ''; renderMenu(''); };
     return;
@@ -5001,6 +5239,7 @@ function renderMenu(err){
   if (btnJoin) btnJoin.onclick = () => {
     joinRow.classList.toggle('hidden');
     if (!joinRow.classList.contains('hidden') && input) input.focus();
+    scheduleMenuFit();
   };
   if (btnGo) btnGo.onclick = () => {
     const code = (input.value || '').trim().toUpperCase();
@@ -5027,6 +5266,7 @@ function idleOverlay(){
   G.boardOpening = null;
   G.pendingDig = null;
   G.me = null; G.them = null;
+  G.theirName = '';
   G.viewMe = null; G.viewThem = null;
   G.panelMe = null; G.panelThem = null;
   G.lossPending = false;
@@ -5147,120 +5387,162 @@ function showCodeScreen(code){
   wireCancel();
 }
 
-/* ── Guest join (also tries link codes) ───────────────────────── */
+/* ── Guest join (tries room code AND link code simultaneously) ──
+   Previously we tried the room peer ID first and only fell back to
+   the link peer when that attempt reported "peer-unavailable". On
+   mobile networks that fallback often never fired (the first
+   attempt just hung), which is why linking worked between two
+   computers but not from a phone.
+
+   Now we open BOTH connections in parallel, right after our own
+   peer registers with the signalling server. Whichever one opens
+   first wins; both attempts feed into the same handlers. */
 function joinGame(code){
   setStatus('CONNECTING', 'warn');
   showOverlay(waitHTML('🔎', 'JOINING ' + code, '<span class="spin"></span>Looking for the room…'));
   wireCancel();
+
   let peer;
   try { peer = new Peer({ debug: 0 }); }
   catch(e){ renderMenu('Could not start peer connection.'); return; }
   G.peer = peer;
-  let triedLink = false;
-  let joined = false;
 
-  const tryLink = () => {
-    if (triedLink) return;
-    triedLink = true;
-    if (G.conn) { try { G.conn.close(); } catch(e){} G.conn = null; }
-    if (G.peer !== peer) return;
+  let settled = false;
+  let roomConn = null;
+  let linkConn = null;
+  let roomDead = false;
+  let linkDead = false;
+  let failTimer = 0;
 
-    showOverlay(waitHTML('🔗', 'LINKING', '<span class="spin"></span>Checking for link code…'));
+  const closeBoth = () => {
+    try { if (roomConn) roomConn.close(); } catch(e){}
+    try { if (linkConn) linkConn.close(); } catch(e){}
+  };
+
+  const finishFail = (msg) => {
+    if (settled) return;
+    settled = true;
+    if (failTimer) { clearTimeout(failTimer); failTimer = 0; }
+    closeBoth();
+    if (G.peer === peer) cleanupNet();
+    showOverlay(waitHTML('❌', 'NOT FOUND', msg || 'No room or link code matched.'));
     wireCancel();
+  };
 
-    let linkConn;
-    try { linkConn = peer.connect(LINK_PREFIX + code, { reliable: true }); }
-    catch(e){
-      showOverlay(waitHTML('❌', 'NOT FOUND', 'No room or link code matched.'));
-      wireCancel();
-      return;
+  failTimer = setTimeout(() => {
+    finishFail('No room or link code matched.');
+  }, 15000);
+
+  const maybeBothDead = () => {
+    if (settled) return;
+    if (roomDead && linkDead){
+      finishFail('No room or link code matched.');
     }
+  };
 
-    let linkOpened = false;
+  const succeedRoom = (c) => {
+    if (settled) return;
+    settled = true;
+    if (failTimer) { clearTimeout(failTimer); failTimer = 0; }
+    try { if (linkConn) linkConn.close(); } catch(e){}
+    attachConn(c);
+    G.role = 'guest';
+    setStatus('WAITING', 'warn');
+    showOverlay(waitHTML('✅', 'CONNECTED', '<span class="spin"></span>Waiting for the host to start…'));
+    wireCancel();
+  };
 
-    linkConn.on('open', () => {
-      linkOpened = true;
-      showOverlay(waitHTML('🔗', 'LINKING', '<span class="spin"></span>Receiving name…'));
-      wireCancel();
-    });
+  const handleLinkData = async (msg, c) => {
+    if (!msg || typeof msg !== 'object') return;
+    if (msg.t !== 'link_name') return;
+    if (settled) return;
+    settled = true;
+    if (failTimer) { clearTimeout(failTimer); failTimer = 0; }
+    try { if (roomConn) roomConn.close(); } catch(e){}
 
-    linkConn.on('data', async msg => {
-      if (!msg || typeof msg !== 'object') return;
-      if (msg.t === 'link_name'){
-        try {
-          const res = await applyLinkedName(msg.name, msg.nameKey);
-          try { linkConn.send({ t: 'link_ok' }); } catch(e){}
-          isGuest = false;
-          showOverlay(
-            '<div class="ovbox"><div class="big">✅</div><h2>LINKED!</h2>' +
-            '<p>This browser now uses the name <b style="color:#4dd8ff">' + escapeHtml(res.name) + '</b>.</p>' +
-            '<div class="ovbtns"><button class="primary" id="btnLinkDone">BACK TO MENU</button></div></div>'
-          );
-          const b = overlay.querySelector('#btnLinkDone');
-          if (b) b.onclick = () => { cleanupNet(); idleOverlay(); };
-        } catch(e){
-          try { linkConn.send({ t: 'link_err', error: (e && e.message) || 'Failed' }); } catch(_){}
-          showOverlay(
-            '<div class="ovbox"><div class="big">❌</div><h2>LINK FAILED</h2>' +
-            '<p>' + escapeHtml((e && e.message) || 'Failed to link') + '</p>' +
-            '<div class="ovbtns"><button class="primary" id="btnLinkDone">BACK TO MENU</button></div></div>'
-          );
-          const b = overlay.querySelector('#btnLinkDone');
-          if (b) b.onclick = () => { cleanupNet(); idleOverlay(); };
-        }
-      }
-    });
-
-    const linkFail = () => {
-      if (linkOpened) return;
-      showOverlay(waitHTML('❌', 'NOT FOUND', 'No room or link code matched.'));
-      wireCancel();
-    };
-
-    linkConn.on('error', linkFail);
-    linkConn.on('close', linkFail);
+    try {
+      const res = await applyLinkedName(msg.name, msg.nameKey);
+      try { c.send({ t: 'link_ok' }); } catch(e){}
+      isGuest = false;
+      showOverlay(
+        '<div class="ovbox"><div class="big">✅</div><h2>LINKED!</h2>' +
+        '<p>This device now uses the name <b style="color:#4dd8ff">' + escapeHtml(res.name) + '</b>.</p>' +
+        '<div class="ovbtns"><button class="primary" id="btnLinkDone">BACK TO MENU</button></div></div>'
+      );
+      const b = overlay.querySelector('#btnLinkDone');
+      if (b) b.onclick = () => { cleanupNet(); idleOverlay(); };
+    } catch(e){
+      try { c.send({ t:'link_err', error: (e && e.message) || 'Failed' }); } catch(_){}
+      showOverlay(
+        '<div class="ovbox"><div class="big">❌</div><h2>LINK FAILED</h2>' +
+        '<p>' + escapeHtml((e && e.message) || 'Failed to link') + '</p>' +
+        '<div class="ovbtns"><button class="primary" id="btnLinkDone">BACK TO MENU</button></div></div>'
+      );
+      const b = overlay.querySelector('#btnLinkDone');
+      if (b) b.onclick = () => { cleanupNet(); idleOverlay(); };
+    }
   };
 
   peer.on('open', () => {
-    if (G.peer !== peer) return;
-    const c = peer.connect(PREFIX + code, { reliable: true });
-    let opened = false;
-    let failed = false;
+    if (G.peer !== peer || settled) return;
 
-    c.on('open', () => {
-      if (joined) return;
-      opened = true;
-      joined = true;
-      attachConn(c);
-      G.role = 'guest';
-      setStatus('WAITING', 'warn');
-      showOverlay(waitHTML('✅', 'CONNECTED', '<span class="spin"></span>Waiting for the host to start…'));
-      wireCancel();
-    });
+    /* Attempt 1: normal room peer */
+    try { roomConn = peer.connect(PREFIX + code, { reliable: true }); }
+    catch(e){ roomConn = null; }
+    if (roomConn){
+      roomConn.on('open', () => succeedRoom(roomConn));
+      const roomFail = () => {
+        if (settled || roomDead) return;
+        roomDead = true;
+        maybeBothDead();
+      };
+      roomConn.on('error', roomFail);
+      roomConn.on('close', roomFail);
+    } else {
+      roomDead = true;
+    }
 
-    const onFail = () => {
-      if (opened || failed) return;
-      failed = true;
-      tryLink();
-    };
+    /* Attempt 2: link peer (parallel) */
+    try { linkConn = peer.connect(LINK_PREFIX + code, { reliable: true }); }
+    catch(e){ linkConn = null; }
+    if (linkConn){
+      let linkOpened = false;
+      linkConn.on('open', () => {
+        linkOpened = true;
+        if (settled){ try { linkConn.close(); } catch(e){} return; }
+        showOverlay(waitHTML('🔗', 'LINKING', '<span class="spin"></span>Receiving name…'));
+        wireCancel();
+      });
+      linkConn.on('data', m => handleLinkData(m, linkConn));
+      const linkFail = () => {
+        if (settled || linkDead) return;
+        linkDead = true;
+        maybeBothDead();
+      };
+      linkConn.on('error', linkFail);
+      linkConn.on('close', linkFail);
+    } else {
+      linkDead = true;
+    }
 
-    c.on('error', onFail);
-    c.on('close', onFail);
+    maybeBothDead();
   });
 
   peer.on('error', err => {
     if (G.peer !== peer) return;
     const t = err && err.type;
-    if (t === 'peer-unavailable'){
-      if (!triedLink) tryLink();
-      else {
-        showOverlay(waitHTML('❌', 'NOT FOUND', 'No room or link code matched.'));
-        wireCancel();
-      }
-      return;
+    /* "peer-unavailable" just means one of the two targets is empty —
+       the other may still be alive, so keep waiting. */
+    if (t === 'peer-unavailable') return;
+    if (settled) return;
+    if (t === 'network' || t === 'server-error' || t === 'socket-error' || t === 'socket-closed'){
+      settled = true;
+      if (failTimer){ clearTimeout(failTimer); failTimer = 0; }
+      cleanupNet();
+      renderMenu('Connection error: ' + t);
     }
-    cleanupNet();
-    renderMenu('Connection error: ' + (t || 'unknown'));
+    /* Any other error: leave the parallel attempts running; the
+       timeout will clean up. */
   });
 }
 
@@ -5534,21 +5816,30 @@ function showMapReview(){
 /* ══════════════════════════════════════════════════════════════
    END GAME
    ══════════════════════════════════════════════════════════════ */
-function endGame(result, icon, title, sub, elapsed, cards){
+function endGame(result, icon, title, sub, elapsed, cards, opts){
   if (G.state === 'over') return;
   G.state = 'over';
   if (G.me) G.me.done = true;
   clearHeldKeys();
 
+  opts = opts || {};
+
   /* ── Leaderboard: record a win (guests are skipped, and the
-        server-side name is verified inside recordWin()) ── */
-  if (result === 'win' && G.config && elapsed > 0){
+        server-side name is verified inside recordWin()). For
+        co-op / territory the entry also stores the partner's
+        name so the time board can show both players. ── */
+  if (!opts.skipRecord && result === 'win' && G.config && elapsed > 0){
+    const mode = G.config.mode;
+    const joint = (mode === 'coop' || mode === 'territory');
+    const partner = joint ? (G.theirName || '') : '';
     try {
       recordWin(
-        G.config.mode,
+        mode,
         G.config.style,
         G.config.size,
-        Math.max(1, Math.round(elapsed))
+        Math.max(1, Math.round(elapsed)),
+        partner,
+        true
       ).catch(()=>{});
     } catch(e){}
   }
@@ -5728,8 +6019,12 @@ requestAnimationFrame(loop);
    ══════════════════════════════════════════════════════════════ */
 let resizeTimer = null;
 window.addEventListener('resize', () => {
+  /* Keep the menu fitted while the viewport changes. */
+  if (!overlay.classList.contains('hidden')) fitMenuBox();
+
   clearTimeout(resizeTimer);
   resizeTimer = setTimeout(() => {
+    if (!overlay.classList.contains('hidden')) fitMenuBox();
     if (!G.viewMe) return;
     const vc = viewConfig();
     try {

@@ -316,9 +316,6 @@
     55%{ transform:scale(1.015) translateY(-3px); opacity:1; }
     100%{ transform:scale(1) translateY(0); opacity:1; }
   }
-  /* Bomb drop: starts TINY and tilted LEFT, expands FAST while sweeping
-     the rotation to the RIGHT, then settles at full size. It never
-     shrinks back down after the growth phase. */
   @keyframes bombDrop{
     0%   { transform:translateY(-12px) scale(.10) rotate(-42deg); opacity:0; }
     10%  { opacity:1; }
@@ -371,6 +368,27 @@
   @keyframes sp{to{transform:rotate(360deg)}}
   .err{color:#ff6b8a;font-size:12px;letter-spacing:.08em;margin-top:10px;min-height:14px;font-weight:700}
 
+  /* ── Name entry input (standalone, wide) ──────────────── */
+  .name-input{
+    font-family:inherit;
+    font-size:clamp(16px,2.4vh,22px);
+    font-weight:900;
+    letter-spacing:.08em;
+    text-align:center;
+    width:min(360px,86vw);
+    padding:14px 18px;
+    border-radius:14px;
+    color:#fff;
+    background:rgba(255,255,255,.05);
+    border:1px solid rgba(255,255,255,.18);
+    outline:none;
+    transition:all .2s;
+    display:block;
+    margin:0 auto;
+  }
+  .name-input:focus{border-color:#4dd8ff;background:rgba(77,216,255,.08)}
+  .name-input::placeholder{color:#4a5f7d;letter-spacing:.08em}
+
   /* ══ MENU CONFIG SECTIONS ══ */
   .config-section{
     margin:22px 0;
@@ -421,12 +439,9 @@
 
   /* ══════════════════════════════════════════════════════════
      MAIN MENU / HOTKEYS / HOW-TO overlays
-     Everything here scales with the viewport (vh/vw based clamps)
-     so the menu grows on large screens and shrinks on small ones
-     without ever forcing the user to scroll on normal displays.
      ══════════════════════════════════════════════════════════ */
   .ovbox.menu-pop{
-    max-width:min(100%, 1200px);
+    max-width:min(100%, 1300px);
     max-height:calc(100dvh - 84px);
     overflow-y:auto;
     -webkit-overflow-scrolling:touch;
@@ -495,6 +510,11 @@
     padding:clamp(7px,1.3vh,13px) clamp(8px,1.2vw,12px);
     border-radius:clamp(10px,1.6vh,15px);
   }
+  .ovbox.menu-pop .name-input{
+    font-size:clamp(15px,2.4vh,22px);
+    padding:clamp(11px,1.7vh,15px) clamp(12px,1.7vw,18px);
+    width:min(360px,86vw);
+  }
   .ovbox.menu-pop .ht-text{
     font-size:clamp(10.5px,1.75vh,15px);
     line-height:1.8;
@@ -513,6 +533,162 @@
     padding:clamp(5px,1vh,10px) clamp(9px,1.4vw,16px);
     font-size:clamp(10px,1.5vh,13px);
     border-radius:clamp(7px,1.2vh,11px);
+  }
+
+  /* ══ NAME BUTTON (top-left of main menu) ══ */
+  .menu-topbar{
+    display:flex;
+    justify-content:flex-start;
+    margin-bottom:clamp(4px,1vh,12px);
+  }
+  .name-btn{
+    display:inline-flex;
+    align-items:center;
+    gap:10px;
+    padding:clamp(7px,1.3vh,12px) clamp(14px,1.9vw,22px);
+    border-radius:clamp(10px,1.6vh,14px);
+    font-size:clamp(11px,1.7vh,15px);
+    letter-spacing:.16em;
+    font-weight:900;
+    background:linear-gradient(180deg,rgba(77,216,255,.13),rgba(77,216,255,.04));
+    border:1px solid rgba(77,216,255,.42);
+    color:#4dd8ff;
+    min-width:min(100%,380px);
+    max-width:100%;
+    text-align:left;
+    justify-content:flex-start;
+    transition:all .18s;
+    font-family:inherit;
+    cursor:pointer;
+  }
+  .name-btn:hover{
+    background:linear-gradient(180deg,rgba(77,216,255,.24),rgba(77,216,255,.09));
+    border-color:#4dd8ff;color:#fff;transform:translateY(-1px);
+  }
+  .name-btn.guest{
+    background:linear-gradient(180deg,rgba(139,154,180,.15),rgba(139,154,180,.05));
+    border-color:rgba(139,154,180,.45);
+    color:#b8cbe4;
+  }
+  .name-btn.guest:hover{
+    background:linear-gradient(180deg,rgba(139,154,180,.26),rgba(139,154,180,.10));
+    border-color:#b8cbe4;color:#fff;
+  }
+  .name-btn .name-btn-icon{flex:none}
+  .name-btn .name-btn-text{
+    flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  }
+  .name-btn .name-btn-edit{flex:none;opacity:.6;font-size:.9em}
+
+  /* ══ MAIN MENU GRID (config | leaderboard) ══ */
+  .menu-grid{
+    display:grid;
+    grid-template-columns:minmax(0, 1fr) minmax(240px, 330px);
+    gap:clamp(10px,1.6vh,20px);
+    align-items:start;
+    text-align:left;
+  }
+  .menu-main{min-width:0}
+  .menu-grid .opt{flex:1 1 clamp(100px, 12vw, 165px)}
+
+  /* ══ LEADERBOARD PANEL ══ */
+  .menu-lb{
+    background:rgba(255,255,255,.022);
+    border:1px solid rgba(255,255,255,.08);
+    border-left:3px solid rgba(255,209,102,.55);
+    border-radius:clamp(10px,1.7vh,16px);
+    padding:clamp(10px,1.5vh,16px);
+    display:flex;flex-direction:column;gap:clamp(6px,.9vh,10px);
+    min-width:0;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.03);
+  }
+  .lb-unlock-btn{
+    width:100%;
+    padding:clamp(8px,1.4vh,12px) clamp(10px,1.4vw,14px);
+    border-radius:10px;
+    font-size:clamp(10px,1.5vh,12.5px);
+    letter-spacing:.1em;
+    font-weight:900;
+    background:linear-gradient(180deg,rgba(255,209,102,.22),rgba(255,209,102,.07));
+    border:1px solid #ffd166;
+    color:#ffd166;
+    cursor:pointer;transition:all .18s;
+    font-family:inherit;
+    text-shadow:0 0 10px rgba(255,209,102,.4);
+  }
+  .lb-unlock-btn:hover{
+    background:linear-gradient(180deg,rgba(255,209,102,.35),rgba(255,209,102,.14));
+    transform:translateY(-1px);color:#fff;
+  }
+  .lb-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .lb-title{
+    font-size:clamp(9.5px,1.5vh,12px);letter-spacing:.26em;font-weight:900;
+    color:#ffd166;text-shadow:0 0 12px rgba(255,209,102,.4);
+  }
+  .lb-config-name{
+    font-size:clamp(8px,1.25vh,10px);letter-spacing:.2em;color:#6b7a94;
+    font-weight:800;text-transform:uppercase;
+    padding:4px 8px;border-radius:6px;background:rgba(0,0,0,.25);
+    border:1px solid rgba(255,255,255,.05);
+    text-align:center;
+  }
+  .lb-cats{display:flex;gap:6px}
+  .lb-cat{
+    flex:1;padding:6px 8px;font-size:clamp(8.5px,1.3vh,10.5px);
+    letter-spacing:.14em;border-radius:8px;font-weight:900;
+    background:rgba(255,255,255,.03);
+    border:1px solid rgba(255,255,255,.1);
+    color:#8b9ab4;cursor:pointer;
+  }
+  .lb-cat:hover{color:#fff;border-color:rgba(255,209,102,.4);transform:none;background:rgba(255,209,102,.06)}
+  .lb-cat.active{
+    background:linear-gradient(180deg, rgba(255,209,102,.18), rgba(255,209,102,.05));
+    border-color:#ffd166;color:#ffd166;
+    text-shadow:0 0 10px rgba(255,209,102,.5);
+  }
+  .lb-cat:disabled{opacity:.35;cursor:default}
+  .lb-cat:disabled:hover{transform:none;background:rgba(255,255,255,.03);border-color:rgba(255,255,255,.1);color:#8b9ab4}
+  .lb-list{
+    display:flex;flex-direction:column;gap:4px;
+    max-height:min(340px, 42vh);
+    overflow-y:auto;
+    scrollbar-width:thin;
+    padding-right:2px;
+  }
+  .lb-row{
+    display:flex;align-items:center;gap:8px;
+    padding:6px 8px;border-radius:8px;
+    background:rgba(255,255,255,.02);
+    border:1px solid rgba(255,255,255,.05);
+    font-size:clamp(9.5px,1.45vh,11.5px);
+    min-width:0;
+  }
+  .lb-row.me{
+    background:rgba(77,216,255,.1);
+    border-color:rgba(77,216,255,.4);
+  }
+  .lb-rank{
+    width:22px;text-align:center;flex:none;
+    font-family:'Courier New',monospace;font-weight:900;
+    color:#6b7a94;font-size:clamp(9.5px,1.45vh,11.5px);
+  }
+  .lb-row:nth-child(1) .lb-rank{color:#ffd166;text-shadow:0 0 10px rgba(255,209,102,.6)}
+  .lb-row:nth-child(2) .lb-rank{color:#cfd8e6}
+  .lb-row:nth-child(3) .lb-rank{color:#d89a6a}
+  .lb-name{
+    flex:1;min-width:0;font-weight:800;color:#cfe4ff;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  }
+  .lb-val{
+    font-family:'Courier New',monospace;font-weight:900;
+    color:#4dd8ff;font-variant-numeric:tabular-nums;flex:none;
+    font-size:clamp(9.5px,1.45vh,11.5px);
+  }
+  .lb-row.wins .lb-val{color:#8affc1}
+  .lb-empty{
+    text-align:center;padding:clamp(14px,2.4vh,28px) 8px;
+    font-size:clamp(9px,1.4vh,11px);letter-spacing:.1em;
+    color:#5d7fa8;font-weight:800;line-height:1.7;
   }
 
   /* ══ HOTKEY ROWS ══ */
@@ -617,6 +793,10 @@
     .pstat{padding:5px 8px;min-width:50px}
     .pstat .plabel{font-size:7.5px;letter-spacing:.16em}
   }
+  @media(max-width:820px){
+    .menu-grid{grid-template-columns:1fr}
+    .lb-list{max-height:220px}
+  }
   @media(max-width:520px){
     #app{padding:6px 8px;gap:6px}
     h1{font-size:15px;letter-spacing:.16em}
@@ -645,8 +825,8 @@
     .hk-label{flex:1 1 100%;font-size:10px}
     .hk-key{flex:1 1 100%;min-width:0;padding:7px 10px;font-size:11px}
     .codeval{font-size:clamp(26px,10vw,40px);padding:12px 14px 12px 24px}
-    /* keep the menu two-up on phones so it stays compact */
     .ovbox.menu-pop .opt{flex:1 1 calc(50% - 5px)}
+    .name-btn{min-width:100%}
   }
 </style>
 </head>
@@ -675,6 +855,53 @@
 <div id="overlay" class="overlay hidden"></div>
 <div id="modal" class="overlay hidden"></div>
 
+<!-- ════════════════════════════════════════════════════════════
+     Firebase compat SDKs (Firestore + Auth)
+     NOTE: Anonymous Auth must be enabled in Firebase console.
+
+     Firestore rules required for this build:
+
+     rules_version = '2';
+     service cloud.firestore {
+       match /databases/{database}/documents {
+
+         match /names/{nameId} {
+           allow read: if true;
+           allow create: if request.auth != null;
+           allow update: if request.auth != null && (
+             resource.data.linkedUids.hasAny([request.auth.uid]) ||
+             request.resource.data.linkedUids.hasAny([request.auth.uid])
+           );
+           allow delete: if request.auth != null &&
+                          resource.data.linkedUids.hasAny([request.auth.uid]);
+         }
+
+         match /users/{userId} {
+           allow read: if true;
+           allow write: if request.auth != null &&
+                        request.auth.uid == userId;
+         }
+
+         match /leaderboards/{configKey}/entries/{userId} {
+           allow read: if true;
+           allow create: if request.auth != null &&
+                         request.auth.uid == userId;
+           allow update: if request.auth != null && (
+             request.auth.uid == userId ||
+             request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name'])
+           );
+           allow delete: if request.auth != null &&
+                         request.auth.uid == userId;
+         }
+       }
+     }
+
+     Also create a collection-group index on "name" for the
+     `entries` collection group.
+     ════════════════════════════════════════════════════════════ -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 <script>
 (() => {
@@ -682,20 +909,18 @@
 
 const STUN_MS = 10000;
 const PREFIX  = 'mineduel-v5-';
-const HEARTBEAT_MS      = 1500;
-const HEARTBEAT_TIMEOUT = 5500;
+const LINK_PREFIX = 'mineduel-link-';
+const HEARTBEAT_MS      = 2000;
+/* Longer patience: opponent must go silent for 20s before we drop them. */
+const HEARTBEAT_TIMEOUT = 20000;
 
 const TARGET_FPS = 120;
 const FRAME_MIN_MS = 1000 / TARGET_FPS;
 const PAN_SPEED_CSS = 900;
-const ZOOM_RATE = 2.4;          /* exp factor per second while held */
+const ZOOM_RATE = 2.4;
 
 const SOLVER_MAX_ATTEMPTS = 60;
 
-/* ── Per-style bomb density ───────────────────────────────────
-   Square   : 1 bomb per 4 tiles
-   Hex      : 1 bomb per 5 tiles
-*/
 const TILES_PER_BOMB = {
   square: 4,
   hex:    5
@@ -743,8 +968,6 @@ function sizeDesc(sizeId, mode, styleId){
   return d.cols + ' × ' + d.rows + ' · ' + d.mines + ' mines (1/' + per + ')';
 }
 
-/* Mode order shown in the menu:
-   Solo → Co-op → Duel → Territorial */
 const MODES = {
   solo:      { id:'solo',      name:'Solo',        desc:'Practise · bomb = loss' },
   coop:      { id:'coop',      name:'Co-op',       desc:'Shared board · bomb = loss' },
@@ -753,7 +976,7 @@ const MODES = {
 };
 
 /* ══════════════════════════════════════════════════════════════
-   HOTKEYS  (persisted on the device)
+   HOTKEYS
    ══════════════════════════════════════════════════════════════ */
 const HOTKEY_STORE = 'mineduel-hotkeys-v1';
 
@@ -912,6 +1135,12 @@ function fallbackCopy(text){
 }
 function vibrate(ms){
   if (navigator.vibrate){ try { navigator.vibrate(ms); } catch(e){} }
+}
+
+function escapeHtml(s){
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => (
+    { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]
+  ));
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -1410,6 +1639,534 @@ function rebuildBoardFromMines(layout, mineArr, style){
   layout.safeCount = layout.rows * layout.cols - layout.mineCount;
   layout.pending = false;
 }
+
+/* ══════════════════════════════════════════════════════════════
+   FIREBASE / NAME REGISTRY / LEADERBOARD
+   ══════════════════════════════════════════════════════════════ */
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyD4ugISesi_WPh-xC4fdGI90SYmqyb3BtE",
+  authDomain: "mineduel-b8dbd.firebaseapp.com",
+  databaseURL: "https://mineduel-b8dbd-default-rtdb.firebaseio.com",
+  projectId: "mineduel-b8dbd",
+  storageBucket: "mineduel-b8dbd.firebasestorage.app",
+  messagingSenderId: "902722088841",
+  appId: "1:902722088841:web:364fdc1bafe1cebcb9fb58"
+};
+
+let db = null;
+let auth = null;
+let fbUser = null;
+let fbReady = false;
+let fbResolve;
+const fbReadyPromise = new Promise(r => fbResolve = r);
+
+function initFirebase(){
+  if (typeof firebase === 'undefined' || !firebase.initializeApp){
+    console.warn('[fb] SDK not loaded — leaderboards/names disabled');
+    if (!fbReady){ fbReady = true; fbResolve(); }
+    return;
+  }
+  try {
+    firebase.initializeApp(FIREBASE_CONFIG);
+    db = firebase.firestore();
+    auth = firebase.auth();
+    auth.onAuthStateChanged(u => {
+      fbUser = u || null;
+      if (!fbReady){ fbReady = true; fbResolve(); }
+    });
+    auth.signInAnonymously().catch(err => {
+      console.warn('[fb] anonymous sign-in failed:', err && err.code);
+      if (!fbReady){ fbReady = true; fbResolve(); }
+    });
+  } catch(e){
+    console.warn('[fb] init failed:', e);
+    if (!fbReady){ fbReady = true; fbResolve(); }
+  }
+}
+initFirebase();
+
+const LB_TTL = 45 * 1000;
+const lbCache = new Map();
+
+const LB_STATE = {
+  category: 'time',
+  data: [],
+  loading: false,
+  error: null,
+  currentKey: ''
+};
+
+function lbKey(mode, style, size){
+  return mode + '_' + style + '_' + size;
+}
+
+function currentLbCategory(){
+  if (G.config.mode === 'duel') return 'wins';
+  return LB_STATE.category || 'time';
+}
+
+/* ── Local name storage ───────────────────────────────────────── */
+function getPlayerName(){
+  try { return localStorage.getItem('mineduel-name') || ''; } catch(e){ return ''; }
+}
+function setPlayerName(n){
+  try { localStorage.setItem('mineduel-name', n); } catch(e){}
+}
+function getPlayerNameKey(){
+  try { return localStorage.getItem('mineduel-nameKey') || ''; } catch(e){ return ''; }
+}
+function setPlayerNameKey(k){
+  try { localStorage.setItem('mineduel-nameKey', k); } catch(e){}
+}
+function clearPlayerName(){
+  try {
+    localStorage.removeItem('mineduel-name');
+    localStorage.removeItem('mineduel-nameKey');
+  } catch(e){}
+}
+
+function validateName(raw){
+  const trimmed = String(raw == null ? '' : raw).trim();
+  if (trimmed.length < 3) return { error: 'Name must be at least 3 characters' };
+  if (trimmed.length > 16) return { error: 'Name too long (max 16 characters)' };
+  if (/\s/.test(trimmed)) return { error: 'Spaces are not allowed' };
+  if (!/^[A-Za-z0-9_\-]+$/.test(trimmed))
+    return { error: "Only letters, numbers, _ and - are allowed" };
+  return { name: trimmed, key: trimmed.toLowerCase() };
+}
+
+function formatTime(ms){
+  if (!ms || ms <= 0) return '—';
+  const s = ms / 1000;
+  if (s < 60) return s.toFixed(2) + 's';
+  const m = Math.floor(s / 60);
+  const rem = s - m * 60;
+  return m + 'm ' + rem.toFixed(1) + 's';
+}
+function formatWins(n){
+  n = n || 0;
+  return n + (n === 1 ? ' win' : ' wins');
+}
+
+async function fetchLeaderboard(mode, style, size, cat){
+  const key = lbKey(mode, style, size);
+  const col = db.collection('leaderboards').doc(key).collection('entries');
+  const q = (cat === 'time')
+    ? col.orderBy('bestTime', 'asc').limit(10)
+    : col.orderBy('wins', 'desc').limit(10);
+  const snap = await q.get();
+  const out = [];
+  snap.forEach(d => out.push(Object.assign({ id: d.id }, d.data())));
+  return out;
+}
+
+async function recordWin(mode, style, size, timeMs){
+  if (!db) return;
+  /* Guest mode must NEVER register anything on the leaderboard. */
+  if (isGuest) return;
+  const name = getPlayerName();
+  const nameKey = getPlayerNameKey();
+  if (!name || !nameKey) return;
+  await fbReadyPromise;
+  if (!auth || !auth.currentUser) return;
+  const uid = auth.currentUser.uid;
+  const key = lbKey(mode, style, size);
+  const ref = db.collection('leaderboards').doc(key).collection('entries').doc(uid);
+  const isDuel = (mode === 'duel');
+  const timeVal = Math.max(1, Math.round(timeMs || 0));
+  try {
+    const snap = await ref.get();
+    if (!snap.exists){
+      const doc = {
+        name,
+        wins: 1,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      };
+      if (!isDuel) doc.bestTime = timeVal;
+      await ref.set(doc);
+    } else {
+      const data = snap.data() || {};
+      const upd = {
+        name,
+        wins: (data.wins || 0) + 1,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      };
+      if (!isDuel){
+        const prev = data.bestTime;
+        if (!prev || timeVal < prev) upd.bestTime = timeVal;
+      }
+      await ref.update(upd);
+    }
+    lbCache.delete(key + '_wins');
+    lbCache.delete(key + '_time');
+  } catch(e){
+    console.warn('[fb] record win failed:', e && (e.code || e.message || e));
+  }
+}
+
+/* ── Name reservation / change / linking ──────────────────────── */
+
+async function ensurePlayerName(){
+  const localName = getPlayerName();
+  const localKey = getPlayerNameKey();
+  if (!localName || !localKey) return false;
+  if (!db || !auth || !auth.currentUser) return true;
+
+  const uid = auth.currentUser.uid;
+  try {
+    const snap = await db.collection('names').doc(localKey).get();
+    if (!snap.exists) return false;
+    const data = snap.data() || {};
+    const uids = data.linkedUids || [];
+    if (!uids.includes(uid)) return false;
+    await db.collection('users').doc(uid).set({
+      name: localName,
+      nameKey: localKey,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+    return true;
+  } catch(e){
+    console.warn('[fb] ensurePlayerName:', e);
+    return true;
+  }
+}
+
+async function reserveName(rawName, uid){
+  const v = validateName(rawName);
+  if (v.error) throw new Error(v.error);
+  const { name, key } = v;
+  const nameRef = db.collection('names').doc(key);
+  const userRef = db.collection('users').doc(uid);
+
+  await db.runTransaction(async tx => {
+    const nameSnap = await tx.get(nameRef);
+    if (nameSnap.exists){
+      const data = nameSnap.data() || {};
+      const uids = data.linkedUids || [];
+      if (!uids.includes(uid)) throw new Error('That name is already taken');
+      tx.set(userRef, {
+        name: data.displayName || name,
+        nameKey: key,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
+      return;
+    }
+    tx.set(nameRef, {
+      displayName: name,
+      count: 1,
+      linkedUids: [uid],
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    tx.set(userRef, {
+      name: name,
+      nameKey: key,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+  });
+
+  setPlayerName(name);
+  setPlayerNameKey(key);
+  return { name, key };
+}
+
+async function changePlayerName(newRaw){
+  const v = validateName(newRaw);
+  if (v.error) throw new Error(v.error);
+  const newName = v.name;
+  const newKey = v.key;
+  const uid = auth.currentUser.uid;
+  const oldKey = getPlayerNameKey();
+  const oldName = getPlayerName();
+
+  if (newKey === oldKey){
+    setPlayerName(newName);
+    setPlayerNameKey(newKey);
+    await db.collection('users').doc(uid).set({
+      name: newName, nameKey: newKey,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+    return { name: newName, oldName };
+  }
+
+  const newRef = db.collection('names').doc(newKey);
+  const userRef = db.collection('users').doc(uid);
+  const oldRef = oldKey ? db.collection('names').doc(oldKey) : null;
+
+  await db.runTransaction(async tx => {
+    const newSnap = await tx.get(newRef);
+    if (newSnap.exists){
+      const nd = newSnap.data() || {};
+      if (!(nd.linkedUids || []).includes(uid)) throw new Error('That name is already taken');
+    }
+
+    let oldSnap = null;
+    if (oldRef) oldSnap = await tx.get(oldRef);
+
+    if (!newSnap.exists){
+      tx.set(newRef, {
+        displayName: newName,
+        count: 1,
+        linkedUids: [uid],
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    } else {
+      const nd = newSnap.data() || {};
+      const uids = nd.linkedUids || [];
+      if (!uids.includes(uid)){
+        tx.update(newRef, { count: (nd.count || 0) + 1, linkedUids: [...uids, uid] });
+      }
+    }
+
+    tx.set(userRef, {
+      name: newName, nameKey: newKey,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+
+    if (oldSnap && oldSnap.exists){
+      const data = oldSnap.data() || {};
+      const uids = (data.linkedUids || []).filter(u => u !== uid);
+      if (uids.length === 0){
+        tx.delete(oldRef);
+      } else {
+        tx.update(oldRef, { count: uids.length, linkedUids: uids });
+      }
+    }
+  });
+
+  setPlayerName(newName);
+  setPlayerNameKey(newKey);
+
+  let oldBecameEmpty = false;
+  if (oldRef){
+    try {
+      const check = await oldRef.get();
+      oldBecameEmpty = !check.exists;
+    } catch(e){}
+  }
+
+  if (oldBecameEmpty && oldName && oldName !== newName){
+    migrateLeaderboardNames(oldName, newName).catch(()=>{});
+  }
+
+  return { name: newName, oldName };
+}
+
+async function applyLinkedName(hostName, hostKey){
+  const uid = auth.currentUser.uid;
+  const newRef = db.collection('names').doc(hostKey);
+  const userRef = db.collection('users').doc(uid);
+  const oldKey = getPlayerNameKey();
+  const oldName = getPlayerName();
+  const oldRef = (oldKey && oldKey !== hostKey) ? db.collection('names').doc(oldKey) : null;
+
+  let displayName = hostName;
+
+  await db.runTransaction(async tx => {
+    const newSnap = await tx.get(newRef);
+    if (!newSnap.exists) throw new Error('That name is no longer available');
+    const nd = newSnap.data() || {};
+    displayName = nd.displayName || hostName;
+    const uids = nd.linkedUids || [];
+
+    if (!uids.includes(uid)){
+      tx.update(newRef, {
+        count: (nd.count || 0) + 1,
+        linkedUids: [...uids, uid]
+      });
+    }
+
+    let oldSnap = null;
+    if (oldRef) oldSnap = await tx.get(oldRef);
+
+    tx.set(userRef, {
+      name: displayName, nameKey: hostKey,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+
+    if (oldSnap && oldSnap.exists){
+      const data = oldSnap.data() || {};
+      const ouids = (data.linkedUids || []).filter(u => u !== uid);
+      if (ouids.length === 0){
+        tx.delete(oldRef);
+      } else {
+        tx.update(oldRef, { count: ouids.length, linkedUids: ouids });
+      }
+    }
+  });
+
+  setPlayerName(displayName);
+  setPlayerNameKey(hostKey);
+
+  let oldBecameEmpty = false;
+  if (oldRef){
+    try {
+      const check = await oldRef.get();
+      oldBecameEmpty = !check.exists;
+    } catch(e){}
+  }
+
+  if (oldBecameEmpty && oldName && oldName !== displayName){
+    migrateLeaderboardNames(oldName, displayName).catch(()=>{});
+  }
+
+  return { name: displayName, oldName };
+}
+
+async function migrateLeaderboardNames(oldName, newName){
+  if (!db || !oldName || !newName || oldName === newName) return;
+  try {
+    const snap = await db.collectionGroup('entries').where('name', '==', oldName).get();
+    if (snap.empty) return;
+    const docs = snap.docs;
+    for (let i = 0; i < docs.length; i += 400){
+      const batch = db.batch();
+      for (let j = i; j < Math.min(i + 400, docs.length); j++){
+        batch.update(docs[j].ref, { name: newName });
+      }
+      await batch.commit();
+    }
+    lbCache.clear();
+  } catch(e){
+    console.warn('[fb] migrateLeaderboardNames failed:', e);
+  }
+}
+
+/* ── Leaderboard rendering ────────────────────────────────────── */
+
+function renderLeaderboardRows(){
+  const cat = currentLbCategory();
+  if (LB_STATE.loading){
+    return '<div class="lb-empty"><span class="spin"></span>Loading…</div>';
+  }
+  if (LB_STATE.error){
+    return '<div class="lb-empty">' + escapeHtml(LB_STATE.error) + '</div>';
+  }
+  if (!LB_STATE.data.length){
+    return '<div class="lb-empty">No scores yet.<br>Be the first!</div>';
+  }
+  return LB_STATE.data.map((e, i) => {
+    const isMe = !isGuest && fbUser && e.id === fbUser.uid;
+    const val = (cat === 'time') ? formatTime(e.bestTime) : formatWins(e.wins);
+    return '<div class="lb-row' + (isMe ? ' me' : '') + (cat === 'wins' ? ' wins' : '') + '">' +
+      '<span class="lb-rank">' + (i + 1) + '</span>' +
+      '<span class="lb-name">' + escapeHtml(e.name || 'Anon') + '</span>' +
+      '<span class="lb-val">' + val + '</span>' +
+    '</div>';
+  }).join('');
+}
+
+function renderLeaderboardHTML(){
+  const mode = G.config.mode;
+  const showTime = (mode !== 'duel');
+  const cat = currentLbCategory();
+  const modeName = (MODES[mode] || MODES.solo).name;
+  const styleName = (STYLES[G.config.style] || STYLES.square).name;
+  const sizeName = (SIZES[G.config.size] || SIZES.small).name;
+  const guest = isGuest || !getPlayerName();
+
+  let catsHtml;
+  if (showTime){
+    catsHtml =
+      '<button class="lb-cat' + (cat === 'time' ? ' active' : '') + '" data-lbcat="time">⏱ TIME</button>' +
+      '<button class="lb-cat' + (cat === 'wins' ? ' active' : '') + '" data-lbcat="wins">🏆 WINS</button>';
+  } else {
+    catsHtml = '<button class="lb-cat active" data-lbcat="wins" disabled>🏆 WINS</button>';
+  }
+
+  const unlockBtn = guest
+    ? '<button class="lb-unlock-btn" id="lbUnlockBtn">✨ Choose name to unlock</button>'
+    : '';
+
+  return (
+    unlockBtn +
+    '<div class="lb-head">' +
+      '<span class="lb-title">🏆 LEADERBOARD</span>' +
+    '</div>' +
+    '<div class="lb-config-name">' + escapeHtml(modeName) + ' · ' +
+      escapeHtml(styleName) + ' · ' + escapeHtml(sizeName) + '</div>' +
+    '<div class="lb-cats">' + catsHtml + '</div>' +
+    '<div class="lb-list">' + renderLeaderboardRows() + '</div>'
+  );
+}
+
+function updateLeaderboardDOM(){
+  const el = overlay.querySelector('.menu-lb');
+  if (!el) return;
+  el.innerHTML = renderLeaderboardHTML();
+  attachLeaderboardHandlers();
+}
+
+function attachLeaderboardHandlers(){
+  overlay.querySelectorAll('[data-lbcat]').forEach(b => {
+    b.onclick = () => {
+      if (b.disabled) return;
+      LB_STATE.category = b.dataset.lbcat;
+      refreshLeaderboard(true);
+    };
+  });
+  const unlock = overlay.querySelector('#lbUnlockBtn');
+  if (unlock) unlock.onclick = () => {
+    /* Reload the page so the name popup shows again. */
+    try { location.reload(); } catch(e){}
+  };
+}
+
+async function refreshLeaderboard(force){
+  const mode = G.config.mode;
+  const style = G.config.style;
+  const size = G.config.size;
+  const cat = currentLbCategory();
+  const key = lbKey(mode, style, size) + '_' + cat;
+
+  LB_STATE.currentKey = key;
+  LB_STATE.error = null;
+
+  if (!db){
+    LB_STATE.loading = false;
+    LB_STATE.data = [];
+    LB_STATE.error = 'Leaderboard offline';
+    if (overlay.querySelector('.menu-lb')) updateLeaderboardDOM();
+    return;
+  }
+
+  if (!force){
+    const cached = lbCache.get(key);
+    if (cached && (Date.now() - cached.ts < LB_TTL)){
+      LB_STATE.loading = false;
+      LB_STATE.data = cached.data;
+      if (overlay.querySelector('.menu-lb')) updateLeaderboardDOM();
+      return;
+    }
+  }
+
+  LB_STATE.loading = true;
+  LB_STATE.data = [];
+  if (overlay.querySelector('.menu-lb')) updateLeaderboardDOM();
+
+  try {
+    const data = await fetchLeaderboard(mode, style, size, cat);
+    if (LB_STATE.currentKey !== key) return;
+    lbCache.set(key, { data, ts: Date.now() });
+    LB_STATE.loading = false;
+    LB_STATE.data = data;
+    LB_STATE.error = null;
+    if (overlay.querySelector('.menu-lb')) updateLeaderboardDOM();
+  } catch(e){
+    console.warn('[fb] fetch leaderboard failed:', e && (e.code || e.message || e));
+    if (LB_STATE.currentKey !== key) return;
+    LB_STATE.loading = false;
+    LB_STATE.error = 'Could not load';
+    LB_STATE.data = [];
+    if (overlay.querySelector('.menu-lb')) updateLeaderboardDOM();
+  }
+}
+
+fbReadyPromise.then(() => {
+  if (G.state === 'lobby' && G.config){
+    LB_STATE.error = null;
+    refreshLeaderboard(true);
+  }
+});
 
 /* ══════════════════════════════════════════════════════════════
    STATE
@@ -2452,7 +3209,7 @@ function bindCanvasInput(view, gameplay){
 }
 
 /* ══════════════════════════════════════════════════════════════
-   INPUT — keyboard  (all bindings come from HOTKEYS)
+   INPUT — keyboard
    ══════════════════════════════════════════════════════════════ */
 const heldPan = { KeyW:false, KeyA:false, KeyS:false, KeyD:false };
 const heldZoom = { in:false, out:false };
@@ -2463,7 +3220,7 @@ function clearHeldKeys(){
   heldZoom.out = false;
 }
 
-let hotkeyCapture = null;   /* action key currently being rebound */
+let hotkeyCapture = null;
 
 window.addEventListener('keydown', e => {
   if (hotkeyCapture){
@@ -2990,20 +3747,14 @@ function afterSharedReveal(){
   }
 }
 
-/* ── TERRITORIAL END ───────────────────────────────────────────
-   Only the host decides when territory ends. It broadcasts the
-   final land counts so the guest shows exactly one (opposite)
-   result screen — never both. */
 function finishTerritory(fromNetwork, land1, land2){
   if (G.state === 'over') return;
   if (!fromNetwork){
-    /* We are the authority (host/solo). Compute once, broadcast. */
     const l1 = countLand(G.myBoard, 1);
     const l2 = countLand(G.myBoard, 2);
     if (G.role === 'host') send({ t:'terr_over', land1: l1, land2: l2 });
     land1 = l1; land2 = l2;
   } else if (G.role !== 'guest'){
-    /* Only guests accept a remote finish; hosts are authoritative. */
     return;
   }
   endTerritoryScreen(land1 || 0, land2 || 0);
@@ -3330,8 +4081,6 @@ function handleMessage(msg){
       break;
     }
 
-    /* Authoritative territory board from the host — guarantees both
-       sides play on the exact same layout. */
     case 'terr_board': {
       if (G.config.mode !== 'territory') break;
       if (G.role !== 'guest') break;
@@ -3480,9 +4229,6 @@ function handleMessage(msg){
       }
       break;
 
-    /* Host broadcast of the final territorial land counts. The guest
-       maps them to its own perspective and ends ONCE — this is what
-       stops both players from seeing a win/lose screen. */
     case 'terr_over':
       if (G.config.mode === 'territory'){
         finishTerritory(true, msg.land1 || 0, msg.land2 || 0);
@@ -3581,8 +4327,239 @@ function cleanupNet(){
    LOBBY / MENU
    ══════════════════════════════════════════════════════════════ */
 let menuError = '';
-let menuView = 'main';          /* 'main' | 'hotkeys' | 'howto' */
+let menuView = 'main';          /* 'main' | 'hotkeys' | 'howto' | 'name' | 'link' */
+let linkPeer = null;
+/* Session-only guest flag — deliberately NOT persisted to storage.
+   Guest sessions never register leaderboard scores. */
+let isGuest = false;
 
+/* ── Name entry popup ─────────────────────────────────────────── */
+function showNameEntryPopup(opts){
+  opts = opts || {};
+  const isChange = !!opts.isChange;
+  const currentName = opts.currentName || '';
+  const canCancel = !!opts.onCancel;
+  const showGuest = !isChange && !!opts.onGuest;
+
+  showOverlay(
+    '<div class="ovbox menu-pop">' +
+      '<div class="big">🏷️</div>' +
+      '<h2>' + (isChange ? 'CHANGE <span>NAME</span>' : 'CHOOSE YOUR <span>NAME</span>') + '</h2>' +
+      '<p>' + (isChange
+        ? 'Enter a new name. Your old name will be released.'
+        : 'Pick a name for the leaderboards. 3–16 letters, no spaces.') + '</p>' +
+      '<input id="nameInput" class="name-input" maxlength="16" placeholder="Your name" autocomplete="off" spellcheck="false" value="' + escapeHtml(currentName) + '">' +
+      '<div class="ovbtns" style="margin-top:20px">' +
+        (canCancel ? '<button class="ghost" id="btnCancelName">CANCEL</button>' : '') +
+        '<button class="primary" id="btnSubmitName">' + (isChange ? 'CHANGE NAME' : 'CONFIRM') + '</button>' +
+      '</div>' +
+      (showGuest
+        ? '<div class="ovbtns sub"><button class="ghost" id="btnGuest">CONTINUE AS GUEST</button></div>'
+        : '') +
+      '<div class="err" id="nameErr"></div>' +
+    '</div>'
+  );
+
+  const input = overlay.querySelector('#nameInput');
+  const errEl = overlay.querySelector('#nameErr');
+  const btnSubmit = overlay.querySelector('#btnSubmitName');
+  const btnCancel = overlay.querySelector('#btnCancelName');
+  const btnGuest  = overlay.querySelector('#btnGuest');
+
+  if (input){ input.focus(); input.select(); }
+
+  const finish = (name) => {
+    if (opts.onSuccess) opts.onSuccess(name);
+  };
+
+  const submit = async () => {
+    if (!errEl || !btnSubmit) return;
+    errEl.textContent = '';
+    btnSubmit.disabled = true;
+    const raw = input ? input.value : '';
+    try {
+      const v = validateName(raw);
+      if (v.error) throw new Error(v.error);
+
+      if (!db || !auth || !auth.currentUser){
+        setPlayerName(v.name);
+        setPlayerNameKey(v.key);
+        isGuest = false;
+        finish(v.name);
+        return;
+      }
+      const uid = auth.currentUser.uid;
+      let result;
+      if (isChange) result = await changePlayerName(raw);
+      else result = await reserveName(raw, uid);
+      isGuest = false;
+      finish(result.name);
+    } catch(e){
+      errEl.textContent = (e && e.message) || 'Something went wrong';
+      btnSubmit.disabled = false;
+    }
+  };
+
+  if (btnSubmit) btnSubmit.onclick = submit;
+  if (btnCancel) btnCancel.onclick = () => {
+    if (opts.onCancel) opts.onCancel();
+    else { menuView = 'main'; renderMenu(''); }
+  };
+  if (btnGuest) btnGuest.onclick = () => {
+    isGuest = true;
+    if (opts.onGuest) opts.onGuest();
+    else { menuView = 'main'; renderMenu(''); refreshLeaderboard(true); }
+  };
+  if (input) input.onkeydown = e => {
+    if (e.key === 'Enter') submit();
+    if (e.key === 'Escape' && btnCancel) btnCancel.click();
+  };
+}
+
+/* ── Name menu (clicking the name button) ─────────────────────── */
+function nameMenuHTML(){
+  return '<div class="ovbox menu-pop">' +
+    '<div class="big">🏷️</div>' +
+    '<h2>YOUR <span>NAME</span></h2>' +
+    '<div class="config-section">' +
+      '<div class="config-label">CURRENT NAME</div>' +
+      '<div class="ht-text" style="font-size:clamp(18px,3vh,28px);text-align:center;color:#4dd8ff;font-weight:900;letter-spacing:.1em;padding:12px 0">' +
+        escapeHtml(getPlayerName() || '—') +
+      '</div>' +
+    '</div>' +
+    '<div class="ovbtns">' +
+      '<button class="primary" id="btnChangeName">CHANGE NAME</button>' +
+      '<button id="btnLinkName">🔗 LINK TO ANOTHER BROWSER</button>' +
+    '</div>' +
+    '<div class="ovbtns sub">' +
+      '<button class="ghost" id="btnBackMenu">BACK</button>' +
+    '</div>' +
+    '<div class="err" id="menuErr">' + escapeHtml(menuError || '') + '</div>' +
+  '</div>';
+}
+
+/* ── Link menu (host side) ────────────────────────────────────── */
+function linkMenuHTML(){
+  return '<div class="ovbox menu-pop">' +
+    '<div class="big">🔗</div>' +
+    '<h2>LINK <span>BROWSER</span></h2>' +
+    '<p>On your <b>other browser</b>, open the main menu, click <b>JOIN MATCH</b>, and enter the code below. That browser will then share your name.</p>' +
+    '<div class="codebox"><div class="codeval" id="linkCode">····</div></div>' +
+    '<p id="linkStatus"><span class="spin"></span>Preparing…</p>' +
+    '<div class="ovbtns">' +
+      '<button class="ghost" id="btnCancelLink">CANCEL</button>' +
+    '</div>' +
+  '</div>';
+}
+
+function cleanupLinkPeer(){
+  if (linkPeer){ try { linkPeer.destroy(); } catch(e){} linkPeer = null; }
+}
+
+function startLinking(){
+  if (!db || !auth || !auth.currentUser){
+    menuError = 'Linking requires an online connection.';
+    menuView = 'main';
+    renderMenu(menuError);
+    return;
+  }
+  const name = getPlayerName();
+  const key = getPlayerNameKey();
+  if (!name || !key){
+    menuError = 'Set a name first.';
+    menuView = 'main';
+    renderMenu(menuError);
+    return;
+  }
+  db.collection('names').doc(key).get().then(snap => {
+    if (!snap.exists){
+      menuError = 'Your name is no longer reserved. Please set it again.';
+      menuView = 'main';
+      renderMenu(menuError);
+      return;
+    }
+    doStartLinking(name, key);
+  }).catch(() => {
+    menuError = 'Could not verify name.';
+    menuView = 'main';
+    renderMenu(menuError);
+  });
+}
+
+function doStartLinking(name, key){
+  const code = makeCode();
+  const codeEl = overlay.querySelector('#linkCode');
+  const statusEl = overlay.querySelector('#linkStatus');
+  if (codeEl){
+    codeEl.textContent = code;
+    codeEl.onclick = () => {
+      SFX.clickSoft();
+      copyToClipboard(code).then(ok => {
+        codeEl.textContent = ok ? 'COPIED' : code;
+        setTimeout(() => { codeEl.textContent = code; }, 900);
+      });
+    };
+  }
+  if (statusEl) statusEl.innerHTML = '<span class="spin"></span>Waiting for other browser…';
+
+  cleanupLinkPeer();
+  let peer;
+  try { peer = new Peer(LINK_PREFIX + code, { debug: 0 }); }
+  catch(e){
+    if (statusEl) statusEl.textContent = 'Could not start link server.';
+    return;
+  }
+  linkPeer = peer;
+  let done = false;
+
+  const cleanup = () => {
+    if (done) return;
+    done = true;
+    if (linkPeer) { try { linkPeer.destroy(); } catch(e){} linkPeer = null; }
+  };
+
+  peer.on('open', () => {
+    if (linkPeer !== peer) return;
+    if (statusEl) statusEl.innerHTML = '<span class="spin"></span>Waiting for other browser…';
+  });
+
+  peer.on('connection', c => {
+    if (done) { try { c.close(); } catch(e){} return; }
+    c.on('open', () => {
+      if (statusEl) statusEl.innerHTML = '<span class="spin"></span>Linking…';
+      try { c.send({ t: 'link_name', name, nameKey: key }); } catch(e){}
+    });
+    c.on('data', msg => {
+      if (!msg || typeof msg !== 'object') return;
+      if (msg.t === 'link_ok'){
+        if (statusEl) statusEl.innerHTML = '✅ Linked successfully!';
+        SFX.win();
+        setTimeout(() => {
+          cleanup();
+          menuView = 'main';
+          renderMenu('');
+          refreshLeaderboard(true);
+        }, 1200);
+      } else if (msg.t === 'link_err'){
+        if (statusEl) statusEl.textContent = '❌ ' + (msg.error || 'Failed');
+      }
+    });
+  });
+
+  peer.on('error', err => {
+    if (linkPeer !== peer) return;
+    if (statusEl) statusEl.textContent = 'Error: ' + ((err && err.type) || 'unknown');
+  });
+
+  const cancel = overlay.querySelector('#btnCancelLink');
+  if (cancel) cancel.onclick = () => {
+    cleanup();
+    menuView = 'main';
+    renderMenu('');
+  };
+}
+
+/* ── Main menu HTML ──────────────────────────────────────────── */
 function menuHTML(err){
   const cfg = G.config;
   const modeBtns = Object.keys(MODES).map(k => {
@@ -3607,28 +4584,47 @@ function menuHTML(err){
   }).join('');
 
   const solo = cfg.mode === 'solo';
-  const actions = solo
-    ? '<div class="ovbtns"><button class="primary" id="btnStart">START SOLO</button></div>'
-    : '<div class="ovbtns">' +
-        '<button class="primary" id="btnHost">CREATE MATCH</button>' +
-        '<button id="btnJoin">JOIN MATCH</button>' +
-      '</div>' +
-      '<div class="joinrow hidden" id="joinRow">' +
-        '<input id="joinInput" maxlength="4" placeholder="CODE" autocomplete="off" spellcheck="false" inputmode="latin">' +
-        '<button class="primary" id="btnJoinGo">GO</button>' +
-      '</div>';
+  const actions =
+    '<div class="ovbtns">' +
+      (solo ? '<button class="primary" id="btnStart">START SOLO</button>' : '') +
+      '<button class="' + (solo ? '' : 'primary') + '" id="btnHost">CREATE MATCH</button>' +
+      '<button id="btnJoin">JOIN MATCH</button>' +
+    '</div>' +
+    '<div class="joinrow hidden" id="joinRow">' +
+      '<input id="joinInput" maxlength="4" placeholder="CODE" autocomplete="off" spellcheck="false" inputmode="latin">' +
+      '<button class="primary" id="btnJoinGo">GO</button>' +
+    '</div>';
+
+  /* When in guest mode we never show a name — just "GUEST MODE". */
+  const displayName = isGuest
+    ? 'GUEST MODE'
+    : (getPlayerName() || 'SET NAME');
+  const nameBtnIcon = isGuest ? '👤' : '🏷️';
+  const nameBtnClass = 'name-btn' + (isGuest ? ' guest' : '');
 
   return '<div class="ovbox menu-pop">' +
+    '<div class="menu-topbar">' +
+      '<button class="' + nameBtnClass + '" id="nameBtn">' +
+        '<span class="name-btn-icon">' + nameBtnIcon + '</span>' +
+        '<span class="name-btn-text">' + escapeHtml(displayName) + '</span>' +
+        '<span class="name-btn-edit">' + (isGuest ? '↻' : '✏️') + '</span>' +
+      '</button>' +
+    '</div>' +
     '<div class="big">💣</div>' +
     '<h2>MINE<span>DUEL</span></h2>' +
     '<p>Race, co-operate or claim territory.<br>Same board, same seed — may the best sweeper win.</p>' +
-    '<div class="config-section"><div class="config-label">MODE</div><div class="config-options">' + modeBtns + '</div></div>' +
-    '<div class="config-section"><div class="config-label">BOARD STYLE</div><div class="config-options">' + styleBtns + '</div></div>' +
-    '<div class="config-section"><div class="config-label">MAP SIZE</div><div class="config-options">' + sizeBtns + '</div></div>' +
-    actions +
-    '<div class="ovbtns sub">' +
-      '<button class="ghost" id="btnHowTo">📖 HOW TO PLAY</button>' +
-      '<button class="ghost" id="btnHotkeys">⌨ HOTKEYS</button>' +
+    '<div class="menu-grid">' +
+      '<div class="menu-main">' +
+        '<div class="config-section"><div class="config-label">MODE</div><div class="config-options">' + modeBtns + '</div></div>' +
+        '<div class="config-section"><div class="config-label">BOARD STYLE</div><div class="config-options">' + styleBtns + '</div></div>' +
+        '<div class="config-section"><div class="config-label">MAP SIZE</div><div class="config-options">' + sizeBtns + '</div></div>' +
+        actions +
+        '<div class="ovbtns sub">' +
+          '<button class="ghost" id="btnHowTo">📖 HOW TO PLAY</button>' +
+          '<button class="ghost" id="btnHotkeys">⌨ HOTKEYS</button>' +
+        '</div>' +
+      '</div>' +
+      '<aside class="menu-lb">' + renderLeaderboardHTML() + '</aside>' +
     '</div>' +
     '<div class="err" id="menuErr">' + (err || '') + '</div>' +
   '</div>';
@@ -3728,16 +4724,81 @@ function renderMenu(err){
     return;
   }
 
+  if (menuView === 'name'){
+    showOverlay(nameMenuHTML());
+    const btnChange = overlay.querySelector('#btnChangeName');
+    if (btnChange) btnChange.onclick = () => {
+      showNameEntryPopup({
+        isChange: true,
+        currentName: getPlayerName(),
+        onSuccess: () => {
+          menuView = 'main';
+          renderMenu('');
+          refreshLeaderboard(true);
+        },
+        onCancel: () => { menuView = 'main'; renderMenu(''); }
+      });
+    };
+    const btnLink = overlay.querySelector('#btnLinkName');
+    if (btnLink) btnLink.onclick = () => {
+      menuView = 'link';
+      menuError = '';
+      renderMenu('');
+    };
+    const back = overlay.querySelector('#btnBackMenu');
+    if (back) back.onclick = () => { menuView = 'main'; menuError = ''; renderMenu(''); };
+    return;
+  }
+
+  if (menuView === 'link'){
+    showOverlay(linkMenuHTML());
+    startLinking();
+    return;
+  }
+
   showOverlay(menuHTML(menuError));
 
+  const nameBtn = overlay.querySelector('#nameBtn');
+  if (nameBtn) nameBtn.onclick = () => {
+    /* Guest mode: the name button just refreshes the page so the user
+       can go through the name picker again. Nothing is saved. */
+    if (isGuest){
+      try { location.reload(); } catch(e){}
+      return;
+    }
+    if (!getPlayerName()){
+      /* Edge case — should not happen, but treat like guest. */
+      try { location.reload(); } catch(e){}
+      return;
+    }
+    menuView = 'name';
+    menuError = '';
+    renderMenu('');
+  };
+
   overlay.querySelectorAll('[data-mode]').forEach(b => {
-    b.onclick = () => { G.config.mode = b.dataset.mode; menuError = ''; renderMenu(); };
+    b.onclick = () => {
+      G.config.mode = b.dataset.mode;
+      menuError = '';
+      renderMenu();
+      refreshLeaderboard(false);
+    };
   });
   overlay.querySelectorAll('[data-style]').forEach(b => {
-    b.onclick = () => { G.config.style = b.dataset.style; menuError = ''; renderMenu(); };
+    b.onclick = () => {
+      G.config.style = b.dataset.style;
+      menuError = '';
+      renderMenu();
+      refreshLeaderboard(false);
+    };
   });
   overlay.querySelectorAll('[data-size]').forEach(b => {
-    b.onclick = () => { G.config.size = b.dataset.size; menuError = ''; renderMenu(); };
+    b.onclick = () => {
+      G.config.size = b.dataset.size;
+      menuError = '';
+      renderMenu();
+      refreshLeaderboard(false);
+    };
   });
 
   const btnStart = overlay.querySelector('#btnStart');
@@ -3767,6 +4828,8 @@ function renderMenu(err){
 
   const btnHow = overlay.querySelector('#btnHowTo');
   if (btnHow) btnHow.onclick = () => { menuView = 'howto'; menuError = ''; renderMenu(); };
+
+  attachLeaderboardHandlers();
 }
 
 function idleOverlay(){
@@ -3795,6 +4858,7 @@ function idleOverlay(){
   menuView = 'main';
   cancelPregen();
   genInFlight = null;
+  cleanupLinkPeer();
   const tu = document.querySelector('.terr-unlock');
   if (tu) tu.remove();
   arena.innerHTML = '';
@@ -3802,6 +4866,7 @@ function idleOverlay(){
   cleanupNet();
   setStatus('OFFLINE', '');
   renderMenu('');
+  refreshLeaderboard(true);
 }
 
 function waitHTML(icon, title, body){
@@ -3880,6 +4945,7 @@ function showCodeScreen(code){
   wireCancel();
 }
 
+/* ── Guest join (also tries link codes) ───────────────────────── */
 function joinGame(code){
   setStatus('CONNECTING', 'warn');
   showOverlay(waitHTML('🔎', 'JOINING ' + code, '<span class="spin"></span>Looking for the room…'));
@@ -3888,27 +4954,111 @@ function joinGame(code){
   try { peer = new Peer({ debug: 0 }); }
   catch(e){ renderMenu('Could not start peer connection.'); return; }
   G.peer = peer;
+  let triedLink = false;
   let joined = false;
+
+  const tryLink = () => {
+    if (triedLink) return;
+    triedLink = true;
+    if (G.conn) { try { G.conn.close(); } catch(e){} G.conn = null; }
+    if (G.peer !== peer) return;
+
+    showOverlay(waitHTML('🔗', 'LINKING', '<span class="spin"></span>Checking for link code…'));
+    wireCancel();
+
+    let linkConn;
+    try { linkConn = peer.connect(LINK_PREFIX + code, { reliable: true }); }
+    catch(e){
+      showOverlay(waitHTML('❌', 'NOT FOUND', 'No room or link code matched.'));
+      wireCancel();
+      return;
+    }
+
+    let linkOpened = false;
+
+    linkConn.on('open', () => {
+      linkOpened = true;
+      showOverlay(waitHTML('🔗', 'LINKING', '<span class="spin"></span>Receiving name…'));
+      wireCancel();
+    });
+
+    linkConn.on('data', async msg => {
+      if (!msg || typeof msg !== 'object') return;
+      if (msg.t === 'link_name'){
+        try {
+          const res = await applyLinkedName(msg.name, msg.nameKey);
+          try { linkConn.send({ t: 'link_ok' }); } catch(e){}
+          isGuest = false;
+          showOverlay(
+            '<div class="ovbox"><div class="big">✅</div><h2>LINKED!</h2>' +
+            '<p>This browser now uses the name <b style="color:#4dd8ff">' + escapeHtml(res.name) + '</b>.</p>' +
+            '<div class="ovbtns"><button class="primary" id="btnLinkDone">BACK TO MENU</button></div></div>'
+          );
+          const b = overlay.querySelector('#btnLinkDone');
+          if (b) b.onclick = () => { cleanupNet(); idleOverlay(); };
+        } catch(e){
+          try { linkConn.send({ t: 'link_err', error: (e && e.message) || 'Failed' }); } catch(_){}
+          showOverlay(
+            '<div class="ovbox"><div class="big">❌</div><h2>LINK FAILED</h2>' +
+            '<p>' + escapeHtml((e && e.message) || 'Failed to link') + '</p>' +
+            '<div class="ovbtns"><button class="primary" id="btnLinkDone">BACK TO MENU</button></div></div>'
+          );
+          const b = overlay.querySelector('#btnLinkDone');
+          if (b) b.onclick = () => { cleanupNet(); idleOverlay(); };
+        }
+      }
+    });
+
+    const linkFail = () => {
+      if (linkOpened) return;
+      showOverlay(waitHTML('❌', 'NOT FOUND', 'No room or link code matched.'));
+      wireCancel();
+    };
+
+    linkConn.on('error', linkFail);
+    linkConn.on('close', linkFail);
+  };
 
   peer.on('open', () => {
     if (G.peer !== peer) return;
     const c = peer.connect(PREFIX + code, { reliable: true });
-    attachConn(c);
+    let opened = false;
+    let failed = false;
+
     c.on('open', () => {
       if (joined) return;
+      opened = true;
       joined = true;
+      attachConn(c);
       G.role = 'guest';
       setStatus('WAITING', 'warn');
       showOverlay(waitHTML('✅', 'CONNECTED', '<span class="spin"></span>Waiting for the host to start…'));
       wireCancel();
     });
+
+    const onFail = () => {
+      if (opened || failed) return;
+      failed = true;
+      tryLink();
+    };
+
+    c.on('error', onFail);
+    c.on('close', onFail);
   });
+
   peer.on('error', err => {
     if (G.peer !== peer) return;
-    cleanupNet();
     const t = err && err.type;
-    if (t === 'peer-unavailable') renderMenu('Room "' + code + '" was not found.');
-    else renderMenu('Connection error: ' + (t || 'unknown'));
+    if (t === 'peer-unavailable'){
+      if (!triedLink) tryLink();
+      else {
+        showOverlay(waitHTML('❌', 'NOT FOUND', 'No room or link code matched.'));
+        wireCancel();
+      }
+      return;
+    }
+    cleanupNet();
+    renderMenu('Connection error: ' + (t || 'unknown'));
   });
 }
 
@@ -3952,10 +5102,6 @@ function startMatch(seed, role, seedGuest){
     G.board = res.board;
     G.boardSeed = res.seed;
     G.boardPending = false;
-    /* Host is authoritative for territory — it will broadcast the
-       mine set right after startMatch runs so the guest's board can
-       never drift out of sync. The guest waits for that message
-       before revealing its starting tiles. */
     G.terrBoardReady = (role === 'host');
     if (role === 'host'){
       send({ t:'terr_board', mines: Array.from(G.board.mines) });
@@ -4192,6 +5338,18 @@ function endGame(result, icon, title, sub, elapsed, cards){
   if (G.me) G.me.done = true;
   clearHeldKeys();
 
+  /* ── Leaderboard: record a win (guests are skipped) ── */
+  if (result === 'win' && G.config && elapsed > 0){
+    try {
+      recordWin(
+        G.config.mode,
+        G.config.style,
+        G.config.size,
+        Math.max(1, Math.round(elapsed))
+      ).catch(()=>{});
+    } catch(e){}
+  }
+
   const statusMap = {
     win:        ['VICTORY', 'live'],
     lose:       ['DEFEAT', 'bad'],
@@ -4408,6 +5566,32 @@ window.addEventListener('pagehide', () => {
    BOOT
    ══════════════════════════════════════════════════════════════ */
 idleOverlay();
+
+fbReadyPromise.then(async () => {
+  if (G.state !== 'lobby') return;
+  /* Guest mode is intentionally NOT remembered between visits — if the
+     browser has no saved name, we always prompt again on load. */
+  const ok = await ensurePlayerName();
+  if (!ok){
+    showNameEntryPopup({
+      onSuccess: () => {
+        menuView = 'main';
+        renderMenu('');
+        refreshLeaderboard(true);
+      },
+      onGuest: () => {
+        isGuest = true;
+        menuView = 'main';
+        renderMenu('');
+        refreshLeaderboard(true);
+      }
+    });
+  } else {
+    isGuest = false;
+    renderMenu('');
+    refreshLeaderboard(true);
+  }
+});
 
 })();
 </script>

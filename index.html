@@ -273,6 +273,11 @@
     border-color:#22d3ee;color:#fff;transform:translateY(-2px);
   }
   button:active{transform:translateY(0) scale(.98)}
+  button:disabled{opacity:.5;cursor:default;transform:none}
+  button:disabled:hover{
+    background:linear-gradient(180deg,rgba(255,255,255,.09),rgba(255,255,255,.04));
+    border-color:rgba(255,255,255,.16);color:#dbe6f7;transform:none;
+  }
   button.ghost{background:transparent;border-color:rgba(255,255,255,.14)}
   button.ghost:hover{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.3)}
   button.primary{
@@ -280,6 +285,7 @@
     border-color:#22d3ee;color:#fff;
   }
   button.primary:hover{background:linear-gradient(180deg,#4dd8ff,#0e7490)}
+  button.primary:disabled:hover{background:linear-gradient(180deg,#22d3ee,#0e7490)}
   button.danger{
     background:linear-gradient(180deg,rgba(255,61,129,.24),rgba(255,61,129,.10));
     border-color:rgba(255,61,129,.5);color:#ffd0dd;
@@ -330,6 +336,14 @@
     letter-spacing:.06em;color:#fff;line-height:1;
     text-shadow:0 0 34px #4dd8ff,0 0 80px #4dd8ff;
   }
+
+  /* ── end-of-match message line (rematch / disconnect) ───── */
+  .endmsg{
+    font-size:12px;letter-spacing:.1em;margin-top:12px;min-height:16px;
+    font-weight:800;color:#8b9ab4;
+  }
+  .endmsg.bad{color:#ff6b8a}
+  .endmsg.good{color:#8affc1}
 
   /* ── menu pop-in animations ────────────────────────────── */
   @keyframes ovPop{
@@ -1268,17 +1282,6 @@ function genBoardDeferred(seed, style, cols, rows, mineCount, clickR, clickC, st
 
 /* ══════════════════════════════════════════════════════════════
    EXACT SOLVER
-   ══════════════════════════════════════════════════════════════
-   enumerateSolutions(n, constraints, maxSolutions)
-
-     n            — number of frontier cells (indices 0..n-1)
-     constraints  — [{ cells:[indices], mines:number }, ...]
-     maxSolutions — safety cap; returns null if exceeded.
-
-   Returns { count, mineCounts } or null.
-   mineCounts[i] = number of satisfying assignments where cell i is a mine.
-   From that: if mineCounts[i] === 0  -> cell i is safe in every solution.
-              if mineCounts[i] === count -> cell i is a mine in every solution.
    ══════════════════════════════════════════════════════════════ */
 function enumerateSolutions(n, constraints, maxSolutions){
   if (n === 0) return { count: 1, mineCounts: new Int32Array(0) };
@@ -1600,11 +1603,6 @@ function solveBoard(board, opening){
 
 function generateSolvableBoard(seed, style, cols, rows, mineCount,
                                clickR, clickC, starts, opening){
-  /* Build a ladder of mine counts: the requested density first, then
-     progressively easier ones.  Guess-free boards become dramatically
-     more likely as the density drops, so walking this ladder virtually
-     guarantees we find one while still preferring the hardest board
-     the player asked for. */
   const floor = Math.max(1, Math.floor(mineCount * 0.55));
   const levels = [];
   if (mineCount <= floor){
@@ -1640,8 +1638,6 @@ function generateSolvableBoard(seed, style, cols, rows, mineCount,
     }
   }
 
-  /* Last-ditch pass at a very sparse density — essentially always
-     guess-free.  Only reached if every level above failed. */
   const sparse = Math.max(1, Math.floor(mineCount * 0.3));
   for (let k = 0; k < 100; k++){
     attempt++;
@@ -1987,6 +1983,13 @@ function lbKey(mode, style, size){
   return mode + '_' + style + '_' + size;
 }
 
+/* Deterministic document id for a two-player (pair) leaderboard entry. */
+function pairKeyOf(a, b){
+  const x = String(a || 'anon');
+  const y = String(b || 'anon');
+  return x < y ? (x + '__' + y) : (y + '__' + x);
+}
+
 function currentLbCategory(){
   if (G.config.mode === 'duel') return 'wins';
   return LB_STATE.category || 'time';
@@ -2016,8 +2019,8 @@ function validateName(raw){
   if (trimmed.length < 3) return { error: 'Name must be at least 3 characters' };
   if (trimmed.length > 16) return { error: 'Name too long (max 16 characters)' };
   if (/\s/.test(trimmed)) return { error: 'Spaces are not allowed' };
-  if (!/^[A-Za-z0-9_\-]+$/.test(trimmed))
-    return { error: "Only letters, numbers, _ and - are allowed" };
+  if (!/^[A-Za-z0-9\-]+$/.test(trimmed))
+    return { error: "Only letters, numbers and - are allowed" };
   return { name: trimmed, key: trimmed.toLowerCase() };
 }
 
@@ -2113,6 +2116,16 @@ async function isNameRegisteredOnServer(){
   }
 }
 
+/* ──────────────────────────────────────────────────────────────
+   recordWin
+
+   • solo / duel  → one entry per player, doc id = own nameKey.
+   • coop / terr. → ONE entry per PAIR of players, doc id = pair key,
+                    containing both display names + both name keys.
+                    Only a single client ever submits for a given
+                    match (host for co-op, winner for territorial),
+                    so nothing is ever written twice.
+   ────────────────────────────────────────────────────────────── */
 async function recordWin(mode, style, size, timeMs, partnerName, countAsWin){
   if (!db || !auth) return;
   if (isGuest) return;
@@ -2131,42 +2144,72 @@ async function recordWin(mode, style, size, timeMs, partnerName, countAsWin){
   }
 
   const key = lbKey(mode, style, size);
-  const ref = db.collection('leaderboards').doc(key).collection('entries').doc(nameKey);
   const isDuel = (mode === 'duel');
   const joint  = (mode === 'coop' || mode === 'territory');
   const timeVal = Math.max(1, Math.round(timeMs || 0));
   const addWin = (countAsWin === undefined) ? true : !!countAsWin;
-  const partner = joint ? String(partnerName || '').trim().slice(0, 32) : '';
 
   try {
-    const snap = await ref.get();
-    if (!snap.exists){
-      const doc = {
-        name,
-        wins: addWin ? 1 : 0,
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      };
-      if (joint && partner) doc.partnerName = partner;
-      if (!isDuel) doc.bestTime = timeVal;
-      await ref.set(doc);
-    } else {
-      const data = snap.data() || {};
-      const upd = {
-        name,
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      };
-      if (addWin) upd.wins = (data.wins || 0) + 1;
-      if (!isDuel){
+    if (joint){
+      const partner = String(partnerName || '').trim().slice(0, 32);
+      const partnerKey = partner ? partner.toLowerCase() : '';
+      if (!partnerKey) return;              /* need both players named */
+
+      const pk = pairKeyOf(nameKey, partnerKey);
+      const ref = db.collection('leaderboards').doc(key).collection('entries').doc(pk);
+
+      const firstIsMe = (nameKey <= partnerKey);
+      const names = firstIsMe ? [name, partner] : [partner, name];
+      const keys  = firstIsMe ? [nameKey, partnerKey] : [partnerKey, nameKey];
+
+      const snap = await ref.get();
+      if (!snap.exists){
+        const doc = {
+          names,
+          nameKeys: keys,
+          wins: addWin ? 1 : 0,
+          bestTime: timeVal,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+        await ref.set(doc);
+      } else {
+        const data = snap.data() || {};
+        const upd = {
+          names,
+          nameKeys: keys,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+        if (addWin) upd.wins = (data.wins || 0) + 1;
         const prev = data.bestTime;
-        if (!prev || timeVal < prev){
-          upd.bestTime = timeVal;
-          if (joint && partner) upd.partnerName = partner;
-        }
-      } else if (joint && partner){
-        upd.partnerName = partner;
+        if (!prev || timeVal < prev) upd.bestTime = timeVal;
+        await ref.update(upd);
       }
-      await ref.update(upd);
+    } else {
+      const ref = db.collection('leaderboards').doc(key).collection('entries').doc(nameKey);
+      const snap = await ref.get();
+      if (!snap.exists){
+        const doc = {
+          name,
+          wins: addWin ? 1 : 0,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+        if (!isDuel) doc.bestTime = timeVal;
+        await ref.set(doc);
+      } else {
+        const data = snap.data() || {};
+        const upd = {
+          name,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+        if (addWin) upd.wins = (data.wins || 0) + 1;
+        if (!isDuel){
+          const prev = data.bestTime;
+          if (!prev || timeVal < prev) upd.bestTime = timeVal;
+        }
+        await ref.update(upd);
+      }
     }
+
     lbCache.delete(key + '_wins');
     lbCache.delete(key + '_time');
     console.log('[fb] recorded score for', name, 'on', key);
@@ -2527,6 +2570,8 @@ async function removePlayerName(){
   return { name: oldName };
 }
 
+/* Row rendering: highlights any entry the local player is part of,
+   including pair entries where their name is one of the two. */
 function renderLeaderboardRows(mode, cat){
   if (LB_STATE.loading){
     return '<div class="lb-empty"><span class="spin"></span>Loading…</div>';
@@ -2539,13 +2584,27 @@ function renderLeaderboardRows(mode, cat){
   }
   const joint = (mode === 'coop' || mode === 'territory');
   const myKey = getPlayerNameKey();
+  const myName = getPlayerName();
+
   return LB_STATE.data.map((e, i) => {
-    const isMe = !isGuest && !!myKey && e.id === myKey;
-    const val = (cat === 'time') ? formatTime(e.bestTime) : formatWins(e.wins);
-    let nm = e.name || 'Anon';
-    if (joint && cat === 'time' && e.partnerName){
-      nm = nm + ' & ' + e.partnerName;
+    let nm = 'Anon';
+    let isMe = false;
+
+    if (Array.isArray(e.nameKeys) && e.nameKeys.length){
+      const names = (Array.isArray(e.names) && e.names.length) ? e.names : e.nameKeys;
+      nm = names.join(' & ');
+      if (!isGuest && myKey) isMe = e.nameKeys.indexOf(myKey) !== -1;
+    } else {
+      nm = e.name || 'Anon';
+      if (joint && e.partnerName) nm = nm + ' & ' + e.partnerName;
+      if (!isGuest && myKey){
+        if (e.id === myKey) isMe = true;
+        else if (joint && e.partnerName && e.partnerName.toLowerCase() === myKey) isMe = true;
+        else if (joint && myName && e.partnerName === myName) isMe = true;
+      }
     }
+
+    const val = (cat === 'time') ? formatTime(e.bestTime) : formatWins(e.wins);
     return '<div class="lb-row' + (isMe ? ' me' : '') + (cat === 'wins' ? ' wins' : '') + '">' +
       '<span class="lb-rank">' + (i + 1) + '</span>' +
       '<span class="lb-name">' + escapeHtml(nm) + '</span>' +
@@ -2700,7 +2759,8 @@ const G = {
   deathTile: null, theirDeathTile: null,
   territoryUnlocked: false,
   terrBoardReady: true,
-  reviewViews: []
+  reviewViews: [],
+  rematchMe: false, rematchThem: false, rematchLock: false
 };
 
 const overlay    = document.getElementById('overlay');
@@ -3515,7 +3575,7 @@ function buildArena(){
   arena.appendChild(panelA);
   G.viewMe = new BoardView(panelA.querySelector('canvas'));
   G.viewMe.setConfig(viewConfig());
-  bindCanvasInput(G.viewMe, true);
+  bindCanvasInput(G.viewMe, true, true);
   wireZoomBadge(panelA, G.viewMe);
   panelA._els = {
     mines: panelA.querySelector('[data-mines]'),
@@ -3535,8 +3595,8 @@ function buildArena(){
     arena.appendChild(panelB);
     G.viewThem = new BoardView(panelB.querySelector('canvas'));
     G.viewThem.setConfig(viewConfig());
-    bindCanvasInput(G.viewThem, false);
-    wireZoomBadge(panelB, G.viewThem);
+    /* Opponent's board in duel mode: view only — no zoom, no pan. */
+    bindCanvasInput(G.viewThem, false, false);
     panelB._els = {
       mines: panelB.querySelector('[data-mines]'),
       time:  panelB.querySelector('[data-time]'),
@@ -3547,7 +3607,7 @@ function buildArena(){
       nameEl: panelB.querySelector('.pname'),
       panel: panelB
     };
-    panelB._els.keys.textContent = 'LIVE VIEW';
+    panelB._els.keys.textContent = 'LIVE VIEW · NO ZOOM';
     G.panelThem = panelB;
   }
   G.panelMe = panelA;
@@ -3568,7 +3628,7 @@ function buildTerritoryArena(){
     edge: 'rgba(255,61,129,.72)', solid: '#ff3d81'
   };
   G.viewMe.setOwnerPalette(G.myOwner === 1 ? { 1: CYAN, 2: PINK } : { 1: PINK, 2: CYAN });
-  bindCanvasInput(G.viewMe, true);
+  bindCanvasInput(G.viewMe, true, true);
   wireZoomBadge(panel, G.viewMe);
   panel._els = {
     myLand:    panel.querySelector('[data-myland]'),
@@ -3612,7 +3672,9 @@ function wireZoomBadge(panel, view){
 function interactive(){
   return G.state === 'playing' && G.me && !G.me.done;
 }
-function bindCanvasInput(view, gameplay){
+
+function bindCanvasInput(view, gameplay, allowZoom){
+  if (allowZoom === undefined) allowZoom = true;
   const canvas = view.canvas;
   const pointers = new Map();
   let pinch = null;
@@ -3627,6 +3689,7 @@ function bindCanvasInput(view, gameplay){
   canvas.addEventListener('contextmenu', e => e.preventDefault());
   canvas.addEventListener('wheel', e => {
     if (!view.metrics) return;
+    if (!allowZoom) return;          /* zoom disabled for this board */
     e.preventDefault();
     let delta = e.deltaY;
     if (e.deltaMode === 1) delta *= 16;
@@ -3669,12 +3732,14 @@ function bindCanvasInput(view, gameplay){
 
     if (pointers.size >= 2){
       cancelTouchGesture();
-      const pts = Array.from(pointers.values());
-      const d0 = Math.hypot(pts[0].startX - pts[1].startX, pts[0].startY - pts[1].startY);
-      const midX0 = (pts[0].startX + pts[1].startX) / 2;
-      const midY0 = (pts[0].startY + pts[1].startY) / 2;
-      const l0 = clientToLocal(midX0, midY0);
-      pinch = { d0, zoom0: view.zoom, pan0X: view.panX, pan0Y: view.panY, midL0X: l0.x, midL0Y: l0.y };
+      if (allowZoom){
+        const pts = Array.from(pointers.values());
+        const d0 = Math.hypot(pts[0].startX - pts[1].startX, pts[0].startY - pts[1].startY);
+        const midX0 = (pts[0].startX + pts[1].startX) / 2;
+        const midY0 = (pts[0].startY + pts[1].startY) / 2;
+        const l0 = clientToLocal(midX0, midY0);
+        pinch = { d0, zoom0: view.zoom, pan0X: view.panX, pan0Y: view.panY, midL0X: l0.x, midL0Y: l0.y };
+      }
       return;
     }
 
@@ -4028,25 +4093,33 @@ function countRevealedTiles(boardState){
   return n;
 }
 
+/* Accurate end-of-match percentages.
+   · Duel  — each side is measured against the SAFE tiles of their OWN
+             board, so clearing your own field always reads 100%.
+   · Terr. — percentage of the shared board claimed by each player. */
 function mapRevealStats(){
   const mode = G.config.mode;
   if (mode === 'solo') return null;
   if (!G.board || !G.myBoard) return null;
-  const total = Math.max(1, G.board.rows * G.board.cols);
 
-  let mine, theirs;
   if (mode === 'duel'){
-    mine   = countRevealedTiles(G.myBoard)    / total * 100;
-    theirs = countRevealedTiles(G.theirBoard) / total * 100;
-  } else {
-    const c1 = countLand(G.myBoard, 1);
-    const c2 = countLand(G.myBoard, 2);
-    mine   = ((G.myOwner === 1) ? c1 : c2) / total * 100;
-    theirs = ((G.myOwner === 1) ? c2 : c1) / total * 100;
+    const myTotal = Math.max(1, G.board.safeCount || 0);
+    const mine = clamp((G.myBoard.safeRevealed || 0) / myTotal * 100, 0, 100);
+
+    const theirLayout = G.theirBoardLayout || G.board;
+    const theirTotal = Math.max(1, (theirLayout && theirLayout.safeCount) || myTotal);
+    const theirRevealed = G.theirBoard ? (G.theirBoard.safeRevealed || 0) : 0;
+    const theirs = clamp(theirRevealed / theirTotal * 100, 0, 100);
+
+    return { mine, theirs };
   }
+
+  const total = Math.max(1, G.board.rows * G.board.cols);
+  const c1 = countLand(G.myBoard, 1);
+  const c2 = countLand(G.myBoard, 2);
   return {
-    mine:   clamp(mine, 0, 100),
-    theirs: clamp(theirs, 0, 100)
+    mine:   clamp(((G.myOwner === 1) ? c1 : c2) / total * 100, 0, 100),
+    theirs: clamp(((G.myOwner === 1) ? c2 : c1) / total * 100, 0, 100)
   };
 }
 
@@ -4373,11 +4446,11 @@ function endTerritoryScreen(land1, land2){
     '<div class="statcard"><div class="slabel">THEY REVEALED</div><div class="sval">' + theirsPct.toFixed(0) + '%</div></div>';
   const elapsed = performance.now() - G.startTime;
 
-  if (G.config && elapsed > 0 && !isGuest){
+  /* Only the winning player submits the pair entry — never both. */
+  if (G.config && elapsed > 0 && !isGuest && result === 'win'){
     const partner = G.theirName || '';
-    const iWon = (result === 'win');
     recordWin('territory', G.config.style, G.config.size,
-              Math.max(1, Math.round(elapsed)), partner, iWon).catch(()=>{});
+              Math.max(1, Math.round(elapsed)), partner, true).catch(()=>{});
   }
 
   endGame(result, icon, title, sub, elapsed, cards, { skipRecord: true });
@@ -4640,7 +4713,11 @@ function onConnClosed(){
     endGame('disconnect', '🔌', 'OPPONENT DISCONNECTED',
             'Your opponent left the match.', performance.now() - G.startTime);
   } else if (G.state === 'over'){
+    /* Cancel any pending rematch wait and tell the player. */
+    G.rematchMe = false;
+    G.rematchThem = false;
     cleanupNet();
+    refreshEndUI();
   } else {
     cleanupNet();
     idleOverlay();
@@ -4682,6 +4759,13 @@ function handleMessage(msg){
       const seedGuest = (msg.seedGuest >>> 0) || newSeed();
       if (G.config.mode === 'duel') startMatch(seedGuest, 'guest', seedHost);
       else                          startMatch(seedHost,  'guest', seedHost);
+      break;
+    }
+
+    case 'rematch': {
+      G.rematchThem = true;
+      maybeStartRematch();
+      refreshEndUI();
       break;
     }
 
@@ -5491,6 +5575,7 @@ function idleOverlay(){
   G.territoryUnlocked = false;
   G.terrBoardReady = true;
   G.reviewViews = [];
+  G.rematchMe = false; G.rematchThem = false; G.rematchLock = false;
   lastUnlockCheck = 0;
   clearHeldKeys();
   hotkeyCapture = null;
@@ -5728,6 +5813,7 @@ function startMatch(seed, role, seedGuest){
   G.deathTile = null; G.theirDeathTile = null;
   G.territoryUnlocked = false; G.reviewViews = [];
   G.boardOpening = null;
+  G.rematchMe = false; G.rematchThem = false; G.rematchLock = false;
   lastUnlockCheck = 0;
   clearHeldKeys();
   hotkeyCapture = null;
@@ -5921,7 +6007,7 @@ function showMapReview(){
   modal.querySelectorAll('canvas[data-review]').forEach(c => {
     const v = new BoardView(c);
     v.setConfig(vc);
-    bindCanvasInput(v, false);
+    bindCanvasInput(v, false, true);
     views.push(v);
   });
   G.reviewViews = views;
@@ -5976,6 +6062,52 @@ function showMapReview(){
   document.addEventListener('keydown', onKey);
 }
 
+/* ══════════════════════════════════════════════════════════════
+   REMATCH — both players must agree
+   ══════════════════════════════════════════════════════════════ */
+function maybeStartRematch(){
+  if (G.state !== 'over') return;
+  if (!G.rematchMe || !G.rematchThem) return;
+  if (G.rematchLock) return;
+  G.rematchLock = true;
+
+  if (G.role === 'host'){
+    const seedHost = newSeed();
+    const seedGuest = newSeed();
+    send({ t:'seed', seedHost, seedGuest, config: G.config });
+    startMatch(seedHost, 'host', seedGuest);
+  }
+  /* guests wait for the host's 'seed' message */
+}
+
+function refreshEndUI(){
+  const msg = overlay.querySelector('#endMsg');
+  if (!msg) return;
+  const btn = overlay.querySelector('#btnAgain');
+
+  if (G.opponentGone){
+    msg.className = 'endmsg bad';
+    msg.textContent = 'Opponent disconnected.';
+    if (btn){ btn.disabled = true; }
+    return;
+  }
+  if (G.rematchMe && !G.rematchThem){
+    msg.className = 'endmsg';
+    msg.innerHTML = '<span class="spin"></span>Waiting for other player…';
+    if (btn){ btn.disabled = true; btn.textContent = 'WAITING…'; }
+    return;
+  }
+  if (!G.rematchMe && G.rematchThem){
+    msg.className = 'endmsg good';
+    msg.textContent = 'Opponent wants a rematch!';
+    if (btn){ btn.disabled = false; btn.textContent = 'REMATCH'; }
+    return;
+  }
+  msg.className = 'endmsg';
+  msg.textContent = '';
+  if (btn){ btn.disabled = false; btn.textContent = 'REMATCH'; }
+}
+
 function endGame(result, icon, title, sub, elapsed, cards, opts){
   if (G.state === 'over') return;
   G.state = 'over';
@@ -5984,20 +6116,33 @@ function endGame(result, icon, title, sub, elapsed, cards, opts){
 
   opts = opts || {};
 
+  G.rematchMe = false;
+  G.rematchThem = false;
+  G.rematchLock = false;
+
+  /* Score submission.
+     · solo / duel   → always (winner only for duel)
+     · coop          → host only, once, as a single pair entry
+     · territory     → handled in endTerritoryScreen (winner only) */
   if (!opts.skipRecord && result === 'win' && G.config && elapsed > 0){
     const mode = G.config.mode;
     const joint = (mode === 'coop' || mode === 'territory');
     const partner = joint ? (G.theirName || '') : '';
-    try {
-      recordWin(
-        mode,
-        G.config.style,
-        G.config.size,
-        Math.max(1, Math.round(elapsed)),
-        partner,
-        true
-      ).catch(()=>{});
-    } catch(e){}
+    let submit = true;
+    if (mode === 'coop' && G.role !== 'host') submit = false;
+    if (mode === 'territory') submit = false;
+    if (submit){
+      try {
+        recordWin(
+          mode,
+          G.config.style,
+          G.config.size,
+          Math.max(1, Math.round(elapsed)),
+          partner,
+          true
+        ).catch(()=>{});
+      } catch(e){}
+    }
   }
 
   const statusMap = {
@@ -6025,7 +6170,8 @@ function endGame(result, icon, title, sub, elapsed, cards, opts){
     }
   }
 
-  const canRematch = (G.role === 'solo') || (G.role === 'host' && !G.opponentGone);
+  const canRematch = !G.opponentGone &&
+    (G.role === 'solo' || G.role === 'host' || G.role === 'guest');
   const canReview  = !!G.board && !!G.myBoard;
 
   showOverlay(
@@ -6039,22 +6185,25 @@ function endGame(result, icon, title, sub, elapsed, cards, opts){
         (canReview ? '<button id="btnReview">VIEW MAP</button>' : '') +
         '<button class="ghost" id="btnMenu">MAIN MENU</button>' +
       '</div>' +
-      (G.role === 'guest' && !G.opponentGone ? '<div class="err">Waiting for the host to start a rematch…</div>' : '') +
-      (G.opponentGone ? '<div class="err">Opponent disconnected.</div>' : '') +
+      '<div class="endmsg" id="endMsg"></div>' +
     '</div>'
   );
 
   const again = overlay.querySelector('#btnAgain');
   if (again) again.onclick = () => {
     if (G.role === 'solo'){ startMatch(newSeed(), 'solo'); return; }
-    const seedHost = newSeed();
-    const seedGuest = newSeed();
-    send({ t:'seed', seedHost, seedGuest, config: G.config });
-    startMatch(seedHost, 'host', seedGuest);
+    if (G.opponentGone || G.rematchMe) return;
+    G.rematchMe = true;
+    send({ t:'rematch' });
+    maybeStartRematch();
+    refreshEndUI();
   };
+
   const review = overlay.querySelector('#btnReview');
   if (review) review.onclick = () => showMapReview();
   overlay.querySelector('#btnMenu').onclick = () => { cleanupNet(); idleOverlay(); };
+
+  refreshEndUI();
 
   if (result === 'win') SFX.win();
   else if (result === 'lose' || result === 'disconnect') SFX.lose();

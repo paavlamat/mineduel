@@ -2042,6 +2042,14 @@ function formatTime(ms){
   const rem = s - m * 60;
   return m + 'm ' + rem.toFixed(1) + 's';
 }
+/* In-game clock: plain seconds below 1 minute, then M:SS.S */
+function formatClock(ms){
+  const total = Math.max(0, ms || 0) / 1000;
+  if (total < 60) return total.toFixed(1);
+  const m = Math.floor(total / 60);
+  const s = total - m * 60;
+  return m + ':' + (s < 10 ? '0' : '') + s.toFixed(1);
+}
 function formatWins(n){
   n = n || 0;
   return n + (n === 1 ? ' win' : ' wins');
@@ -6001,11 +6009,10 @@ function endGame(result, icon, title, sub, elapsed, cards, opts){
   const s = statusMap[result] || ['MATCH OVER', 'warn'];
   setStatus(s[0], s[1]);
 
-  const secs = Math.max(0, elapsed) / 1000;
   let cardsHtml = cards;
   if (!cardsHtml){
     cardsHtml =
-      '<div class="statcard"><div class="slabel">TIME</div><div class="sval">' + secs.toFixed(1) + '</div></div>' +
+      '<div class="statcard"><div class="slabel">TIME</div><div class="sval">' + formatClock(elapsed) + '</div></div>' +
       '<div class="statcard"><div class="slabel">YOUR HITS</div><div class="sval">' + (G.me ? G.me.hits : 0) + '</div></div>';
     if (G.them){
       cardsHtml += '<div class="statcard lose"><div class="slabel">THEIR HITS</div><div class="sval">' + G.them.hits + '</div></div>';
@@ -6088,12 +6095,12 @@ function updateHUD(now){
       const total  = Math.max(1, mine + theirs);
       setText(els.myLand, mine);
       setText(els.theirLand, theirs);
-      setText(els.time, (elapsed / 1000).toFixed(1));
+      setText(els.time, formatClock(elapsed));
       if (els.myBar)    els.myBar.style.width    = (mine / total * 100).toFixed(1) + '%';
       if (els.theirBar) els.theirBar.style.width = (theirs / total * 100).toFixed(1) + '%';
     } else {
       setText(els.mines, Math.max(0, G.board.mineCount - bs.flagCount));
-      setText(els.time, (elapsed / 1000).toFixed(1));
+      setText(els.time, formatClock(elapsed));
       setText(els.hits, G.me.hits);
       if (els.bar) els.bar.style.width = (bs.safeRevealed / Math.max(1, G.board.safeCount) * 100).toFixed(1) + '%';
     }
@@ -6125,7 +6132,7 @@ function updateHUD(now){
     const layout = (G.config.mode === 'duel') ? (G.theirBoardLayout || G.board) : G.board;
     const te = G.panelThem._els;
     setText(te.mines, Math.max(0, (layout ? layout.mineCount : 0) - G.theirBoard.flagCount));
-    setText(te.time, (elapsed / 1000).toFixed(1));
+    setText(te.time, formatClock(elapsed));
     setText(te.hits, G.them ? G.them.hits : 0);
     if (te.bar && layout) {
       te.bar.style.width = (G.theirBoard.safeRevealed / Math.max(1, layout.safeCount) * 100).toFixed(1) + '%';

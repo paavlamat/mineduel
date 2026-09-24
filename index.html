@@ -897,9 +897,11 @@ const FRAME_MIN_MS = 1000 / TARGET_FPS;
 const PAN_SPEED_CSS = 900;
 const ZOOM_RATE = 2.4;
 
-/* Bumped from 60 — with the exact solver we can afford more retries
-   and it makes finding a fully-solvable board almost certain. */
-const SOLVER_MAX_ATTEMPTS = 100;
+/* Total solve attempts per generated board.  Boards are tried at the
+   requested density first, then at progressively lower densities until
+   a layout that the exact solver can fully clear is found.  This budget
+   is shared across all density levels. */
+const SOLVER_MAX_ATTEMPTS = 300;
 
 const TILES_PER_BOMB = {
   square: 4,
@@ -1277,9 +1279,6 @@ function genBoardDeferred(seed, style, cols, rows, mineCount, clickR, clickC, st
    mineCounts[i] = number of satisfying assignments where cell i is a mine.
    From that: if mineCounts[i] === 0  -> cell i is safe in every solution.
               if mineCounts[i] === count -> cell i is a mine in every solution.
-
-   Uses backtracking with per-constraint feasibility pruning.
-   Each cell assignment only re-checks the constraints it belongs to.
    ══════════════════════════════════════════════════════════════ */
 function enumerateSolutions(n, constraints, maxSolutions){
   if (n === 0) return { count: 1, mineCounts: new Int32Array(0) };
@@ -1287,7 +1286,6 @@ function enumerateSolutions(n, constraints, maxSolutions){
 
   const nc = constraints.length;
 
-  // Sanity: any impossible constraint means this component is unsatisfiable.
   for (let i = 0; i < nc; i++){
     const c = constraints[i];
     if (c.mines < 0 || c.mines > c.cells.length) return { count: 0, mineCounts: new Int32Array(n) };
@@ -1297,7 +1295,6 @@ function enumerateSolutions(n, constraints, maxSolutions){
   for (let i = 0; i < n; i++) assignment[i] = -1;
   const mineCounts = new Int32Array(n);
 
-  // cell -> list of constraint indices it belongs to
   const cellCons = new Array(n);
   for (let i = 0; i < n; i++) cellCons[i] = [];
   for (let ci = 0; ci < nc; ci++){
@@ -1305,13 +1302,12 @@ function enumerateSolutions(n, constraints, maxSolutions){
     for (let k = 0; k < cells.length; k++) cellCons[cells[k]].push(ci);
   }
 
-  // Order cells by descending constraint count — most constrained first.
   const order = new Array(n);
   for (let i = 0; i < n; i++) order[i] = i;
   order.sort(function(a, b){ return cellCons[b].length - cellCons[a].length; });
 
-  const conMines = new Int32Array(nc);       // mines already assigned in this constraint
-  const conUnassigned = new Int32Array(nc);  // cells not yet assigned in this constraint
+  const conMines = new Int32Array(nc);
+  const conUnassigned = new Int32Array(nc);
   for (let i = 0; i < nc; i++) conUnassigned[i] = constraints[i].cells.length;
 
   let count = 0;
@@ -1396,10 +1392,7 @@ function solveBoard(board, opening){
   for (let iter = 0; iter < MAX_ITER; iter++){
     let changed = false;
 
-    /* ── Pass 1 — basic counting ─────────────────────────────
-       A revealed cell with adj == flags reveals all remaining
-       hidden neighbours; with adj == flags + hidden, flags them
-       all.                                                     */
+    /* ── Pass 1 — basic counting ───────────────────────────── */
     for (let i = 0; i < N; i++){
       if (state[i] !== 1) continue;
       const a = adjFlat[i];
@@ -1422,11 +1415,7 @@ function solveBoard(board, opening){
     }
     if (changed) continue;
 
-    /* ── Pass 2 — pairwise subset rule ────────────────────────
-       For every pair of constraints (A ⊆ B):
-         · if B has same remaining mines as A, then B\A is safe;
-         · if B has (A's remaining + |B\A|) mines, then B\A are all mines.
-    */
+    /* ── Pass 2 — pairwise subset rule ──────────────────────── */
     const consHidden = [], consRem = [];
     for (let i = 0; i < N; i++){
       if (state[i] !== 1) continue;
@@ -1510,14 +1499,7 @@ function solveBoard(board, opening){
       if (subChanged) continue;
     }
 
-    /* ── Pass 3 — exact enumeration of the frontier ──────────
-       Build the constraint graph from every revealed numbered
-       cell that still has hidden neighbours. Split into connected
-       components (union-find), then for each component enumerate
-       all mine assignments consistent with every constraint.
-       Any cell that is a mine in 0 solutions is safe (reveal);
-       any cell that is a mine in every solution is a mine (flag).
-    */
+    /* ── Pass 3 — exact enumeration of the frontier ────────── */
     const allCons = [];
     const hiddenSet = new Set();
     for (let i = 0; i < N; i++){
@@ -1540,7 +1522,6 @@ function solveBoard(board, opening){
     }
 
     if (allCons.length && hiddenSet.size){
-      // Union-find over frontier cells.
       const parent = new Map();
       const find = function(x){
         let r = x;
@@ -1578,7 +1559,6 @@ function solveBoard(board, opening){
 
         const cells = [];
         comp.cells.forEach(function(cell){ cells.push(cell); });
-        // Very large components are rare; cap for safety.
         if (cells.length > 60) return;
 
         const cellIndex = new Map();
@@ -1610,26 +1590,74 @@ function solveBoard(board, opening){
       if (deduced) continue;
     }
 
-    // Nothing more can be deduced. Board is fully solved iff every
-    // safe cell is revealed — caller checks the returned count.
     break;
   }
 
   let count = 0;
   for (let i = 0; i < N; i++) if (state[i] === 1) count++;
-  return count;
+  return { count: count, state: state };
 }
 
 function generateSolvableBoard(seed, style, cols, rows, mineCount,
                                clickR, clickC, starts, opening){
-  let best = null, bestSeed = seed, bestScore = -1;
-  for (let attempt = 0; attempt < SOLVER_MAX_ATTEMPTS; attempt++){
-    const s = (seed + Math.imul(attempt, 0x9E3779B9)) >>> 0;
-    const b = genBoardDeferred(s, style, cols, rows, mineCount, clickR, clickC, starts);
-    const score = solveBoard(b, opening);
-    if (score > bestScore){ bestScore = score; best = b; bestSeed = s; }
-    if (score >= b.safeCount) return { board: b, seed: s, score: score };
+  /* Build a ladder of mine counts: the requested density first, then
+     progressively easier ones.  Guess-free boards become dramatically
+     more likely as the density drops, so walking this ladder virtually
+     guarantees we find one while still preferring the hardest board
+     the player asked for. */
+  const floor = Math.max(1, Math.floor(mineCount * 0.55));
+  const levels = [];
+  if (mineCount <= floor){
+    levels.push(mineCount);
+  } else {
+    const steps = 9;
+    for (let i = 0; i <= steps; i++){
+      const m = Math.round(mineCount - (mineCount - floor) * (i / steps));
+      if (m >= 1 && levels[levels.length - 1] !== m) levels.push(m);
+    }
   }
+
+  const perLevel = Math.max(24, Math.floor(SOLVER_MAX_ATTEMPTS / levels.length));
+
+  let best = null, bestSeed = seed, bestScore = -1;
+  let attempt = 0;
+
+  for (let li = 0; li < levels.length; li++){
+    const mines = levels[li];
+    for (let k = 0; k < perLevel; k++){
+      attempt++;
+      const s = (seed + Math.imul(attempt, 0x9E3779B9)) >>> 0;
+      const b = genBoardDeferred(s, style, cols, rows, mines, clickR, clickC, starts);
+      const res = solveBoard(b, opening);
+      if (res.count > bestScore){
+        bestScore = res.count;
+        best = b;
+        bestSeed = s;
+      }
+      if (res.count >= b.safeCount){
+        return { board: b, seed: s, score: res.count };
+      }
+    }
+  }
+
+  /* Last-ditch pass at a very sparse density — essentially always
+     guess-free.  Only reached if every level above failed. */
+  const sparse = Math.max(1, Math.floor(mineCount * 0.3));
+  for (let k = 0; k < 100; k++){
+    attempt++;
+    const s = (seed + Math.imul(attempt, 0x85EBCA6B)) >>> 0;
+    const b = genBoardDeferred(s, style, cols, rows, sparse, clickR, clickC, starts);
+    const res = solveBoard(b, opening);
+    if (res.count > bestScore){
+      bestScore = res.count;
+      best = b;
+      bestSeed = s;
+    }
+    if (res.count >= b.safeCount){
+      return { board: b, seed: s, score: res.count };
+    }
+  }
+
   return { board: best, seed: bestSeed, score: bestScore };
 }
 

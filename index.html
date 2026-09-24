@@ -1983,13 +1983,6 @@ function lbKey(mode, style, size){
   return mode + '_' + style + '_' + size;
 }
 
-/* Deterministic document id for a two-player (pair) leaderboard entry. */
-function pairKeyOf(a, b){
-  const x = String(a || 'anon');
-  const y = String(b || 'anon');
-  return x < y ? (x + '__' + y) : (y + '__' + x);
-}
-
 function currentLbCategory(){
   if (G.config.mode === 'duel') return 'wins';
   return LB_STATE.category || 'time';
@@ -2119,14 +2112,20 @@ async function isNameRegisteredOnServer(){
 /* ──────────────────────────────────────────────────────────────
    recordWin
 
-   • solo / duel  → one entry per player, doc id = own nameKey.
-   • coop / terr. → ONE entry per PAIR of players, doc id = pair key,
-                    containing both display names + both name keys.
-                    Only a single client ever submits for a given
-                    match (host for co-op, winner for territorial),
-                    so nothing is ever written twice.
+   Every submission writes exactly ONE entry, keyed by the
+   submitting player's own nameKey.  The leaderboard is therefore
+   always a list of INDIVIDUAL players — even in co-op, where the
+   two teammates each keep their own personal win count, so the
+   same player can rack up wins with different partners.
+
+   Who calls it:
+     • solo      → the player (always).
+     • duel      → only the winner (the loser never reaches 'win').
+     • coop      → BOTH players, each recording their own entry
+                   (+1 win each).
+     • territory → only the winner (handled in endTerritoryScreen).
    ────────────────────────────────────────────────────────────── */
-async function recordWin(mode, style, size, timeMs, partnerName, countAsWin){
+async function recordWin(mode, style, size, timeMs, countAsWin){
   if (!db || !auth) return;
   if (isGuest) return;
 
@@ -2145,74 +2144,38 @@ async function recordWin(mode, style, size, timeMs, partnerName, countAsWin){
 
   const key = lbKey(mode, style, size);
   const isDuel = (mode === 'duel');
-  const joint  = (mode === 'coop' || mode === 'territory');
   const timeVal = Math.max(1, Math.round(timeMs || 0));
   const addWin = (countAsWin === undefined) ? true : !!countAsWin;
 
   try {
-    if (joint){
-      const partner = String(partnerName || '').trim().slice(0, 32);
-      const partnerKey = partner ? partner.toLowerCase() : '';
-      if (!partnerKey) return;              /* need both players named */
+    const ref = db.collection('leaderboards').doc(key).collection('entries').doc(nameKey);
+    const snap = await ref.get();
 
-      const pk = pairKeyOf(nameKey, partnerKey);
-      const ref = db.collection('leaderboards').doc(key).collection('entries').doc(pk);
-
-      const firstIsMe = (nameKey <= partnerKey);
-      const names = firstIsMe ? [name, partner] : [partner, name];
-      const keys  = firstIsMe ? [nameKey, partnerKey] : [partnerKey, nameKey];
-
-      const snap = await ref.get();
-      if (!snap.exists){
-        const doc = {
-          names,
-          nameKeys: keys,
-          wins: addWin ? 1 : 0,
-          bestTime: timeVal,
-          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        };
-        await ref.set(doc);
-      } else {
-        const data = snap.data() || {};
-        const upd = {
-          names,
-          nameKeys: keys,
-          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        };
-        if (addWin) upd.wins = (data.wins || 0) + 1;
+    if (!snap.exists){
+      const doc = {
+        name,
+        wins: addWin ? 1 : 0,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      };
+      if (!isDuel) doc.bestTime = timeVal;
+      await ref.set(doc);
+    } else {
+      const data = snap.data() || {};
+      const upd = {
+        name,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      };
+      if (addWin) upd.wins = (data.wins || 0) + 1;
+      if (!isDuel){
         const prev = data.bestTime;
         if (!prev || timeVal < prev) upd.bestTime = timeVal;
-        await ref.update(upd);
       }
-    } else {
-      const ref = db.collection('leaderboards').doc(key).collection('entries').doc(nameKey);
-      const snap = await ref.get();
-      if (!snap.exists){
-        const doc = {
-          name,
-          wins: addWin ? 1 : 0,
-          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        };
-        if (!isDuel) doc.bestTime = timeVal;
-        await ref.set(doc);
-      } else {
-        const data = snap.data() || {};
-        const upd = {
-          name,
-          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        };
-        if (addWin) upd.wins = (data.wins || 0) + 1;
-        if (!isDuel){
-          const prev = data.bestTime;
-          if (!prev || timeVal < prev) upd.bestTime = timeVal;
-        }
-        await ref.update(upd);
-      }
+      await ref.update(upd);
     }
 
     lbCache.delete(key + '_wins');
     lbCache.delete(key + '_time');
-    console.log('[fb] recorded score for', name, 'on', key);
+    console.log('[fb] recorded win for', name, 'on', key);
   } catch(e){
     console.warn('[fb] record win failed:', e && (e.code || e.message || e));
   }
@@ -2570,8 +2533,9 @@ async function removePlayerName(){
   return { name: oldName };
 }
 
-/* Row rendering: highlights any entry the local player is part of,
-   including pair entries where their name is one of the two. */
+/* Row rendering: highlights the local player's own entry.
+   Legacy pair entries (from older builds, which stored an array
+   of nameKeys) are still rendered as "A & B" for compatibility. */
 function renderLeaderboardRows(mode, cat){
   if (LB_STATE.loading){
     return '<div class="lb-empty"><span class="spin"></span>Loading…</div>';
@@ -2591,6 +2555,7 @@ function renderLeaderboardRows(mode, cat){
     let isMe = false;
 
     if (Array.isArray(e.nameKeys) && e.nameKeys.length){
+      /* legacy joint entry */
       const names = (Array.isArray(e.names) && e.names.length) ? e.names : e.nameKeys;
       nm = names.join(' & ');
       if (!isGuest && myKey) isMe = e.nameKeys.indexOf(myKey) !== -1;
@@ -4446,11 +4411,10 @@ function endTerritoryScreen(land1, land2){
     '<div class="statcard"><div class="slabel">THEY REVEALED</div><div class="sval">' + theirsPct.toFixed(0) + '%</div></div>';
   const elapsed = performance.now() - G.startTime;
 
-  /* Only the winning player submits the pair entry — never both. */
+  /* Territorial: ONLY the winner submits — a single personal entry. */
   if (G.config && elapsed > 0 && !isGuest && result === 'win'){
-    const partner = G.theirName || '';
     recordWin('territory', G.config.style, G.config.size,
-              Math.max(1, Math.round(elapsed)), partner, true).catch(()=>{});
+              Math.max(1, Math.round(elapsed)), true).catch(()=>{});
   }
 
   endGame(result, icon, title, sub, elapsed, cards, { skipRecord: true });
@@ -6121,24 +6085,20 @@ function endGame(result, icon, title, sub, elapsed, cards, opts){
   G.rematchLock = false;
 
   /* Score submission.
-     · solo / duel   → always (winner only for duel)
-     · coop          → host only, once, as a single pair entry
-     · territory     → handled in endTerritoryScreen (winner only) */
+     · solo       → the player (always, on a win)
+     · duel       → winner only (loser never reaches result === 'win')
+     · coop       → BOTH players submit their own personal entry,
+                    so each teammate's individual win count goes up
+     · territory  → handled in endTerritoryScreen (winner only) */
   if (!opts.skipRecord && result === 'win' && G.config && elapsed > 0){
     const mode = G.config.mode;
-    const joint = (mode === 'coop' || mode === 'territory');
-    const partner = joint ? (G.theirName || '') : '';
-    let submit = true;
-    if (mode === 'coop' && G.role !== 'host') submit = false;
-    if (mode === 'territory') submit = false;
-    if (submit){
+    if (mode !== 'territory'){
       try {
         recordWin(
           mode,
           G.config.style,
           G.config.size,
           Math.max(1, Math.round(elapsed)),
-          partner,
           true
         ).catch(()=>{});
       } catch(e){}

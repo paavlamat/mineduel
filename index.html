@@ -2112,20 +2112,34 @@ async function isNameRegisteredOnServer(){
 /* ──────────────────────────────────────────────────────────────
    recordWin
 
-   Every submission writes exactly ONE entry, keyed by the
-   submitting player's own nameKey.  The leaderboard is therefore
-   always a list of INDIVIDUAL players — even in co-op, where the
-   two teammates each keep their own personal win count, so the
-   same player can rack up wins with different partners.
+   Score submission rules:
+
+   · WINS  — always tracked per individual player (nameKey doc).
+             In co-op and territory this means each teammate keeps
+             their own personal win counter, so the same player can
+             accumulate wins with different partners.
+
+   · TIME  — solo: individual doc (wins + bestTime together).
+             duel: no time recorded (wins only).
+             coop / territory: a TEAM entry keyed by the SORTED
+             pair of nameKeys ("alice__bob").  The entry stores
+             both names in `names` and both keys in `nameKeys`,
+             which lets BOTH players see it highlighted as theirs.
+             Playing with a new partner creates a fresh entry;
+             re-playing with the same partner keeps the better
+             (faster) time on the shared entry.
+
+             If the opponent has no registered nameKey (guest),
+             we fall back to a normal individual time entry.
 
    Who calls it:
-     • solo      → the player (always).
+     • solo      → the player (always, on a win).
      • duel      → only the winner (the loser never reaches 'win').
-     • coop      → BOTH players, each recording their own entry
-                   (+1 win each).
+     • coop      → BOTH players, each recording their own wins
+                   entry (+1 win each) plus the shared team entry.
      • territory → only the winner (handled in endTerritoryScreen).
    ────────────────────────────────────────────────────────────── */
-async function recordWin(mode, style, size, timeMs, countAsWin){
+async function recordWin(mode, style, size, timeMs, countAsWin, partner){
   if (!db || !auth) return;
   if (isGuest) return;
 
@@ -2144,12 +2158,23 @@ async function recordWin(mode, style, size, timeMs, countAsWin){
 
   const key = lbKey(mode, style, size);
   const isDuel = (mode === 'duel');
+  const isTeamMode = (mode === 'coop' || mode === 'territory');
   const timeVal = Math.max(1, Math.round(timeMs || 0));
   const addWin = (countAsWin === undefined) ? true : !!countAsWin;
 
+  /* Whether we should form a shared team entry for the time board. */
+  const useTeam = isTeamMode &&
+                  partner && partner.name && partner.key &&
+                  partner.key !== nameKey;
+
+  /* ── 1. Individual entry ──────────────────────────────────── */
+  /* Always writes `wins`.  Writes `bestTime` only when the time
+     is being tracked individually (solo, or team-mode fallback
+     when the partner has no registered nameKey). */
   try {
     const ref = db.collection('leaderboards').doc(key).collection('entries').doc(nameKey);
     const snap = await ref.get();
+    const writesTime = !isDuel && !useTeam;
 
     if (!snap.exists){
       const doc = {
@@ -2157,7 +2182,7 @@ async function recordWin(mode, style, size, timeMs, countAsWin){
         wins: addWin ? 1 : 0,
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       };
-      if (!isDuel) doc.bestTime = timeVal;
+      if (writesTime) doc.bestTime = timeVal;
       await ref.set(doc);
     } else {
       const data = snap.data() || {};
@@ -2166,19 +2191,60 @@ async function recordWin(mode, style, size, timeMs, countAsWin){
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       };
       if (addWin) upd.wins = (data.wins || 0) + 1;
-      if (!isDuel){
+      if (writesTime){
         const prev = data.bestTime;
         if (!prev || timeVal < prev) upd.bestTime = timeVal;
+      } else if (isTeamMode && data.bestTime !== undefined){
+        /* Legacy cleanup: strip the old individual time from team-mode
+           entries so the time board only lists shared pairs. */
+        upd.bestTime = firebase.firestore.FieldValue.delete();
       }
       await ref.update(upd);
     }
-
-    lbCache.delete(key + '_wins');
-    lbCache.delete(key + '_time');
-    console.log('[fb] recorded win for', name, 'on', key);
+    console.log('[fb] recorded individual win for', name, 'on', key);
   } catch(e){
     console.warn('[fb] record win failed:', e && (e.code || e.message || e));
   }
+
+  /* ── 2. Shared team time entry ────────────────────────────── */
+  if (useTeam){
+    try {
+      const pairKeys = [nameKey, partner.key].slice().sort();
+      const pairId = pairKeys.join('__');   /* nameKeys never contain '_' */
+      const nameByKey = {};
+      nameByKey[nameKey] = name;
+      nameByKey[partner.key] = partner.name;
+      const names = pairKeys.map(k => nameByKey[k]);
+
+      const ref = db.collection('leaderboards').doc(key).collection('entries').doc(pairId);
+      const snap = await ref.get();
+
+      if (!snap.exists){
+        await ref.set({
+          names: names,
+          nameKeys: pairKeys,
+          bestTime: timeVal,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      } else {
+        const data = snap.data() || {};
+        const upd = {
+          names: names,
+          nameKeys: pairKeys,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+        const prev = data.bestTime;
+        if (!prev || timeVal < prev) upd.bestTime = timeVal;
+        await ref.update(upd);
+      }
+      console.log('[fb] recorded team time for', pairId, 'on', key);
+    } catch(e){
+      console.warn('[fb] record team time failed:', e && (e.code || e.message || e));
+    }
+  }
+
+  lbCache.delete(key + '_wins');
+  lbCache.delete(key + '_time');
 }
 
 async function ensurePlayerName(){
@@ -2533,9 +2599,19 @@ async function removePlayerName(){
   return { name: oldName };
 }
 
-/* Row rendering: highlights the local player's own entry.
-   Legacy pair entries (from older builds, which stored an array
-   of nameKeys) are still rendered as "A & B" for compatibility. */
+/* Row rendering.
+
+   Two entry shapes exist in the `entries` collection:
+
+   · Individual entries — doc ID = the player's nameKey, has `name`
+     and `wins` (and, for solo, `bestTime`).
+
+   · Shared team entries — doc ID = "keyA__keyB" (sorted), has
+     `names: [nA, nB]` and `nameKeys: [kA, kB]` plus `bestTime`.
+     Both players see these highlighted as theirs.
+
+   Legacy joint entries from older builds also used `nameKeys`/
+   `names`, so they render through the same branch. */
 function renderLeaderboardRows(mode, cat){
   if (LB_STATE.loading){
     return '<div class="lb-empty"><span class="spin"></span>Loading…</div>';
@@ -2555,7 +2631,7 @@ function renderLeaderboardRows(mode, cat){
     let isMe = false;
 
     if (Array.isArray(e.nameKeys) && e.nameKeys.length){
-      /* legacy joint entry */
+      /* Shared team entry (new or legacy) — highlight if I'm in it. */
       const names = (Array.isArray(e.names) && e.names.length) ? e.names : e.nameKeys;
       nm = names.join(' & ');
       if (!isGuest && myKey) isMe = e.nameKeys.indexOf(myKey) !== -1;
@@ -2715,6 +2791,7 @@ const G = {
   myOwner: 1, theirOwner: 2,
   me: null, them: null,
   theirName: '',
+  theirNameKey: '',
   myBoard: null, theirBoard: null,
   viewMe: null, viewThem: null,
   panelMe: null, panelThem: null,
@@ -4411,10 +4488,15 @@ function endTerritoryScreen(land1, land2){
     '<div class="statcard"><div class="slabel">THEY REVEALED</div><div class="sval">' + theirsPct.toFixed(0) + '%</div></div>';
   const elapsed = performance.now() - G.startTime;
 
-  /* Territorial: ONLY the winner submits — a single personal entry. */
+  /* Territorial: ONLY the winner submits — a personal wins entry
+     plus (when the opponent has a registered nameKey) the shared
+     team time entry for this pair. */
   if (G.config && elapsed > 0 && !isGuest && result === 'win'){
+    const partner = (G.theirName && G.theirNameKey)
+      ? { name: G.theirName, key: G.theirNameKey }
+      : null;
     recordWin('territory', G.config.style, G.config.size,
-              Math.max(1, Math.round(elapsed)), true).catch(()=>{});
+              Math.max(1, Math.round(elapsed)), true, partner).catch(()=>{});
   }
 
   endGame(result, icon, title, sub, elapsed, cards, { skipRecord: true });
@@ -4692,6 +4774,7 @@ function attachConn(c){
   G.lastRecv = performance.now();
   G.opponentGone = false;
   G.theirName = '';
+  G.theirNameKey = '';
   c.on('data', msg => { G.lastRecv = performance.now(); handleMessage(msg); });
   c.on('close', onConnClosed);
   c.on('error', () => {});
@@ -4699,7 +4782,8 @@ function attachConn(c){
   const announce = () => {
     if (G.conn !== c) return;
     const nm = getPlayerName() || '';
-    try { c.send({ t: 'name', name: nm }); } catch(e){}
+    const nk = getPlayerNameKey() || '';
+    try { c.send({ t: 'name', name: nm, nameKey: nk }); } catch(e){}
   };
   if (c.open) announce();
   else c.on('open', announce);
@@ -4713,6 +4797,7 @@ function handleMessage(msg){
 
     case 'name': {
       G.theirName = String(msg.name || '').slice(0, 32);
+      G.theirNameKey = String(msg.nameKey || '').slice(0, 32);
       updatePanelNames();
       break;
     }
@@ -5528,6 +5613,7 @@ function idleOverlay(){
   G.pendingDig = null;
   G.me = null; G.them = null;
   G.theirName = '';
+  G.theirNameKey = '';
   G.viewMe = null; G.viewThem = null;
   G.panelMe = null; G.panelThem = null;
   G.lossPending = false;
@@ -6085,21 +6171,27 @@ function endGame(result, icon, title, sub, elapsed, cards, opts){
   G.rematchLock = false;
 
   /* Score submission.
-     · solo       → the player (always, on a win)
-     · duel       → winner only (loser never reaches result === 'win')
-     · coop       → BOTH players submit their own personal entry,
-                    so each teammate's individual win count goes up
-     · territory  → handled in endTerritoryScreen (winner only) */
+     · solo       → the player (always, on a win) — individual wins + bestTime.
+     · duel       → winner only — individual wins (no time).
+     · coop       → BOTH players submit:
+                      · their own personal wins entry
+                      · the shared team time entry for this pair
+                    (see recordWin for details).
+     · territory  → handled in endTerritoryScreen (winner only). */
   if (!opts.skipRecord && result === 'win' && G.config && elapsed > 0){
     const mode = G.config.mode;
     if (mode !== 'territory'){
+      const partner = (mode === 'coop' && G.theirName && G.theirNameKey)
+        ? { name: G.theirName, key: G.theirNameKey }
+        : null;
       try {
         recordWin(
           mode,
           G.config.style,
           G.config.size,
           Math.max(1, Math.round(elapsed)),
-          true
+          true,
+          partner
         ).catch(()=>{});
       } catch(e){}
     }

@@ -911,10 +911,12 @@ const FRAME_MIN_MS = 1000 / TARGET_FPS;
 const PAN_SPEED_CSS = 900;
 const ZOOM_RATE = 2.4;
 
-/* Total solve attempts per generated board.  Boards are tried at the
-   requested density first, then at progressively lower densities until
-   a layout that the exact solver can fully clear is found.  This budget
-   is shared across all density levels. */
+/* Opponent board in duel mode is a passive "live view".  We render it
+   at a lower cadence (~30 fps) to keep duel matches smooth on devices
+   that would otherwise struggle to paint two full boards at 120 fps. */
+const OPPONENT_RENDER_MS = 33;
+
+/* Total solve attempts per generated board. */
 const SOLVER_MAX_ATTEMPTS = 300;
 
 const TILES_PER_BOMB = {
@@ -984,10 +986,10 @@ function sizeDesc(sizeId, mode, styleId){
 }
 
 const MODES = {
-  solo:      { id:'solo',      name:'Solo',        desc:'🏃‍♂️‍➡️Race<br>💣Bomb = loss💥' },
-  coop:      { id:'coop',      name:'Co-op',       desc:'🙌Shared board<br>💣Bomb = loss💥' },
-  duel:      { id:'duel',      name:'Duel',        desc:'⚔️1VS1<br>💣Bomb = 10s stun⚡️' },
-  territory: { id:'territory', name:'Territorial', desc:'🏞️Claim land<br>💣Bomb = 10s stun⚡️' }
+  solo:      { id:'solo',      name:'Solo',        desc:'🏃‍♂️‍➡️Race<br>💣Bomb = loss💥<br>🚩Flag = no penalty' },
+  coop:      { id:'coop',      name:'Co-op',       desc:'🙌Shared board<br>💣Bomb = loss💥<br>🚩Flag = no penalty' },
+  duel:      { id:'duel',      name:'Duel',        desc:'⚔️1VS1<br>💣Bomb = 10s stun⚡️<br>🚩Flag = 10s stun⚡' },
+  territory: { id:'territory', name:'Territorial', desc:'🏞️Claim land<br>💣Bomb = 10s stun⚡️<br>🚩Flag = 10s stun⚡' }
 };
 
 const HOTKEY_STORE = 'mineduel-hotkeys-v1';
@@ -2111,33 +2113,6 @@ async function isNameRegisteredOnServer(){
 
 /* ──────────────────────────────────────────────────────────────
    recordWin
-
-   Score submission rules:
-
-   · WINS  — always tracked per individual player (nameKey doc).
-             In co-op and territory this means each teammate keeps
-             their own personal win counter, so the same player can
-             accumulate wins with different partners.
-
-   · TIME  — solo: individual doc (wins + bestTime together).
-             duel: no time recorded (wins only).
-             coop / territory: a TEAM entry keyed by the SORTED
-             pair of nameKeys ("alice__bob").  The entry stores
-             both names in `names` and both keys in `nameKeys`,
-             which lets BOTH players see it highlighted as theirs.
-             Playing with a new partner creates a fresh entry;
-             re-playing with the same partner keeps the better
-             (faster) time on the shared entry.
-
-             If the opponent has no registered nameKey (guest),
-             we fall back to a normal individual time entry.
-
-   Who calls it:
-     • solo      → the player (always, on a win).
-     • duel      → only the winner (the loser never reaches 'win').
-     • coop      → BOTH players, each recording their own wins
-                   entry (+1 win each) plus the shared team entry.
-     • territory → only the winner (handled in endTerritoryScreen).
    ────────────────────────────────────────────────────────────── */
 async function recordWin(mode, style, size, timeMs, countAsWin, partner){
   if (!db || !auth) return;
@@ -2162,15 +2137,10 @@ async function recordWin(mode, style, size, timeMs, countAsWin, partner){
   const timeVal = Math.max(1, Math.round(timeMs || 0));
   const addWin = (countAsWin === undefined) ? true : !!countAsWin;
 
-  /* Whether we should form a shared team entry for the time board. */
   const useTeam = isTeamMode &&
                   partner && partner.name && partner.key &&
                   partner.key !== nameKey;
 
-  /* ── 1. Individual entry ──────────────────────────────────── */
-  /* Always writes `wins`.  Writes `bestTime` only when the time
-     is being tracked individually (solo, or team-mode fallback
-     when the partner has no registered nameKey). */
   try {
     const ref = db.collection('leaderboards').doc(key).collection('entries').doc(nameKey);
     const snap = await ref.get();
@@ -2195,8 +2165,6 @@ async function recordWin(mode, style, size, timeMs, countAsWin, partner){
         const prev = data.bestTime;
         if (!prev || timeVal < prev) upd.bestTime = timeVal;
       } else if (isTeamMode && data.bestTime !== undefined){
-        /* Legacy cleanup: strip the old individual time from team-mode
-           entries so the time board only lists shared pairs. */
         upd.bestTime = firebase.firestore.FieldValue.delete();
       }
       await ref.update(upd);
@@ -2206,11 +2174,10 @@ async function recordWin(mode, style, size, timeMs, countAsWin, partner){
     console.warn('[fb] record win failed:', e && (e.code || e.message || e));
   }
 
-  /* ── 2. Shared team time entry ────────────────────────────── */
   if (useTeam){
     try {
       const pairKeys = [nameKey, partner.key].slice().sort();
-      const pairId = pairKeys.join('__');   /* nameKeys never contain '_' */
+      const pairId = pairKeys.join('__');
       const nameByKey = {};
       nameByKey[nameKey] = name;
       nameByKey[partner.key] = partner.name;
@@ -2599,19 +2566,6 @@ async function removePlayerName(){
   return { name: oldName };
 }
 
-/* Row rendering.
-
-   Two entry shapes exist in the `entries` collection:
-
-   · Individual entries — doc ID = the player's nameKey, has `name`
-     and `wins` (and, for solo, `bestTime`).
-
-   · Shared team entries — doc ID = "keyA__keyB" (sorted), has
-     `names: [nA, nB]` and `nameKeys: [kA, kB]` plus `bestTime`.
-     Both players see these highlighted as theirs.
-
-   Legacy joint entries from older builds also used `nameKeys`/
-   `names`, so they render through the same branch. */
 function renderLeaderboardRows(mode, cat){
   if (LB_STATE.loading){
     return '<div class="lb-empty"><span class="spin"></span>Loading…</div>';
@@ -2631,7 +2585,6 @@ function renderLeaderboardRows(mode, cat){
     let isMe = false;
 
     if (Array.isArray(e.nameKeys) && e.nameKeys.length){
-      /* Shared team entry (new or legacy) — highlight if I'm in it. */
       const names = (Array.isArray(e.names) && e.names.length) ? e.names : e.nameKeys;
       nm = names.join(' & ');
       if (!isGuest && myKey) isMe = e.nameKeys.indexOf(myKey) !== -1;
@@ -4135,10 +4088,6 @@ function countRevealedTiles(boardState){
   return n;
 }
 
-/* Accurate end-of-match percentages.
-   · Duel  — each side is measured against the SAFE tiles of their OWN
-             board, so clearing your own field always reads 100%.
-   · Terr. — percentage of the shared board claimed by each player. */
 function mapRevealStats(){
   const mode = G.config.mode;
   if (mode === 'solo') return null;
@@ -4485,9 +4434,6 @@ function endTerritoryScreen(land1, land2){
     '<div class="statcard"><div class="slabel">THEY REVEALED</div><div class="sval">' + theirsPct.toFixed(0) + '%</div></div>';
   const elapsed = performance.now() - G.startTime;
 
-  /* Territorial: ONLY the winner submits — a personal wins entry
-     plus (when the opponent has a registered nameKey) the shared
-     team time entry for this pair. */
   if (G.config && elapsed > 0 && !isGuest && result === 'win'){
     const partner = (G.theirName && G.theirNameKey)
       ? { name: G.theirName, key: G.theirNameKey }
@@ -4499,12 +4445,23 @@ function endTerritoryScreen(land1, land2){
   endGame(result, icon, title, sub, elapsed, cards, { skipRecord: true });
 }
 
+/* ──────────────────────────────────────────────────────────────
+   localFlag
+
+   Solo / Co-op     → flag is a plain marker.  Toggling does nothing
+                      else.
+   Duel / Territory → flagging an EMPTY tile is a mistake: the tile
+                      is revealed and the player is frozen for 10 s
+                      ("wrong flag" penalty).  Flagging an actual
+                      mine just toggles the marker as usual.
+   ────────────────────────────────────────────────────────────── */
 function localFlag(){
   if (!canAct()) return;
   const r = G.me.cursor.r, c = G.me.cursor.c;
   const bs = G.myBoard;
   if (bs.revealed[r][c]) return;
   const mode = G.config.mode;
+
   if (mode === 'territory'){
     if (!canTouchTerritory(bs, G.board, r, c, G.myOwner)) return;
     if (bs.flagged[r][c] && bs.owner[r][c] && bs.owner[r][c] !== G.myOwner){
@@ -4518,6 +4475,7 @@ function localFlag(){
     }
     return;
   }
+
   if (mode === 'coop'){
     if (G.role === 'host') hostApplyFlag(r, c);
     else {
@@ -4526,13 +4484,56 @@ function localFlag(){
     }
     return;
   }
+
+  if (mode === 'duel'){
+    const isMine = G.board.mines.has(r + ',' + c);
+
+    if (isMine){
+      /* Flagging a real mine just toggles the marker. */
+      const on = bs.flagged[r][c] ? 0 : 1;
+      bs.flagged[r][c] = !!on;
+      bs.flagAt[r][c] = performance.now();
+      bs.flagCount += on ? 1 : -1;
+      on ? SFX.flag() : SFX.unflag();
+      send({ t:'flag', r, c, on });
+      return;
+    }
+
+    /* Wrong flag: reveal the tile and freeze for 10 s (like territorial). */
+    bs.revealed[r][c] = true;
+    bs.revealAt[r][c] = performance.now();
+    bs.count++;
+    bs.safeRevealed++;
+    send({ t:'rev', tiles: [[r, c]] });
+
+    const view = G.viewMe;
+    if (view){
+      const p = hexOrSqCenter(view, r, c);
+      view.triggerShake();
+      view.boom(p.x, p.y, '#7fd8ff', 18, 160);
+    }
+
+    const now = performance.now();
+    G.me.hits++;
+    G.me.stunUntil = now + STUN_MS;
+    G.me.wasStunned = true;
+    G.me.stunReason = 'flag';
+    SFX.freeze();
+    vibrate(160);
+    send({ t:'stun', who: G.myOwner, reason: 'flag' });
+
+    if (checkWin(bs, G.board)) duelWin();
+    return;
+  }
+
+  /* Solo */
   const on = bs.flagged[r][c] ? 0 : 1;
   bs.flagged[r][c] = !!on;
   bs.flagAt[r][c] = performance.now();
   bs.flagCount += on ? 1 : -1;
   on ? SFX.flag() : SFX.unflag();
-  if (mode === 'duel') send({ t:'flag', r, c, on });
 }
+
 function localChord(){
   if (!canAct()) return;
   const r = G.me.cursor.r, c = G.me.cursor.c;
@@ -4735,13 +4736,12 @@ function send(msg){
 }
 
 /* ─────────────────────────────────────────────────────────────
-   sendBoardToGuest
-
-   Co-op only.  Ships the host's ACTUAL mine layout to the guest so
-   both players sweep the identical field.  We deliberately send the
-   full mine array rather than just a seed, because the host may have
-   had to lower the density during the solvability search — replaying
-   a seed at the nominal density would produce a different board.
+   sendBoardToGuest — Co-op only.
+   Ships the host's ACTUAL mine layout to the guest so both players
+   sweep the identical field.  We deliberately send the full mine
+   array rather than just a seed, because the host may have had to
+   lower the density during the solvability search — replaying a
+   seed at the nominal density would produce a different board.
    ───────────────────────────────────────────────────────────── */
 function sendBoardToGuest(){
   if (G.config.mode !== 'coop') return;
@@ -4778,7 +4778,6 @@ function onConnClosed(){
     endGame('disconnect', '🔌', 'OPPONENT DISCONNECTED',
             'Your opponent left the match.', performance.now() - G.startTime);
   } else if (G.state === 'over'){
-    /* Cancel any pending rematch wait and tell the player. */
     G.rematchMe = false;
     G.rematchThem = false;
     cleanupNet();
@@ -4868,14 +4867,8 @@ function handleMessage(msg){
       const nb = placeholderBoard(G.config.style, d.rows, d.cols);
 
       if (Array.isArray(msg.mines) && msg.mines.length){
-        /* Authoritative layout straight from the host — guarantees
-           both players sweep the exact same field, even when the
-           host's solvability search had to reduce the density. */
         rebuildBoardFromMines(nb, msg.mines, G.config.style);
       } else {
-        /* Legacy fallback for older hosts that only sent a seed.
-           Re-generating at the nominal density can diverge from the
-           host's board, so this path is best-effort only. */
         const fb = genBoardDeferred(msg.seed, G.config.style, d.cols, d.rows, d.mines,
                                     msg.clickR, msg.clickC,
                                     [{ r: (d.rows >> 1), c: (d.cols >> 1) }]);
@@ -6149,9 +6142,6 @@ function showMapReview(){
   document.addEventListener('keydown', onKey);
 }
 
-/* ══════════════════════════════════════════════════════════════
-   REMATCH — both players must agree
-   ══════════════════════════════════════════════════════════════ */
 function maybeStartRematch(){
   if (G.state !== 'over') return;
   if (!G.rematchMe || !G.rematchThem) return;
@@ -6164,7 +6154,6 @@ function maybeStartRematch(){
     send({ t:'seed', seedHost, seedGuest, config: G.config });
     startMatch(seedHost, 'host', seedGuest);
   }
-  /* guests wait for the host's 'seed' message */
 }
 
 function refreshEndUI(){
@@ -6207,14 +6196,6 @@ function endGame(result, icon, title, sub, elapsed, cards, opts){
   G.rematchThem = false;
   G.rematchLock = false;
 
-  /* Score submission.
-     · solo       → the player (always, on a win) — individual wins + bestTime.
-     · duel       → winner only — individual wins (no time).
-     · coop       → BOTH players submit:
-                      · their own personal wins entry
-                      · the shared team time entry for this pair
-                    (see recordWin for details).
-     · territory  → handled in endTerritoryScreen (winner only). */
   if (!opts.skipRecord && result === 'win' && G.config && elapsed > 0){
     const mode = G.config.mode;
     if (mode !== 'territory'){
@@ -6298,6 +6279,16 @@ function endGame(result, icon, title, sub, elapsed, cards, opts){
   else if (result === 'lose' || result === 'disconnect') SFX.lose();
 }
 
+/* ─────────────────────────────────────────────────────────────
+   Render loop
+
+   The opponent's board in duel mode is a passive live view — it
+   doesn't need 120 fps.  We throttle it to OPPONENT_RENDER_MS so
+   duel matches stay smooth even on devices that struggle to paint
+   two full boards at the target frame rate.
+   ───────────────────────────────────────────────────────────── */
+let lastTheirBoardRender = 0;
+
 function renderAll(now){
   if (!G.viewMe || !G.myBoard || !G.board || !G.me) return;
   const myColor = '#4dd8ff';
@@ -6305,14 +6296,17 @@ function renderAll(now){
   G.viewMe.render(now, { board: G.board, boardState: G.myBoard, cursors });
 
   if (G.viewThem && G.theirBoard){
-    const layout = (G.config.mode === 'duel')
-      ? (G.theirBoardLayout || G.board)
-      : G.board;
-    G.viewThem.render(now, {
-      board: layout,
-      boardState: G.theirBoard,
-      cursors: []
-    });
+    if (now - lastTheirBoardRender >= OPPONENT_RENDER_MS){
+      lastTheirBoardRender = now;
+      const layout = (G.config.mode === 'duel')
+        ? (G.theirBoardLayout || G.board)
+        : G.board;
+      G.viewThem.render(now, {
+        board: layout,
+        boardState: G.theirBoard,
+        cursors: []
+      });
+    }
   }
   updateHUD(now);
   maybeCheckTerritoryUnlock(now);

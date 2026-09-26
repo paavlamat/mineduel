@@ -1120,7 +1120,7 @@ const neighborsFor = style =>
 function copyToClipboard(text){
   return new Promise(resolve => {
     if (navigator.clipboard && window.isSecureContext){
-      navigator.clipboard.writeText(text).then(() => resolve(true)).catch(() => resolve(fallbackCopy(text)));
+      navigator.clipboard.writeText(text).then(() => resolve(true)).catch(() => fallbackCopy(text));
     } else {
       resolve(fallbackCopy(text));
     }
@@ -4267,10 +4267,7 @@ async function localDig(){
         }
       } else if (G.role === 'host'){
         await ensureBoardReadyAsync(r, c);
-        if (!G.boardPending){
-          const op = G.boardOpening || { r: r, c: c };
-          send({ t:'board', seed: G.boardSeed, clickR: op.r, clickC: op.c });
-        }
+        sendBoardToGuest();
       } else {
         send({ t:'dig', r: r, c: c });
         G.pendingDig = { r: r, c: c };
@@ -4726,8 +4723,7 @@ function hostEnsureBoardThen(r, c, action){
   if (!G.boardPending){ action(); return; }
   ensureBoardReadyAsync(r, c).then(() => {
     if (G.state !== 'playing' || G.boardPending) return;
-    const op = G.boardOpening || { r: r, c: c };
-    send({ t:'board', seed: G.boardSeed, clickR: op.r, clickC: op.c });
+    sendBoardToGuest();
     action();
   }, () => {});
 }
@@ -4737,6 +4733,29 @@ function send(msg){
     try { G.conn.send(msg); } catch(e){}
   }
 }
+
+/* ─────────────────────────────────────────────────────────────
+   sendBoardToGuest
+
+   Co-op only.  Ships the host's ACTUAL mine layout to the guest so
+   both players sweep the identical field.  We deliberately send the
+   full mine array rather than just a seed, because the host may have
+   had to lower the density during the solvability search — replaying
+   a seed at the nominal density would produce a different board.
+   ───────────────────────────────────────────────────────────── */
+function sendBoardToGuest(){
+  if (G.config.mode !== 'coop') return;
+  if (!G.board || G.boardPending) return;
+  const op = G.boardOpening;
+  send({
+    t: 'board',
+    seed: G.boardSeed,
+    mines: Array.from(G.board.mines),
+    clickR: op ? op.r : (G.board.rows >> 1),
+    clickC: op ? op.c : (G.board.cols >> 1)
+  });
+}
+
 let hbTimer = null;
 function startHeartbeat(){
   stopHeartbeat();
@@ -4845,10 +4864,28 @@ function handleMessage(msg){
       if (G.config.mode !== 'coop') break;
       if (!G.boardPending) break;
       const d = dimsFor(G.config);
-      const nb = genBoardDeferred(msg.seed, G.config.style, d.cols, d.rows, d.mines,
-                                  msg.clickR, msg.clickC,
-                                  [{ r: (d.rows >> 1), c: (d.cols >> 1) }]);
       const wasAlias = (G.theirBoardLayout === G.board);
+      const nb = placeholderBoard(G.config.style, d.rows, d.cols);
+
+      if (Array.isArray(msg.mines) && msg.mines.length){
+        /* Authoritative layout straight from the host — guarantees
+           both players sweep the exact same field, even when the
+           host's solvability search had to reduce the density. */
+        rebuildBoardFromMines(nb, msg.mines, G.config.style);
+      } else {
+        /* Legacy fallback for older hosts that only sent a seed.
+           Re-generating at the nominal density can diverge from the
+           host's board, so this path is best-effort only. */
+        const fb = genBoardDeferred(msg.seed, G.config.style, d.cols, d.rows, d.mines,
+                                    msg.clickR, msg.clickC,
+                                    [{ r: (d.rows >> 1), c: (d.cols >> 1) }]);
+        nb.mines = fb.mines;
+        recomputeAdjacency(nb);
+        nb.mineCount = nb.mines.size;
+        nb.safeCount = nb.rows * nb.cols - nb.mineCount;
+        nb.pending = false;
+      }
+
       G.board = nb;
       if (wasAlias) G.theirBoardLayout = nb;
       G.boardSeed = msg.seed;

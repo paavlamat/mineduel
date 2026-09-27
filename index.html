@@ -1174,7 +1174,7 @@ const SFX = {
   denied(){ beep(180, 0.09, 'square', 0.03); },
   reveal(val){
     const v = clamp(val || 0, 0, 8);
-    beep(500 + v * 60, 0.04, 'square', 0.02);
+    beep(500 + v * 60, 0.05, 'square', 0.045);
   },
   flag(){ beep(900, 0.05, 'triangle', 0.03); },
   unflag(){ beep(600, 0.05, 'triangle', 0.03); },
@@ -2332,6 +2332,131 @@ async function migrateLeaderboardEntry(oldKey, newKey, newName){
   if (touched) lbCache.clear();
 }
 
+/* ──────────────────────────────────────────────────────────────
+   migrateTeamEntries
+   Moves team (pair) leaderboard entries from one name key to
+   another.  Team entries live under a composite document ID
+   built from the two players' keys sorted alphabetically
+   (e.g. "alice__bob"), so renaming a player means moving the
+   entry to a new ID and rewriting the names / nameKeys arrays
+   stored inside the document.  If an entry already exists
+   under the destination ID it is merged.
+
+   Uses a per-config array-contains query so no composite index
+   needs to be created — single-field array queries are served
+   by the automatic single-field index.
+   ────────────────────────────────────────────────────────────── */
+async function migrateTeamEntries(oldKey, newKey, newName){
+  if (!db || !auth || !auth.currentUser) return false;
+  if (!oldKey || !newKey || oldKey === newKey) return false;
+
+  let touched = false;
+
+  for (const configKey of LB_CONFIG_KEYS){
+    let snap;
+    try {
+      snap = await db.collection('leaderboards').doc(configKey)
+        .collection('entries')
+        .where('nameKeys', 'array-contains', oldKey)
+        .get();
+    } catch(e){
+      console.warn('[fb] team entry lookup failed for', configKey,
+                   e && (e.code || e.message));
+      continue;
+    }
+    if (snap.empty) continue;
+
+    const items = [];
+    snap.forEach(d => {
+      const data = d.data() || {};
+      if (!Array.isArray(data.nameKeys)) return;   // skip individual entries
+      items.push({ ref: d.ref, data });
+    });
+
+    for (const item of items){
+      const ref  = item.ref;
+      const data = item.data;
+      const oldKeys  = data.nameKeys.slice();
+      const oldNames = (Array.isArray(data.names) && data.names.length === oldKeys.length)
+        ? data.names.slice()
+        : oldKeys.slice();
+
+      const idx = oldKeys.indexOf(oldKey);
+      if (idx === -1) continue;
+
+      const newKeys  = oldKeys.slice();
+      const newNames = oldNames.slice();
+      newKeys[idx]  = newKey;
+      newNames[idx] = newName;
+
+      /* Rebuild the canonical pair order (sorted by key) so the
+         document ID matches what recordWin() would produce. */
+      const pairs = newKeys.map((k, i) => ({ k, n: newNames[i] }));
+      pairs.sort((a, b) => a.k < b.k ? -1 : a.k > b.k ? 1 : 0);
+      const sortedKeys  = pairs.map(p => p.k);
+      const sortedNames = pairs.map(p => p.n);
+      const newPairId = sortedKeys.join('__');
+
+      const oldSortedKeys = oldKeys.slice().sort();
+      const oldPairId = oldSortedKeys.join('__');
+
+      if (newPairId === oldPairId){
+        /* Document ID unchanged — just rewrite the arrays in place. */
+        try {
+          await ref.update({
+            names: sortedNames,
+            nameKeys: sortedKeys,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+          touched = true;
+        } catch(e){
+          console.warn('[fb] team entry update failed:', e && (e.code || e.message));
+        }
+        continue;
+      }
+
+      const newRef = db.collection('leaderboards').doc(configKey)
+                       .collection('entries').doc(newPairId);
+
+      let newSnap = null;
+      try { newSnap = await newRef.get(); }
+      catch(e){ newSnap = null; }
+
+      const doc = {
+        names:    sortedNames,
+        nameKeys: sortedKeys,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      };
+      if (typeof data.bestTime === 'number' && data.bestTime > 0){
+        doc.bestTime = data.bestTime;
+      }
+      if (typeof data.wins === 'number') doc.wins = data.wins;
+
+      if (newSnap && newSnap.exists){
+        const nd = newSnap.data() || {};
+        if (typeof nd.wins === 'number' || typeof data.wins === 'number'){
+          doc.wins = (nd.wins || 0) + (data.wins || 0);
+        }
+        const times = [nd.bestTime, data.bestTime]
+          .filter(t => typeof t === 'number' && t > 0);
+        if (times.length) doc.bestTime = Math.min.apply(null, times);
+        else delete doc.bestTime;
+      }
+
+      try {
+        await newRef.set(doc);
+        await ref.delete();
+        touched = true;
+      } catch(e){
+        console.warn('[fb] team entry migrate failed for', configKey,
+                     e && (e.code || e.message));
+      }
+    }
+  }
+
+  return touched;
+}
+
 async function changePlayerName(newRaw){
   const v = validateName(newRaw);
   if (v.error) throw new Error(v.error);
@@ -2392,6 +2517,8 @@ async function changePlayerName(newRaw){
 
   if (oldBecameEmpty && oldKey){
     await migrateLeaderboardEntry(oldKey, newKey, newName).catch(()=>{});
+    await migrateTeamEntries(oldKey, newKey, newName).catch(()=>{});
+    lbCache.clear();
   }
 
   if (oldRef){
@@ -2466,6 +2593,8 @@ async function applyLinkedName(hostName, hostKey){
 
   if (oldBecameEmpty && oldKey){
     await migrateLeaderboardEntry(oldKey, hostKey, displayName).catch(()=>{});
+    await migrateTeamEntries(oldKey, hostKey, displayName).catch(()=>{});
+    lbCache.clear();
   }
 
   if (oldRef){
@@ -2489,6 +2618,8 @@ async function applyLinkedName(hostName, hostKey){
 
 async function removeLeaderboardEntries(nameKey){
   if (!db || !nameKey) return;
+
+  /* ── 1. Individual entries (one doc per config) ─────────────── */
   const CHUNK = 8;
   for (let i = 0; i < LB_CONFIG_KEYS.length; i += CHUNK){
     const slice = LB_CONFIG_KEYS.slice(i, i + CHUNK);
@@ -2504,6 +2635,39 @@ async function removeLeaderboardEntries(nameKey){
       console.warn('[fb] remove entries chunk failed:', e && (e.code || e.message));
     }
   }
+
+  /* ── 2. Team entries that include this key ──────────────────── */
+  for (const configKey of LB_CONFIG_KEYS){
+    let snap;
+    try {
+      snap = await db.collection('leaderboards').doc(configKey)
+        .collection('entries')
+        .where('nameKeys', 'array-contains', nameKey)
+        .get();
+    } catch(e){
+      console.warn('[fb] team entry lookup failed for', configKey,
+                   e && (e.code || e.message));
+      continue;
+    }
+    if (snap.empty) continue;
+
+    const batch = db.batch();
+    let n = 0;
+    snap.forEach(d => {
+      const data = d.data() || {};
+      if (!Array.isArray(data.nameKeys)) return;   // skip individual entries
+      batch.delete(d.ref);
+      n++;
+    });
+    if (!n) continue;
+    try {
+      await batch.commit();
+    } catch(e){
+      console.warn('[fb] remove team entries failed for', configKey,
+                   e && (e.code || e.message));
+    }
+  }
+
   lbCache.clear();
 }
 
@@ -4079,6 +4243,17 @@ function countLand(boardState, owner){
       if (boardState.owner[r][c] === owner) n++;
   return n;
 }
+/* Like countLand, but only counts tiles that are actually revealed.
+   Used by the end-of-match "% of map revealed" stat so that flagged
+   mines in Territory mode don't inflate the totals. */
+function countRevealedBy(boardState, owner){
+  let n = 0;
+  if (!boardState.owner) return 0;
+  for (let r = 0; r < boardState.rows; r++)
+    for (let c = 0; c < boardState.cols; c++)
+      if (boardState.owner[r][c] === owner && boardState.revealed[r][c]) n++;
+  return n;
+}
 function countRevealedTiles(boardState){
   if (!boardState) return 0;
   let n = 0;
@@ -4105,12 +4280,17 @@ function mapRevealStats(){
     return { mine, theirs };
   }
 
-  const total = Math.max(1, G.board.rows * G.board.cols);
-  const c1 = countLand(G.myBoard, 1);
-  const c2 = countLand(G.myBoard, 2);
+  /* Co-op / Territory: report each player's share of the safe map
+     they uncovered.  Every tile a player reveals — including the
+     extra tiles auto-uncovered by zero-mine chain reveals — is
+     stamped with that player's owner id, so the two percentages
+     always add up to 100% once the field is fully cleared.        */
+  const safeTotal = Math.max(1, G.board.safeCount || (G.board.rows * G.board.cols));
+  const c1 = countRevealedBy(G.myBoard, 1);
+  const c2 = countRevealedBy(G.myBoard, 2);
   return {
-    mine:   clamp(((G.myOwner === 1) ? c1 : c2) / total * 100, 0, 100),
-    theirs: clamp(((G.myOwner === 1) ? c2 : c1) / total * 100, 0, 100)
+    mine:   clamp(((G.myOwner === 1) ? c1 : c2) / safeTotal * 100, 0, 100),
+    theirs: clamp(((G.myOwner === 1) ? c2 : c1) / safeTotal * 100, 0, 100)
   };
 }
 
@@ -5052,6 +5232,8 @@ function applyDelta(msg){
   if (!bs || !G.board) return;
   const now = performance.now();
   if (msg.rev){
+    let revealedAny = false;
+    let firstVal = 0;
     for (const pair of msg.rev){
       const r = pair[0], c = pair[1];
       if (bs.revealed[r][c]) continue;
@@ -5060,6 +5242,15 @@ function applyDelta(msg){
       bs.count++;
       if (!G.board.mines.has(r + ',' + c)) bs.safeRevealed++;
       if (msg.own !== undefined && bs.owner) bs.owner[r][c] = msg.own ? msg.own : 0;
+      if (!revealedAny){
+        revealedAny = true;
+        if (G.board.adj && G.board.adj[r]) firstVal = G.board.adj[r][c] || 0;
+      }
+    }
+    /* Play the reveal chime on the local side too, so the guest in
+       co-op/territory gets audio feedback for their own clicks. */
+    if (revealedAny && (msg.own === undefined || msg.own === G.myOwner)){
+      SFX.reveal(firstVal);
     }
   }
   if (msg.flg){

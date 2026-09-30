@@ -6003,16 +6003,15 @@ function menuHTML(err){
         '<div class="config-options">' +
           '<button class="opt' + (!cfg.insta ? ' active' : '') + '" data-insta="0">' +
             '<div class="opt-name">OFF</div>' +
-            '<div class="opt-desc">Standard rules.<br>💣Bomb = 10s stun⚡️<br>🚩Wrong flag = 10s stun⚡</div>' +
+            '<div class="opt-desc">Gamemode rules<br>💣Bomb = 10s stun⚡️<br>🚩Wrong flag = 10s stun⚡</div>' +
           '</button>' +
           '<button class="opt danger' + (cfg.insta ? ' active' : '') + '" data-insta="1">' +
             '<div class="opt-name">ON</div>' +
-            '<div class="opt-desc">💣Bomb = instant loss 💀<br>🚩Flag = no penalty<br>🏆Opponent wins on bomb</div>' +
+            '<div class="opt-desc">Standard rules<br>💣Bomb = loss 💀<br>🚩Flag = no penalty</div>' +
           '</button>' +
         '</div>' +
       '</div>')
     : '';
-
   const solo = cfg.mode === 'solo';
   const actions =
     '<div class="ovbtns">' +
@@ -6118,15 +6117,6 @@ function howToHTML(){
         '<b style="color:#4dd8ff">DIG</b> a tile to reveal it.<br>' +
         '<b style="color:#ff3d81">FLAG</b> a tile when you think it\'s a bomb.<br>' +
         'Clear every safe tile to win.' +
-      '</div>' +
-    '</div>' +
-    '<div class="config-section danger-mode">' +
-      '<div class="config-label">INSTANT DIE MODE</div>' +
-      '<div class="ht-text">' +
-        'Available for <b>Duel</b> and <b>Territorial</b>.<br><br>' +
-        '💣 Hitting a mine = <b style="color:#ff3d81">instant loss</b>.<br>' +
-        '🚩 Flagging is <b style="color:#5dff9e">completely safe</b> (no penalty).<br>' +
-        '🏆 Your opponent is awarded the win on the leaderboard.<b>' +
       '</div>' +
     '</div>' +
     '<div class="ovbtns">' +

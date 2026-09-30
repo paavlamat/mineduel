@@ -139,6 +139,7 @@
     margin-left:auto;font-size:10px;letter-spacing:.14em;color:#6b7a94;
     white-space:nowrap;font-weight:700;
   }
+  .pkeys.insta{color:#ff9f43;text-shadow:0 0 10px rgba(255,159,67,.45)}
 
   .pstats{flex:none;display:flex;gap:6px;margin-bottom:8px;position:relative;z-index:1;flex-wrap:wrap}
   .pstat{
@@ -437,6 +438,12 @@
     position:relative;
   }
   .config-section + .config-section{margin-top:24px}
+  .config-section.danger-mode{
+    border-left-color:rgba(255,61,129,.75);
+    background:rgba(255,61,129,.035);
+  }
+  .config-section.danger-mode .config-label{color:#ffb1c7}
+  .config-section.danger-mode .config-label::before{background:#ff3d81;box-shadow:0 0 10px #ff3d81}
   .config-label{
     font-size:10.5px;letter-spacing:.32em;color:#7fb0e0;font-weight:900;
     margin-bottom:12px;
@@ -468,6 +475,16 @@
     font-size:14px;color:#4dd8ff;font-weight:900;
   }
   .opt.active .opt-name{color:#4dd8ff}
+  .opt.danger.active{
+    background:linear-gradient(180deg,rgba(255,61,129,.20),rgba(255,61,129,.08));
+    border-color:#ff3d81;
+  }
+  .opt.danger.active::before{color:#ff3d81}
+  .opt.danger.active .opt-name{color:#ff3d81}
+  .opt.danger:hover{
+    background:linear-gradient(180deg,rgba(255,61,129,.12),rgba(255,61,129,.04));
+    border-color:rgba(255,61,129,.55);
+  }
   .opt-name{font-size:14px;font-weight:900;letter-spacing:.14em;color:#e6edf7;margin-bottom:4px}
   .opt-desc{font-size:11px;color:#7c8aa5;letter-spacing:.05em;line-height:1.5}
   .opt-desc:empty{display:none}
@@ -570,11 +587,14 @@
     border-radius:clamp(7px,1.2vh,11px);
   }
 
-  /* ══ NAME BUTTON (top-left of main menu) ══ */
+  /* ══ NAME BUTTON / TOP BAR ══ */
   .menu-topbar{
     display:flex;
-    justify-content:flex-start;
+    justify-content:space-between;
+    align-items:center;
+    gap:clamp(6px,1vh,12px);
     margin-bottom:clamp(4px,1vh,12px);
+    flex-wrap:wrap;
   }
   .name-btn{
     display:inline-flex;
@@ -588,7 +608,7 @@
     background:linear-gradient(180deg,rgba(77,216,255,.13),rgba(77,216,255,.04));
     border:1px solid rgba(77,216,255,.42);
     color:#4dd8ff;
-    min-width:min(100%,380px);
+    min-width:min(100%,320px);
     max-width:100%;
     text-align:left;
     justify-content:flex-start;
@@ -614,6 +634,31 @@
     flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
   }
   .name-btn .name-btn-edit{flex:none;opacity:.6;font-size:.9em}
+
+  .lb-ov-btn{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    padding:clamp(7px,1.3vh,12px) clamp(12px,1.6vw,18px);
+    border-radius:clamp(10px,1.6vh,14px);
+    font-size:clamp(10px,1.55vh,13px);
+    letter-spacing:.14em;
+    font-weight:900;
+    background:linear-gradient(180deg,rgba(255,209,102,.14),rgba(255,209,102,.04));
+    border:1px solid rgba(255,209,102,.45);
+    color:#ffd166;
+    cursor:pointer;
+    font-family:inherit;
+    white-space:nowrap;
+    transition:all .18s;
+    text-shadow:0 0 10px rgba(255,209,102,.35);
+  }
+  .lb-ov-btn:hover{
+    background:linear-gradient(180deg,rgba(255,209,102,.26),rgba(255,209,102,.10));
+    border-color:#ffd166;
+    color:#fff;
+    transform:translateY(-1px);
+  }
 
   /* ══ MAIN MENU GRID (config | leaderboard) ══ */
   .menu-grid{
@@ -666,6 +711,11 @@
     padding:4px 8px;border-radius:6px;background:rgba(0,0,0,.25);
     border:1px solid rgba(255,255,255,.05);
     text-align:center;
+  }
+  .lb-config-name.insta{
+    color:#ff9f43;border-color:rgba(255,159,67,.3);
+    background:rgba(255,159,67,.07);
+    text-shadow:0 0 10px rgba(255,159,67,.4);
   }
   .lb-cats{display:flex;gap:6px}
   .lb-cat{
@@ -724,6 +774,88 @@
     text-align:center;padding:clamp(14px,2.4vh,28px) 8px;
     font-size:clamp(9px,1.4vh,11px);letter-spacing:.1em;
     color:#5d7fa8;font-weight:800;line-height:1.7;
+  }
+
+  /* ══ COMBINED LEADERBOARD OVERVIEW ══ */
+  .lb-ov-cats{
+    display:flex;gap:8px;justify-content:center;margin:0 0 clamp(8px,1.4vh,16px);
+  }
+  .lb-ov-cats .lb-cat{
+    flex:0 1 150px;padding:8px 14px;
+    font-size:clamp(10px,1.5vh,12px);
+    border-radius:10px;
+  }
+  .lb-overview-body{
+    display:flex;flex-direction:column;gap:clamp(10px,1.6vh,18px);
+    max-height:min(74vh, 720px);
+    overflow-y:auto;
+    -webkit-overflow-scrolling:touch;
+    scrollbar-width:thin;
+    text-align:left;
+    padding-right:4px;
+  }
+  .lb-ov-group{min-width:0}
+  .lb-ov-group-title{
+    font-size:clamp(9.5px,1.5vh,12px);
+    letter-spacing:.28em;font-weight:900;
+    color:#ffd166;margin-bottom:clamp(5px,.9vh,10px);
+    display:flex;align-items:center;gap:8px;
+    text-shadow:0 0 10px rgba(255,209,102,.35);
+  }
+  .lb-ov-group-title::before{
+    content:'';width:6px;height:6px;border-radius:50%;
+    background:#ffd166;box-shadow:0 0 10px #ffd166;flex:none;
+  }
+  .lb-ov-group-title.insta{color:#ff9f43;text-shadow:0 0 10px rgba(255,159,67,.45)}
+  .lb-ov-group-title.insta::before{background:#ff9f43;box-shadow:0 0 10px #ff9f43}
+  .lb-ov-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill, minmax(190px, 1fr));
+    gap:clamp(6px,1vh,10px);
+  }
+  .lb-ov-card{
+    background:rgba(255,255,255,.024);
+    border:1px solid rgba(255,255,255,.07);
+    border-radius:10px;
+    padding:clamp(7px,1.1vh,11px) clamp(8px,1.2vw,12px);
+    min-width:0;
+  }
+  .lb-ov-card-title{
+    font-size:clamp(8px,1.25vh,10px);
+    letter-spacing:.18em;font-weight:900;
+    color:#7fb0e0;margin-bottom:5px;
+    text-transform:uppercase;
+  }
+  .lb-ov-row{
+    display:flex;gap:6px;align-items:center;
+    font-size:clamp(9px,1.35vh,11px);
+    padding:1.5px 0;
+    min-width:0;
+  }
+  .lb-ov-row.me{
+    background:rgba(77,216,255,.09);
+    border-radius:5px;
+    padding-left:4px;padding-right:4px;
+  }
+  .lb-ov-rank{
+    width:14px;flex:none;text-align:center;
+    font-family:'Courier New',monospace;font-weight:900;
+    color:#6b7a94;
+  }
+  .lb-ov-row:nth-child(1) .lb-ov-rank{color:#ffd166}
+  .lb-ov-row:nth-child(2) .lb-ov-rank{color:#cfd8e6}
+  .lb-ov-row:nth-child(3) .lb-ov-rank{color:#d89a6a}
+  .lb-ov-name{
+    flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+    font-weight:800;color:#cfe4ff;
+  }
+  .lb-ov-val{
+    flex:none;font-family:'Courier New',monospace;font-weight:900;
+    color:#8affc1;font-variant-numeric:tabular-nums;
+  }
+  .lb-ov-empty{
+    font-size:clamp(8.5px,1.25vh,10px);
+    color:#4a5f7d;font-style:italic;font-weight:700;
   }
 
   /* ══ HOTKEY ROWS ══ */
@@ -862,8 +994,10 @@
     .codeval{font-size:clamp(26px,10vw,40px);padding:12px 14px 12px 24px}
     .ovbox.menu-pop .opt{flex:1 1 calc(50% - 5px)}
     .name-btn{min-width:100%}
+    .lb-ov-btn{min-width:100%;justify-content:center}
     .oppstun{font-size:11px;padding:8px 14px}
     .oppstun b{font-size:13px}
+    .lb-ov-grid{grid-template-columns:1fr}
   }
 </style>
 </head>
@@ -1961,12 +2095,19 @@ function trySignIn(){
 const LB_TTL = 45 * 1000;
 const lbCache = new Map();
 
+/* Config keys are generated with optional "insta" variants for
+   the two modes that support it (duel & territory).  The literal
+   "_insta_" token is part of the Firestore document path and must
+   never change or existing scores would be orphaned.            */
 const LB_CONFIG_KEYS = (() => {
   const out = [];
   for (const mode of ['solo','coop','duel','territory']){
     for (const style of ['square','hex']){
       for (const size of ['small','medium','large']){
         out.push(mode + '_' + style + '_' + size);
+        if (mode === 'duel' || mode === 'territory'){
+          out.push(mode + '_insta_' + style + '_' + size);
+        }
       }
     }
   }
@@ -1981,8 +2122,8 @@ const LB_STATE = {
   currentKey: ''
 };
 
-function lbKey(mode, style, size){
-  return mode + '_' + style + '_' + size;
+function lbKey(mode, style, size, insta){
+  return mode + (insta ? '_insta' : '') + '_' + style + '_' + size;
 }
 
 function currentLbCategory(){
@@ -2053,8 +2194,8 @@ function formatWins(n){
   return n + (n === 1 ? ' win' : ' wins');
 }
 
-async function fetchLeaderboard(mode, style, size, cat){
-  const key = lbKey(mode, style, size);
+async function fetchLeaderboard(mode, style, size, cat, insta){
+  const key = lbKey(mode, style, size, insta);
   const col = db.collection('leaderboards').doc(key).collection('entries');
   const q = (cat === 'time')
     ? col.orderBy('bestTime', 'asc').limit(10)
@@ -2114,7 +2255,7 @@ async function isNameRegisteredOnServer(){
 /* ──────────────────────────────────────────────────────────────
    recordWin
    ────────────────────────────────────────────────────────────── */
-async function recordWin(mode, style, size, timeMs, countAsWin, partner){
+async function recordWin(mode, style, size, insta, timeMs, countAsWin, partner){
   if (!db || !auth) return;
   if (isGuest) return;
 
@@ -2131,7 +2272,7 @@ async function recordWin(mode, style, size, timeMs, countAsWin, partner){
     return;
   }
 
-  const key = lbKey(mode, style, size);
+  const key = lbKey(mode, style, size, insta);
   const isDuel = (mode === 'duel');
   const isTeamMode = (mode === 'coop' || mode === 'territory');
   const timeVal = Math.max(1, Math.round(timeMs || 0));
@@ -2773,6 +2914,7 @@ function renderLeaderboardRows(mode, cat){
 
 function renderLeaderboardHTML(){
   const mode = G.config.mode;
+  const insta = !!G.config.insta;
   const showTime = (mode !== 'duel');
   const cat = currentLbCategory();
   const modeName = (MODES[mode] || MODES.solo).name;
@@ -2793,13 +2935,15 @@ function renderLeaderboardHTML(){
     ? '<button class="lb-unlock-btn" id="lbUnlockBtn">✨ Choose name to unlock</button>'
     : '';
 
+  const cfgName = escapeHtml(modeName) + (insta ? ' <span style="color:#ff9f43">· INSTANT</span>' : '') +
+                  ' · ' + escapeHtml(styleName) + ' · ' + escapeHtml(sizeName);
+
   return (
     unlockBtn +
     '<div class="lb-head">' +
       '<span class="lb-title">🏆 LEADERBOARD</span>' +
     '</div>' +
-    '<div class="lb-config-name">' + escapeHtml(modeName) + ' · ' +
-      escapeHtml(styleName) + ' · ' + escapeHtml(sizeName) + '</div>' +
+    '<div class="lb-config-name' + (insta ? ' insta' : '') + '">' + cfgName + '</div>' +
     '<div class="lb-cats">' + catsHtml + '</div>' +
     '<div class="lb-list">' + renderLeaderboardRows(mode, cat) + '</div>'
   );
@@ -2831,8 +2975,9 @@ async function refreshLeaderboard(force){
   const mode = G.config.mode;
   const style = G.config.style;
   const size = G.config.size;
+  const insta = !!G.config.insta;
   const cat = currentLbCategory();
-  const key = lbKey(mode, style, size) + '_' + cat;
+  const key = lbKey(mode, style, size, insta) + '_' + cat;
 
   LB_STATE.currentKey = key;
   LB_STATE.error = null;
@@ -2860,7 +3005,7 @@ async function refreshLeaderboard(force){
   if (overlay.querySelector('.menu-lb')) updateLeaderboardDOM();
 
   try {
-    const data = await fetchLeaderboard(mode, style, size, cat);
+    const data = await fetchLeaderboard(mode, style, size, cat, insta);
     if (LB_STATE.currentKey !== key) return;
     lbCache.set(key, { data, ts: Date.now() });
     LB_STATE.loading = false;
@@ -2875,6 +3020,178 @@ async function refreshLeaderboard(force){
     LB_STATE.data = [];
     if (overlay.querySelector('.menu-lb')) updateLeaderboardDOM();
   }
+}
+
+/* ──────────────────────────────────────────────────────────────
+   Combined Leaderboard Overview
+   ────────────────────────────────────────────────────────────── */
+const OV_GROUPS = [
+  { mode:'solo',      insta:false, label:'SOLO' },
+  { mode:'coop',      insta:false, label:'CO-OP' },
+  { mode:'duel',      insta:false, label:'DUEL' },
+  { mode:'duel',      insta:true,  label:'DUEL · INSTANT' },
+  { mode:'territory', insta:false, label:'TERRITORIAL' },
+  { mode:'territory', insta:true,  label:'TERRITORIAL · INSTANT' }
+];
+
+async function fetchTopForConfig(g, style, size, cat, limit){
+  const key = lbKey(g.mode, style, size, g.insta);
+  const col = db.collection('leaderboards').doc(key).collection('entries');
+  let q;
+  if (cat === 'time'){
+    /* Duel boards never store times — nothing to query. */
+    if (g.mode === 'duel') return [];
+    q = col.orderBy('bestTime', 'asc').limit(limit);
+  } else {
+    q = col.orderBy('wins', 'desc').limit(limit);
+  }
+  const snap = await q.get();
+  const out = [];
+  snap.forEach(d => out.push(Object.assign({ id: d.id }, d.data())));
+  return out;
+}
+
+async function fetchOverviewData(cat){
+  const all = [];
+  for (const g of OV_GROUPS){
+    /* Duel boards have no time entries — skip them entirely in the
+       TIME view so the overview never shows empty duel cards. */
+    if (cat === 'time' && g.mode === 'duel') continue;
+    for (const style of ['square','hex']){
+      for (const size of ['small','medium','large']){
+        all.push({ g, style, size });
+      }
+    }
+  }
+  const results = [];
+  const CHUNK = 6;
+  for (let i = 0; i < all.length; i += CHUNK){
+    const slice = all.slice(i, i + CHUNK);
+    const chunkRes = await Promise.all(slice.map(item =>
+      fetchTopForConfig(item.g, item.style, item.size, cat, 3)
+        .then(entries => ({ g: item.g, style: item.style, size: item.size, entries }))
+        .catch(() => ({ g: item.g, style: item.style, size: item.size, entries: [] }))
+    ));
+    for (const r of chunkRes) results.push(r);
+  }
+  return results;
+}
+
+function renderOverviewData(cat, data){
+  const body = overlay.querySelector('#lbOvBody');
+  if (!body) return;
+
+  const grouped = new Map();
+  for (const item of data){
+    const k = item.g.label;
+    if (!grouped.has(k)) grouped.set(k, []);
+    grouped.get(k).push(item);
+  }
+
+  const myKey = getPlayerNameKey();
+  let html = '';
+
+  grouped.forEach((items, label) => {
+    const isInsta = label.indexOf('INSTA') !== -1;
+    html += '<div class="lb-ov-group">';
+    html += '<div class="lb-ov-group-title' + (isInsta ? ' insta' : '') + '">' + escapeHtml(label) + '</div>';
+    html += '<div class="lb-ov-grid">';
+
+    for (const item of items){
+      const styleName = (STYLES[item.style] || {}).name || item.style;
+      const sizeName = (SIZES[item.size] || {}).name || item.size;
+      html += '<div class="lb-ov-card">';
+      html += '<div class="lb-ov-card-title">' + escapeHtml(styleName + ' · ' + sizeName) + '</div>';
+      if (!item.entries.length){
+        html += '<div class="lb-ov-empty">No scores</div>';
+      } else {
+        item.entries.forEach((e, i) => {
+          let nm;
+          if (Array.isArray(e.nameKeys) && e.nameKeys.length){
+            const names = (Array.isArray(e.names) && e.names.length) ? e.names : e.nameKeys;
+            nm = names.join(' & ');
+          } else {
+            nm = e.name || 'Anon';
+          }
+          const val = cat === 'time' ? formatTime(e.bestTime) : formatWins(e.wins);
+          const isMe = !isGuest && myKey && (
+            e.id === myKey ||
+            (Array.isArray(e.nameKeys) && e.nameKeys.indexOf(myKey) !== -1)
+          );
+          html += '<div class="lb-ov-row' + (isMe ? ' me' : '') + '">' +
+            '<span class="lb-ov-rank">' + (i + 1) + '</span>' +
+            '<span class="lb-ov-name">' + escapeHtml(nm) + '</span>' +
+            '<span class="lb-ov-val">' + val + '</span>' +
+          '</div>';
+        });
+      }
+      html += '</div>';
+    }
+    html += '</div></div>';
+  });
+
+  body.innerHTML = html;
+  scheduleMenuFit();
+}
+
+function openLeaderboardOverview(){
+  menuView = 'lboverview';
+  showOverlay(
+    '<div class="ovbox menu-pop">' +
+      '<div class="big">📊</div>' +
+      '<h2>ALL <span>LEADERBOARDS</span></h2>' +
+      '<p>Combined view of every game mode · top 3 per board.</p>' +
+      '<div class="lb-ov-cats">' +
+        '<button class="lb-cat active" data-ovcat="wins">🏆 WINS</button>' +
+        '<button class="lb-cat" data-ovcat="time">⏱ TIME</button>' +
+      '</div>' +
+      '<div class="lb-overview-body" id="lbOvBody">' +
+        '<div class="lb-empty"><span class="spin"></span>Loading…</div>' +
+      '</div>' +
+      '<div class="ovbtns"><button class="primary" id="btnBackMenu">BACK</button></div>' +
+    '</div>'
+  );
+
+  const back = overlay.querySelector('#btnBackMenu');
+  if (back) back.onclick = () => {
+    menuView = 'main';
+    menuError = '';
+    renderMenu('');
+    refreshLeaderboard(false);
+  };
+
+  let cat = 'wins';
+
+  const load = async () => {
+    const body = overlay.querySelector('#lbOvBody');
+    if (!body) return;
+    if (!db){
+      body.innerHTML = '<div class="lb-empty">Leaderboards offline</div>';
+      return;
+    }
+    body.innerHTML = '<div class="lb-empty"><span class="spin"></span>Loading…</div>';
+    try {
+      const data = await fetchOverviewData(cat);
+      if (!overlay.querySelector('#lbOvBody')) return;
+      renderOverviewData(cat, data);
+    } catch(e){
+      console.warn('[fb] overview fetch failed:', e && (e.code || e.message));
+      const b2 = overlay.querySelector('#lbOvBody');
+      if (b2) b2.innerHTML = '<div class="lb-empty">Could not load</div>';
+    }
+  };
+
+  overlay.querySelectorAll('[data-ovcat]').forEach(b => {
+    b.onclick = () => {
+      if (b.disabled) return;
+      overlay.querySelectorAll('[data-ovcat]').forEach(x => x.classList.remove('active'));
+      b.classList.add('active');
+      cat = b.dataset.ovcat;
+      load();
+    };
+  });
+
+  load();
 }
 
 function makeBoardState(rows, cols){
@@ -2899,7 +3216,7 @@ function makePlayerState(start){
 }
 
 const G = {
-  config: { mode:'solo', style:'square', size:'small' },
+  config: { mode:'solo', style:'square', size:'small', insta:false },
   board: null,
   theirBoardLayout: null,
   seed: 0, mySeed: 0, theirSeed: 0, boardSeed: 0,
@@ -2922,6 +3239,11 @@ const G = {
   rematchMe: false, rematchThem: false, rematchLock: false
 };
 
+/* Remembers the Instant Die toggle while the player hops between
+   modes that don't support it.  Intentionally in-memory only —
+   a page reload resets it to OFF. */
+let rememberedInsta = false;
+
 const overlay    = document.getElementById('overlay');
 const modal      = document.getElementById('modal');
 const statusbar  = document.getElementById('statusbar');
@@ -2939,8 +3261,10 @@ function fitMenuBox(){
   const box = overlay.querySelector('.ovbox.menu-pop');
   if (!box || !box.parentElement) return;
 
+  /* Reset to natural size so we can measure the real content. */
   box.style.zoom = '';
   box.style.maxHeight = 'none';
+  box.style.overflowY = 'hidden';
   void box.offsetHeight;
 
   const ovStyle = getComputedStyle(overlay);
@@ -2949,24 +3273,31 @@ function fitMenuBox(){
   const padLeft   = parseFloat(ovStyle.paddingLeft)   || 0;
   const padRight  = parseFloat(ovStyle.paddingRight)  || 0;
 
-  const availH = overlay.clientHeight - padTop - padBottom;
-  const availW = overlay.clientWidth  - padLeft - padRight;
+  const availH = Math.max(120, overlay.clientHeight - padTop - padBottom);
+  const availW = Math.max(120, overlay.clientWidth  - padLeft - padRight);
 
   const h = box.offsetHeight;
   const w = box.offsetWidth;
 
   let scale = 1;
-  if (availH > 0 && h > availH) scale = Math.min(scale, availH / h);
-  if (availW > 0 && w > availW) scale = Math.min(scale, availW / w);
+  if (h > availH) scale = Math.min(scale, availH / h);
+  if (w > availW) scale = Math.min(scale, availW / w);
   scale = Math.max(scale, 0.55);
 
-  if (scale < 0.995 && supportsZoom()){
+  let maxH;
+  if (scale < 0.999 && supportsZoom()){
     box.style.zoom = scale.toFixed(3);
-    box.style.maxHeight = 'none';
+    maxH = Math.ceil(availH / scale);
   } else {
-    box.style.zoom = '';
-    box.style.maxHeight = '';
+    maxH = Math.floor(availH);
   }
+  box.style.maxHeight = maxH + 'px';
+
+  /* Only show a scrollbar when the content really overflows —
+     this prevents the "full but useless" phantom slider that
+     appears when the Instant Die section pushes the box 1–2px
+     past the available height. */
+  box.style.overflowY = (h > maxH + 8) ? 'auto' : 'hidden';
 }
 
 function scheduleMenuFit(){
@@ -3724,6 +4055,7 @@ function buildArena(){
   arena.innerHTML = '';
   G.viewMe = null; G.viewThem = null; G.panelMe = null; G.panelThem = null;
   const mode = G.config.mode;
+  const insta = !!G.config.insta;
   arena.classList.toggle('solo', mode === 'solo');
   arena.classList.toggle('territory', mode === 'territory');
   if (mode === 'territory'){ buildTerritoryArena(); updatePanelNames(); return; }
@@ -3746,6 +4078,7 @@ function buildArena(){
     nameEl: panelA.querySelector('.pname'),
     panel: panelA
   };
+  if (insta) panelA._els.keys.classList.add('insta');
   if (isCoop) panelA._els.keys.textContent = 'SHARED · ' + panelKeysText();
   else        panelA._els.keys.textContent = panelKeysText();
 
@@ -3802,7 +4135,9 @@ function buildTerritoryArena(){
     oppNameEl:  panel.querySelector('[data-oname]'),
     panel:     panel
   };
-  panel.querySelector('.pkeys').textContent = panelKeysText();
+  const keysEl = panel.querySelector('.pkeys');
+  if (G.config.insta) keysEl.classList.add('insta');
+  keysEl.textContent = panelKeysText();
   G.panelMe = panel;
 }
 
@@ -4412,6 +4747,8 @@ async function localDig(){
 
 function doLocalDig(r, c){
   const mode = G.config.mode;
+  const insta = !!G.config.insta;
+
   if (mode === 'coop' || mode === 'territory'){
     if (G.role === 'host') hostApplyDig(r, c, G.myOwner);
     else send({ t:'dig', r, c });
@@ -4425,6 +4762,26 @@ function doLocalDig(r, c){
     if (res.type === 'mine'){
       G.me.hits++; G.deathTile = { r, c };
       send({ t:'hit', r, c });
+
+      if (insta){
+        /* ── INSTANT DIE: bomb = instant loss, opponent wins ── */
+        send({ t:'lose' });
+        revealAllMines(bs, G.board, r, c);
+        const view = G.viewMe;
+        if (view){
+          view.triggerShake();
+          const p = hexOrSqCenter(view, r, c);
+          view.boom(p.x, p.y, '#ff4d6d', 44, 300);
+          view.boom(p.x, p.y, '#ffd166', 20, 160);
+        }
+        SFX.mine(); vibrate(220);
+        const elapsed = performance.now() - G.startTime;
+        setTimeout(() => {
+          endGame('lose', '💀', 'BOOM!', 'You hit a mine. Instant defeat.', elapsed);
+        }, 1000);
+        return;
+      }
+
       duelFreeze(r, c);
       return;
     }
@@ -4553,7 +4910,7 @@ function handleTerritoryBoom(r, c, owner){
       bs.count++;
     }
   }
-  applyPenalty(owner, 'bomb');
+
   const view = G.viewMe;
   if (view){
     if (iTriggered) view.triggerShake();
@@ -4561,6 +4918,33 @@ function handleTerritoryBoom(r, c, owner){
     view.boom(p.x, p.y, '#ff4d6d', iTriggered ? 40 : 24, iTriggered ? 280 : 180);
     view.boom(p.x, p.y, '#ffd166', iTriggered ? 18 : 10, 140);
   }
+
+  /* ── INSTANT DIE territory: bomb = instant loss for the digger,
+        opponent records the win. ── */
+  if (G.config.insta){
+    send({ t:'delta', mine:[r, c], own: owner, rev: [[r, c]] });
+
+    const elapsed = performance.now() - G.startTime;
+
+    if (iTriggered){
+      SFX.mine(); vibrate(220);
+      revealAllMines(bs, G.board, r, c);
+      send({ t:'lose' });   /* tells the guest they won */
+      setTimeout(() => {
+        endGame('lose', '💀', 'BOOM!', 'You hit a mine. Instant defeat.', elapsed);
+      }, 1000);
+    } else {
+      SFX.oppStun();
+      revealAllMines(bs, G.board, r, c);
+      send({ t:'win' });    /* tells the guest they lost */
+      setTimeout(() => {
+        endGame('win', '🏆', 'VICTORY!', 'Your opponent hit a mine.', elapsed);
+      }, 1000);
+    }
+    return;
+  }
+
+  applyPenalty(owner, 'bomb');
   send({ t:'delta', mine:[r, c], own: owner, rev: [[r, c]] });
 }
 function afterSharedReveal(){
@@ -4618,7 +5002,7 @@ function endTerritoryScreen(land1, land2){
     const partner = (G.theirName && G.theirNameKey)
       ? { name: G.theirName, key: G.theirNameKey }
       : null;
-    recordWin('territory', G.config.style, G.config.size,
+    recordWin('territory', G.config.style, G.config.size, !!G.config.insta,
               Math.max(1, Math.round(elapsed)), true, partner).catch(()=>{});
   }
 
@@ -4634,6 +5018,9 @@ function endTerritoryScreen(land1, land2){
                       is revealed and the player is frozen for 10 s
                       ("wrong flag" penalty).  Flagging an actual
                       mine just toggles the marker as usual.
+
+   INSTANT DIE modes → flag is always a plain marker.  No penalty
+                      ever (this is the "no flag penalty" toggle).
    ────────────────────────────────────────────────────────────── */
 function localFlag(){
   if (!canAct()) return;
@@ -4641,9 +5028,23 @@ function localFlag(){
   const bs = G.myBoard;
   if (bs.revealed[r][c]) return;
   const mode = G.config.mode;
+  const insta = !!G.config.insta;
 
   if (mode === 'territory'){
     if (!canTouchTerritory(bs, G.board, r, c, G.myOwner)) return;
+
+    if (insta){
+      /* No flag penalty — plain marker toggle. */
+      const on = bs.flagged[r][c] ? 0 : 1;
+      bs.flagged[r][c] = !!on;
+      bs.flagAt[r][c] = performance.now();
+      bs.flagCount += on ? 1 : -1;
+      on ? SFX.flag() : SFX.unflag();
+      if (G.role === 'host') send({ t:'delta', flg: [[r, c, on]], own: 0 });
+      else send({ t:'flag', r, c });
+      return;
+    }
+
     if (bs.flagged[r][c] && bs.owner[r][c] && bs.owner[r][c] !== G.myOwner){
       SFX.denied();
       return;
@@ -4667,6 +5068,17 @@ function localFlag(){
 
   if (mode === 'duel'){
     const isMine = G.board.mines.has(r + ',' + c);
+
+    if (insta){
+      /* No flag penalty — plain marker toggle. */
+      const on = bs.flagged[r][c] ? 0 : 1;
+      bs.flagged[r][c] = !!on;
+      bs.flagAt[r][c] = performance.now();
+      bs.flagCount += on ? 1 : -1;
+      on ? SFX.flag() : SFX.unflag();
+      send({ t:'flag', r, c, on });
+      return;
+    }
 
     if (isMine){
       /* Flagging a real mine just toggles the marker. */
@@ -4718,6 +5130,8 @@ function localChord(){
   if (!canAct()) return;
   const r = G.me.cursor.r, c = G.me.cursor.c;
   const mode = G.config.mode;
+  const insta = !!G.config.insta;
+
   if (mode === 'coop' || mode === 'territory'){
     if (mode === 'territory' && !canTouchTerritory(G.myBoard, G.board, r, c, G.myOwner)) return;
     if (G.role === 'host') hostApplyChord(r, c, G.myOwner);
@@ -4733,6 +5147,25 @@ function localChord(){
       const mr = res.tiles[0][0], mc = res.tiles[0][1];
       G.deathTile = { r: mr, c: mc };
       send({ t:'hit', r: mr, c: mc });
+
+      if (insta){
+        send({ t:'lose' });
+        revealAllMines(bs, G.board, mr, mc);
+        const view = G.viewMe;
+        if (view){
+          view.triggerShake();
+          const p = hexOrSqCenter(view, mr, mc);
+          view.boom(p.x, p.y, '#ff4d6d', 44, 300);
+          view.boom(p.x, p.y, '#ffd166', 20, 160);
+        }
+        SFX.mine(); vibrate(220);
+        const elapsed = performance.now() - G.startTime;
+        setTimeout(() => {
+          endGame('lose', '💀', 'BOOM!', 'You hit a mine. Instant defeat.', elapsed);
+        }, 1000);
+        return;
+      }
+
       duelFreeze(mr, mc);
       return;
     }
@@ -4841,6 +5274,27 @@ function hostApplyTerritoryFlag(r, c, owner){
   if (G.state !== 'playing') return;
   const bs = G.myBoard;
   if (bs.revealed[r][c]) return;
+
+  /* ── INSTANT: plain marker toggle, no penalty, no reveal ── */
+  if (G.config.insta){
+    const on = bs.flagged[r][c] ? 0 : 1;
+    bs.flagged[r][c] = !!on;
+    bs.flagAt[r][c] = performance.now();
+    bs.flagCount += on ? 1 : -1;
+    if (bs.owner){
+      if (on){
+        const isMine = G.board.mines.has(r + ',' + c);
+        bs.owner[r][c] = isMine ? owner : 0;
+      } else {
+        if (bs.owner[r][c] === owner) bs.owner[r][c] = 0;
+      }
+    }
+    send({ t:'delta', flg: [[r, c, on]],
+           own: (on && G.board.mines.has(r + ',' + c)) ? owner : 0 });
+    if (owner === G.myOwner) on ? SFX.flag() : SFX.unflag();
+    checkTerritoryUnlock();
+    return;
+  }
 
   if (bs.flagged[r][c]){
     if (bs.owner && bs.owner[r][c] && bs.owner[r][c] !== owner){
@@ -5541,6 +5995,24 @@ function menuHTML(err){
     '</button>';
   }).join('');
 
+  /* Instant Die toggle — only shown for duel / territory. */
+  const supportsInsta = (cfg.mode === 'duel' || cfg.mode === 'territory');
+  const instaSection = supportsInsta
+    ? ('<div class="config-section danger-mode">' +
+        '<div class="config-label">INSTANT DIE</div>' +
+        '<div class="config-options">' +
+          '<button class="opt' + (!cfg.insta ? ' active' : '') + '" data-insta="0">' +
+            '<div class="opt-name">OFF</div>' +
+            '<div class="opt-desc">Standard rules.<br>💣Bomb = 10s stun⚡️<br>🚩Wrong flag = 10s stun⚡</div>' +
+          '</button>' +
+          '<button class="opt danger' + (cfg.insta ? ' active' : '') + '" data-insta="1">' +
+            '<div class="opt-name">ON</div>' +
+            '<div class="opt-desc">💣Bomb = instant loss 💀<br>🚩Flag = no penalty<br>🏆Opponent wins on bomb</div>' +
+          '</button>' +
+        '</div>' +
+      '</div>')
+    : '';
+
   const solo = cfg.mode === 'solo';
   const actions =
     '<div class="ovbtns">' +
@@ -5566,6 +6038,9 @@ function menuHTML(err){
         '<span class="name-btn-text">' + escapeHtml(displayName) + '</span>' +
         '<span class="name-btn-edit">' + (isGuest ? '↻' : '✏️') + '</span>' +
       '</button>' +
+      '<button class="lb-ov-btn" id="btnLbOverview" title="View all leaderboards">' +
+        '<span>📊</span><span>ALL LEADERBOARDS</span>' +
+      '</button>' +
     '</div>' +
     '<div class="big">💣</div>' +
     '<h2>MINE<span>DUEL</span></h2>' +
@@ -5575,6 +6050,7 @@ function menuHTML(err){
         '<div class="config-section"><div class="config-label">MODE</div><div class="config-options">' + modeBtns + '</div></div>' +
         '<div class="config-section"><div class="config-label">BOARD STYLE</div><div class="config-options">' + styleBtns + '</div></div>' +
         '<div class="config-section"><div class="config-label">MAP SIZE</div><div class="config-options">' + sizeBtns + '</div></div>' +
+        instaSection +
         actions +
         '<div class="ovbtns sub">' +
           '<button class="ghost" id="btnHowTo">📖 HOW TO PLAY</button>' +
@@ -5644,6 +6120,15 @@ function howToHTML(){
         'Clear every safe tile to win.' +
       '</div>' +
     '</div>' +
+    '<div class="config-section danger-mode">' +
+      '<div class="config-label">INSTANT DIE MODE</div>' +
+      '<div class="ht-text">' +
+        'Available for <b>Duel</b> and <b>Territorial</b>.<br><br>' +
+        '💣 Hitting a mine = <b style="color:#ff3d81">instant loss</b>.<br>' +
+        '🚩 Flagging is <b style="color:#5dff9e">completely safe</b> (no penalty).<br>' +
+        '🏆 Your opponent is awarded the win on the leaderboard.<b>' +
+      '</div>' +
+    '</div>' +
     '<div class="ovbtns">' +
       '<button class="primary" id="btnBackMenu">GOT IT</button>' +
     '</div>' +
@@ -5652,6 +6137,9 @@ function howToHTML(){
 
 function renderMenu(err){
   if (err !== undefined) menuError = err;
+
+  /* The combined overview manages its own DOM. */
+  if (menuView === 'lboverview') return;
 
   if (menuView === 'hotkeys'){
     showOverlay(hotkeysHTML());
@@ -5767,9 +6255,24 @@ function renderMenu(err){
     renderMenu('');
   };
 
+  const ovBtn = overlay.querySelector('#btnLbOverview');
+  if (ovBtn) ovBtn.onclick = () => {
+    SFX.clickSoft();
+    openLeaderboardOverview();
+  };
+
   overlay.querySelectorAll('[data-mode]').forEach(b => {
     b.onclick = () => {
       G.config.mode = b.dataset.mode;
+      /* Instant Die only applies to duel / territory.
+         Remember the last choice made inside a supporting mode so
+         hopping to solo/co-op and back restores it.  This is
+         in-memory only — a page reload resets it to OFF. */
+      if (G.config.mode === 'duel' || G.config.mode === 'territory'){
+        G.config.insta = rememberedInsta;
+      } else {
+        G.config.insta = false;
+      }
       menuError = '';
       renderMenu();
       refreshLeaderboard(false);
@@ -5786,6 +6289,15 @@ function renderMenu(err){
   overlay.querySelectorAll('[data-size]').forEach(b => {
     b.onclick = () => {
       G.config.size = b.dataset.size;
+      menuError = '';
+      renderMenu();
+      refreshLeaderboard(false);
+    };
+  });
+  overlay.querySelectorAll('[data-insta]').forEach(b => {
+    b.onclick = () => {
+      G.config.insta = (b.dataset.insta === '1');
+      rememberedInsta = G.config.insta;
       menuError = '';
       renderMenu();
       refreshLeaderboard(false);
@@ -6398,6 +6910,7 @@ function endGame(result, icon, title, sub, elapsed, cards, opts){
           mode,
           G.config.style,
           G.config.size,
+          !!G.config.insta,
           Math.max(1, Math.round(elapsed)),
           true,
           partner
@@ -6435,11 +6948,16 @@ function endGame(result, icon, title, sub, elapsed, cards, opts){
     (G.role === 'solo' || G.role === 'host' || G.role === 'guest');
   const canReview  = !!G.board && !!G.myBoard;
 
+  const instaBadge = G.config.insta
+    ? '<div style="margin-top:10px;font-size:11px;letter-spacing:.24em;font-weight:900;color:#ff9f43;text-shadow:0 0 12px rgba(255,159,67,.5)">INSTANT DIE MATCH</div>'
+    : '';
+
   showOverlay(
     '<div class="ovbox">' +
       '<div class="big">' + icon + '</div>' +
       '<h2>' + title + '</h2>' +
       '<p>' + sub + '</p>' +
+      instaBadge +
       '<div class="statrow">' + cardsHtml + '</div>' +
       '<div class="ovbtns">' +
         (canRematch ? '<button class="primary" id="btnAgain">REMATCH</button>' : '') +

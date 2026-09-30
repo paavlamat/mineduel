@@ -3954,6 +3954,40 @@ function setStunFace(el, reason){
   if (sub) sub.textContent = ice ? 'WRONG FLAG' : 'BOMB TRIGGERED';
 }
 
+/* ─────────────────────────────────────────────────────────────
+   Mode helpers
+   ───────────────────────────────────────────────────────────── */
+/* True when a bomb (or a wrong flag) freezes the player for 10 s.
+   That is: Duel / Territorial with "Instant Die" turned OFF.     */
+function usesStunPenalty(){
+  if (G.config.insta) return false;
+  const m = G.config.mode;
+  return m === 'duel' || m === 'territory';
+}
+
+/* Tiles this player has revealed (chain-reveals included). */
+function myRevealedCount(){
+  if (!G.myBoard) return 0;
+  const mode = G.config.mode;
+  if (mode === 'coop' || mode === 'territory'){
+    return countRevealedBy(G.myBoard, G.myOwner);
+  }
+  return G.myBoard.safeRevealed || 0;
+}
+
+/* Tiles the opponent / partner has revealed. */
+function theirRevealedCount(){
+  if (!G.myBoard) return 0;
+  const mode = G.config.mode;
+  if (mode === 'duel'){
+    return G.theirBoard ? (G.theirBoard.safeRevealed || 0) : 0;
+  }
+  if (mode === 'coop' || mode === 'territory'){
+    return countRevealedBy(G.myBoard, G.theirOwner);
+  }
+  return 0;
+}
+
 function makePanel(cls, name, color){
   const panel = document.createElement('div');
   panel.className = 'panel ' + cls;
@@ -3967,7 +4001,8 @@ function makePanel(cls, name, color){
     '<div class="pstats">' +
       '<div class="pstat"><span class="plabel">MINES</span><span class="pval" data-mines>0</span></div>' +
       '<div class="pstat"><span class="plabel">TIME</span><span class="pval" data-time>0.0</span></div>' +
-      '<div class="pstat"><span class="plabel">HITS</span><span class="pval" data-hits>0</span></div>' +
+      '<div class="pstat"><span class="plabel">REVEALED</span><span class="pval" data-revealed>0</span></div>' +
+      '<div class="pstat" data-hitsstat><span class="plabel">HITS</span><span class="pval" data-hits>0</span></div>' +
     '</div>' +
     '<div class="pbar"><i></i></div>' +
     '<div class="boardwrap">' +
@@ -3995,6 +4030,7 @@ function makeTerritoryPanel(){
       '<div class="pstat" style="--pc:#4dd8ff"><span class="plabel">YOUR LAND</span><span class="pval" data-myland>0</span></div>' +
       '<div class="pstat" style="--pc:#ff3d81"><span class="plabel">THEIR LAND</span><span class="pval" data-theirland>0</span></div>' +
       '<div class="pstat" style="--pc:#cfe4ff"><span class="plabel">TIME</span><span class="pval" data-time>0.0</span></div>' +
+      '<div class="pstat" data-hitsstat><span class="plabel">HITS</span><span class="pval" data-hits>0</span></div>' +
     '</div>' +
     '<div class="tbar">' +
       '<i class="mine" data-mybar style="width:0%"></i>' +
@@ -4056,6 +4092,7 @@ function buildArena(){
   G.viewMe = null; G.viewThem = null; G.panelMe = null; G.panelThem = null;
   const mode = G.config.mode;
   const insta = !!G.config.insta;
+  const showHits = usesStunPenalty();
   arena.classList.toggle('solo', mode === 'solo');
   arena.classList.toggle('territory', mode === 'territory');
   if (mode === 'territory'){ buildTerritoryArena(); updatePanelNames(); return; }
@@ -4072,12 +4109,15 @@ function buildArena(){
     mines: panelA.querySelector('[data-mines]'),
     time:  panelA.querySelector('[data-time]'),
     hits:  panelA.querySelector('[data-hits]'),
+    hitsStat: panelA.querySelector('[data-hitsstat]'),
+    revealed: panelA.querySelector('[data-revealed]'),
     bar:   panelA.querySelector('.pbar i'),
     stun:  panelA.querySelector('.stun'),
     keys:  panelA.querySelector('.pkeys'),
     nameEl: panelA.querySelector('.pname'),
     panel: panelA
   };
+  if (!showHits && panelA._els.hitsStat) panelA._els.hitsStat.style.display = 'none';
   if (insta) panelA._els.keys.classList.add('insta');
   if (isCoop) panelA._els.keys.textContent = 'SHARED · ' + panelKeysText();
   else        panelA._els.keys.textContent = panelKeysText();
@@ -4093,12 +4133,15 @@ function buildArena(){
       mines: panelB.querySelector('[data-mines]'),
       time:  panelB.querySelector('[data-time]'),
       hits:  panelB.querySelector('[data-hits]'),
+      hitsStat: panelB.querySelector('[data-hitsstat]'),
+      revealed: panelB.querySelector('[data-revealed]'),
       bar:   panelB.querySelector('.pbar i'),
       stun:  panelB.querySelector('.stun'),
       keys:  panelB.querySelector('.pkeys'),
       nameEl: panelB.querySelector('.pname'),
       panel: panelB
     };
+    if (!showHits && panelB._els.hitsStat) panelB._els.hitsStat.style.display = 'none';
     panelB._els.keys.textContent = 'LIVE VIEW · NO ZOOM';
     G.panelThem = panelB;
   }
@@ -4126,6 +4169,8 @@ function buildTerritoryArena(){
     myLand:    panel.querySelector('[data-myland]'),
     theirLand: panel.querySelector('[data-theirland]'),
     time:      panel.querySelector('[data-time]'),
+    hits:      panel.querySelector('[data-hits]'),
+    hitsStat:  panel.querySelector('[data-hitsstat]'),
     myBar:     panel.querySelector('[data-mybar]'),
     theirBar:  panel.querySelector('[data-theirbar]'),
     stun:      panel.querySelector('.stun'),
@@ -4135,6 +4180,7 @@ function buildTerritoryArena(){
     oppNameEl:  panel.querySelector('[data-oname]'),
     panel:     panel
   };
+  if (!usesStunPenalty() && panel._els.hitsStat) panel._els.hitsStat.style.display = 'none';
   const keysEl = panel.querySelector('.pkeys');
   if (G.config.insta) keysEl.classList.add('insta');
   keysEl.textContent = panelKeysText();
@@ -5995,19 +6041,21 @@ function menuHTML(err){
     '</button>';
   }).join('');
 
-  /* Instant Die toggle — only shown for duel / territory. */
+  /* Instant Die toggle — only shown for duel / territory.
+     Both options use the "danger" flavour so the SELECTED one is
+     always highlighted in red, matching the section's danger styling. */
   const supportsInsta = (cfg.mode === 'duel' || cfg.mode === 'territory');
   const instaSection = supportsInsta
     ? ('<div class="config-section danger-mode">' +
         '<div class="config-label">INSTANT DIE</div>' +
         '<div class="config-options">' +
-          '<button class="opt' + (!cfg.insta ? ' active' : '') + '" data-insta="0">' +
-            '<div class="opt-name">OFF</div>' +
-            '<div class="opt-desc">Gamemode rules<br>💣Bomb = 10s stun⚡️<br>🚩Wrong flag = 10s stun⚡</div>' +
-          '</button>' +
-          '<button class="opt danger' + (cfg.insta ? ' active' : '') + '" data-insta="1">' +
-            '<div class="opt-name">ON</div>' +
-            '<div class="opt-desc">Standard rules<br>💣Bomb = loss 💀<br>🚩Flag = no penalty</div>' +
+          '<button class="opt' + (!cfg.insta ? ' danger active' : '') + '" data-insta="0">' +
+            '<div class="opt-name">Gamemode Rules</div>' +
+            '<div class="opt-desc">💣Bomb = 10s stun⚡️<br>🚩Wrong flag = 10s stun⚡</div>' +
+         '</button>' +
+          '<button class="opt' + (cfg.insta ? ' danger active' : '') + '" data-insta="1">' +
+            '<div class="opt-name">Standard Rules</div>' +
+            '<div class="opt-desc">💣Bomb = loss 💥<br>🚩Flag = no penalty</div>' +
           '</button>' +
         '</div>' +
       '</div>')
@@ -6889,24 +6937,26 @@ function endGame(result, icon, title, sub, elapsed, cards, opts){
   G.rematchThem = false;
   G.rematchLock = false;
 
+  /* Record the win for every mode that reaches this path — including
+     Territory.  endTerritoryScreen() records its own result and calls
+     this with skipRecord:true, so the two paths never double-count. */
   if (!opts.skipRecord && result === 'win' && G.config && elapsed > 0){
     const mode = G.config.mode;
-    if (mode !== 'territory'){
-      const partner = (mode === 'coop' && G.theirName && G.theirNameKey)
-        ? { name: G.theirName, key: G.theirNameKey }
-        : null;
-      try {
-        recordWin(
-          mode,
-          G.config.style,
-          G.config.size,
-          !!G.config.insta,
-          Math.max(1, Math.round(elapsed)),
-          true,
-          partner
-        ).catch(()=>{});
-      } catch(e){}
-    }
+    const isTeam = (mode === 'coop' || mode === 'territory');
+    const partner = (isTeam && G.theirName && G.theirNameKey)
+      ? { name: G.theirName, key: G.theirNameKey }
+      : null;
+    try {
+      recordWin(
+        mode,
+        G.config.style,
+        G.config.size,
+        !!G.config.insta,
+        Math.max(1, Math.round(elapsed)),
+        true,
+        partner
+      ).catch(()=>{});
+    } catch(e){}
   }
 
   const statusMap = {
@@ -6920,12 +6970,24 @@ function endGame(result, icon, title, sub, elapsed, cards, opts){
 
   let cardsHtml = cards;
   if (!cardsHtml){
+    const stunMode = usesStunPenalty();
     cardsHtml =
-      '<div class="statcard"><div class="slabel">TIME</div><div class="sval">' + formatClock(elapsed) + '</div></div>' +
-      '<div class="statcard"><div class="slabel">YOUR HITS</div><div class="sval">' + (G.me ? G.me.hits : 0) + '</div></div>';
-    if (G.them){
-      cardsHtml += '<div class="statcard lose"><div class="slabel">THEIR HITS</div><div class="sval">' + G.them.hits + '</div></div>';
+      '<div class="statcard"><div class="slabel">TIME</div><div class="sval">' + formatClock(elapsed) + '</div></div>';
+
+    if (stunMode){
+      cardsHtml +=
+        '<div class="statcard"><div class="slabel">YOUR HITS</div><div class="sval">' + (G.me ? G.me.hits : 0) + '</div></div>';
+      if (G.them){
+        cardsHtml += '<div class="statcard lose"><div class="slabel">THEIR HITS</div><div class="sval">' + G.them.hits + '</div></div>';
+      }
+    } else {
+      cardsHtml +=
+        '<div class="statcard win"><div class="slabel">YOU REVEALED</div><div class="sval">' + myRevealedCount() + '</div></div>';
+      if (G.them){
+        cardsHtml += '<div class="statcard lose"><div class="slabel">THEY REVEALED</div><div class="sval">' + theirRevealedCount() + '</div></div>';
+      }
     }
+
     const pct = mapRevealStats();
     if (pct){
       cardsHtml +=
@@ -7027,12 +7089,14 @@ function updateHUD(now){
       setText(els.myLand, mine);
       setText(els.theirLand, theirs);
       setText(els.time, formatClock(elapsed));
+      setText(els.hits, G.me.hits);
       if (els.myBar)    els.myBar.style.width    = (mine / total * 100).toFixed(1) + '%';
       if (els.theirBar) els.theirBar.style.width = (theirs / total * 100).toFixed(1) + '%';
     } else {
       setText(els.mines, Math.max(0, G.board.mineCount - bs.flagCount));
       setText(els.time, formatClock(elapsed));
       setText(els.hits, G.me.hits);
+      setText(els.revealed, myRevealedCount());
       if (els.bar) els.bar.style.width = (bs.safeRevealed / Math.max(1, G.board.safeCount) * 100).toFixed(1) + '%';
     }
     if (els.stun){
@@ -7065,6 +7129,7 @@ function updateHUD(now){
     setText(te.mines, Math.max(0, (layout ? layout.mineCount : 0) - G.theirBoard.flagCount));
     setText(te.time, formatClock(elapsed));
     setText(te.hits, G.them ? G.them.hits : 0);
+    setText(te.revealed, theirRevealedCount());
     if (te.bar && layout) {
       te.bar.style.width = (G.theirBoard.safeRevealed / Math.max(1, layout.safeCount) * 100).toFixed(1) + '%';
     }

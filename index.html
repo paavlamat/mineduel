@@ -3200,6 +3200,10 @@ function makeBoardState(rows, cols){
     revealed: Array.from({length: rows}, () => new Array(cols).fill(false)),
     flagged:  Array.from({length: rows}, () => new Array(cols).fill(false)),
     owner:    Array.from({length: rows}, () => new Array(cols).fill(0)),
+    /* Tiles claimed by a wrongfully-placed flag.  They still show as
+       the flagger's territory and feed the on-screen land counter,
+       but are excluded from the final land-grab comparison. */
+    fakeFlag: Array.from({length: rows}, () => new Array(cols).fill(false)),
     revealAt: Array.from({length: rows}, () => new Array(cols).fill(0)),
     flagAt:   Array.from({length: rows}, () => new Array(cols).fill(0)),
     count: 0,
@@ -4534,6 +4538,7 @@ function applyReveal(boardState, board, r, c, owner){
     boardState.flagged[r][c] = false;
     boardState.flagCount = Math.max(0, boardState.flagCount - 1);
   }
+  if (boardState.fakeFlag) boardState.fakeFlag[r][c] = false;
   if (board.mines.has(r + ',' + c)){
     boardState.revealed[r][c] = true;
     boardState.revealAt[r][c] = performance.now();
@@ -4553,6 +4558,7 @@ function applyReveal(boardState, board, r, c, owner){
       boardState.flagged[cr][cc] = false;
       boardState.flagCount = Math.max(0, boardState.flagCount - 1);
     }
+    if (boardState.fakeFlag) boardState.fakeFlag[cr][cc] = false;
     boardState.revealed[cr][cc] = true;
     if (owner && boardState.owner) boardState.owner[cr][cc] = owner;
     boardState.revealAt[cr][cc] = now + Math.min(d, 14) * 24;
@@ -4611,6 +4617,7 @@ function revealAllMines(boardState, board, originR, originC){
       const d = Math.hypot(r - originR, c - originC);
       boardState.revealed[r][c] = true;
       if (boardState.owner) boardState.owner[r][c] = 0;
+      if (boardState.fakeFlag) boardState.fakeFlag[r][c] = false;
       boardState.revealAt[r][c] = now + d * 35;
     }
   }
@@ -4622,6 +4629,22 @@ function countLand(boardState, owner){
   for (let r = 0; r < boardState.rows; r++)
     for (let c = 0; c < boardState.cols; c++)
       if (boardState.owner[r][c] === owner) n++;
+  return n;
+}
+/* Land that actually counts towards the final land-grab comparison.
+   Wrongfully-placed flags are shown as the flagger's territory and
+   are counted in countLand() for the on-screen stats, but they are
+   excluded here so a fake claim never decides the match. */
+function countRealLand(boardState, owner){
+  let n = 0;
+  if (!boardState.owner) return 0;
+  for (let r = 0; r < boardState.rows; r++){
+    for (let c = 0; c < boardState.cols; c++){
+      if (boardState.owner[r][c] !== owner) continue;
+      if (boardState.fakeFlag && boardState.fakeFlag[r][c]) continue;
+      n++;
+    }
+  }
   return n;
 }
 /* Like countLand, but only counts tiles that are actually revealed.
@@ -4677,6 +4700,13 @@ function mapRevealStats(){
 
 function canTouchTerritoryRaw(boardState, board, r, c, owner){
   if (!boardState || !boardState.owner || !board) return true;
+  /* An enemy flag that sits on a non-mine tile is fake and may be
+     removed from anywhere, even before the map has unlocked. */
+  if (boardState.flagged && boardState.flagged[r][c] &&
+      boardState.fakeFlag && boardState.fakeFlag[r][c] &&
+      boardState.owner[r][c] && boardState.owner[r][c] !== owner){
+    return true;
+  }
   if (boardState.owner[r][c] === owner) return true;
   for (const [nr, nc] of board.neighbors(r, c, board.rows, board.cols)){
     if (boardState.owner[nr][nc] === owner) return true;
@@ -4692,7 +4722,13 @@ function hasAvailableMove(boardState, board, owner){
   for (let r = 0; r < board.rows; r++){
     for (let c = 0; c < board.cols; c++){
       if (boardState.revealed[r][c]) continue;
-      if (boardState.flagged[r][c]) continue;
+      if (boardState.flagged[r][c]){
+        /* A wrongfully-placed enemy flag can be removed, so it still
+           counts as a legal move for the player. */
+        const flagOwner = boardState.owner[r][c];
+        const isFake = boardState.fakeFlag && boardState.fakeFlag[r][c];
+        if (!(isFake && flagOwner && flagOwner !== owner)) continue;
+      }
       if (canTouchTerritoryRaw(boardState, board, r, c, owner)) return true;
     }
   }
@@ -4950,6 +4986,7 @@ function handleTerritoryBoom(r, c, owner){
   if (iTriggered) G.deathTile = { r, c };
   if (bs){
     if (bs.owner) bs.owner[r][c] = owner;
+    if (bs.fakeFlag) bs.fakeFlag[r][c] = false;
     if (!bs.revealed[r][c]){
       bs.revealed[r][c] = true;
       bs.revealAt[r][c] = performance.now();
@@ -5005,32 +5042,40 @@ function afterSharedReveal(){
   }
 }
 
-function finishTerritory(fromNetwork, land1, land2){
+function finishTerritory(fromNetwork, land1, land2, real1, real2){
   if (G.state === 'over') return;
   if (!fromNetwork){
     const l1 = countLand(G.myBoard, 1);
     const l2 = countLand(G.myBoard, 2);
-    if (G.role === 'host') send({ t:'terr_over', land1: l1, land2: l2 });
-    land1 = l1; land2 = l2;
+    const r1 = countRealLand(G.myBoard, 1);
+    const r2 = countRealLand(G.myBoard, 2);
+    if (G.role === 'host'){
+      send({ t:'terr_over', land1: l1, land2: l2, real1: r1, real2: r2 });
+    }
+    land1 = l1; land2 = l2; real1 = r1; real2 = r2;
   } else if (G.role !== 'guest'){
     return;
   }
-  endTerritoryScreen(land1 || 0, land2 || 0);
+  if (real1 === undefined || real1 === null) real1 = land1 || 0;
+  if (real2 === undefined || real2 === null) real2 = land2 || 0;
+  endTerritoryScreen(land1 || 0, land2 || 0, real1 || 0, real2 || 0);
 }
 
-function endTerritoryScreen(land1, land2){
+function endTerritoryScreen(land1, land2, real1, real2){
   if (G.state === 'over') return;
   const mine   = (G.myOwner === 1) ? land1 : land2;
   const theirs = (G.myOwner === 1) ? land2 : land1;
+  const myReal     = (G.myOwner === 1) ? real1 : real2;
+  const theirReal  = (G.myOwner === 1) ? real2 : real1;
   const total  = Math.max(1, G.board ? (G.board.rows * G.board.cols) : (mine + theirs));
   const minePct   = (mine   / total * 100);
   const theirsPct = (theirs / total * 100);
 
   let result, icon, title, sub;
-  if (mine > theirs){
+  if (myReal > theirReal){
     result = 'win';  icon = '🏆'; title = 'LAND GRAB WON!';
     sub = 'You claimed <b style="color:#4dd8ff">' + mine + '</b> tiles — opponent got <b style="color:#ff3d81">' + theirs + '</b>.';
-  } else if (theirs > mine){
+  } else if (theirReal > myReal){
     result = 'lose'; icon = '💀'; title = 'LAND GRAB LOST';
     sub = 'Opponent claimed <b style="color:#ff3d81">' + theirs + '</b> tiles — you got <b style="color:#4dd8ff">' + mine + '</b>.';
   } else {
@@ -5080,14 +5125,16 @@ function localFlag(){
     if (!canTouchTerritory(bs, G.board, r, c, G.myOwner)) return;
 
     if (insta){
-      /* No flag penalty — plain marker toggle. */
-      const on = bs.flagged[r][c] ? 0 : 1;
-      bs.flagged[r][c] = !!on;
-      bs.flagAt[r][c] = performance.now();
-      bs.flagCount += on ? 1 : -1;
-      on ? SFX.flag() : SFX.unflag();
-      if (G.role === 'host') send({ t:'delta', flg: [[r, c, on]], own: 0 });
-      else send({ t:'flag', r, c });
+      /* Standard rules: no penalty, but wrong flags still claim
+         the tile visually.  The host processes the flag through
+         the authoritative handler so both peers agree on which
+         claims are fake. */
+      if (G.role === 'host'){
+        hostApplyTerritoryFlag(r, c, G.myOwner);
+      } else {
+        bs.flagged[r][c] ? SFX.unflag() : SFX.flag();
+        send({ t:'flag', r, c });
+      }
       return;
     }
 
@@ -5321,23 +5368,44 @@ function hostApplyTerritoryFlag(r, c, owner){
   const bs = G.myBoard;
   if (bs.revealed[r][c]) return;
 
-  /* ── INSTANT: plain marker toggle, no penalty, no reveal ── */
+  /* ── INSTANT: wrongfully placed flags still claim the tile for
+        the flagger so it appears in their territory colour and
+        bumps their land counter, but they are tagged as fake so
+        they never decide the final land-grab comparison.  Enemies
+        may remove a fake flag from anywhere on the board. ── */
   if (G.config.insta){
-    const on = bs.flagged[r][c] ? 0 : 1;
-    bs.flagged[r][c] = !!on;
-    bs.flagAt[r][c] = performance.now();
-    bs.flagCount += on ? 1 : -1;
-    if (bs.owner){
-      if (on){
-        const isMine = G.board.mines.has(r + ',' + c);
-        bs.owner[r][c] = isMine ? owner : 0;
-      } else {
-        if (bs.owner[r][c] === owner) bs.owner[r][c] = 0;
+    if (bs.flagged[r][c]){
+      /* Removing an existing flag */
+      const flagOwner  = bs.owner ? bs.owner[r][c] : 0;
+      const flagIsFake = bs.fakeFlag ? bs.fakeFlag[r][c] : false;
+      const isEnemyFlag = flagOwner && flagOwner !== owner;
+
+      /* An enemy's *correct* flag cannot be removed. */
+      if (isEnemyFlag && !flagIsFake){
+        if (owner === G.myOwner) SFX.denied();
+        return;
       }
+
+      bs.flagged[r][c] = false;
+      bs.flagAt[r][c] = performance.now();
+      bs.flagCount = Math.max(0, bs.flagCount - 1);
+      if (bs.owner && bs.owner[r][c] === flagOwner) bs.owner[r][c] = 0;
+      if (bs.fakeFlag) bs.fakeFlag[r][c] = false;
+      send({ t:'delta', flg: [[r, c, 0]], own: 0, fake: 0 });
+      if (owner === G.myOwner) SFX.unflag();
+      checkTerritoryUnlock();
+      return;
     }
-    send({ t:'delta', flg: [[r, c, on]],
-           own: (on && G.board.mines.has(r + ',' + c)) ? owner : 0 });
-    if (owner === G.myOwner) on ? SFX.flag() : SFX.unflag();
+
+    /* Placing a flag */
+    const isMine = G.board.mines.has(r + ',' + c);
+    bs.flagged[r][c] = true;
+    bs.flagAt[r][c] = performance.now();
+    bs.flagCount++;
+    if (bs.owner) bs.owner[r][c] = owner;
+    if (bs.fakeFlag) bs.fakeFlag[r][c] = !isMine;
+    send({ t:'delta', flg: [[r, c, 1]], own: owner, fake: isMine ? 0 : 1 });
+    if (owner === G.myOwner) SFX.flag();
     checkTerritoryUnlock();
     return;
   }
@@ -5678,7 +5746,8 @@ function handleMessage(msg){
 
     case 'terr_over':
       if (G.config.mode === 'territory'){
-        finishTerritory(true, msg.land1 || 0, msg.land2 || 0);
+        finishTerritory(true, msg.land1 || 0, msg.land2 || 0,
+                        msg.real1, msg.real2);
       }
       break;
 
@@ -5742,6 +5811,7 @@ function applyDelta(msg){
       bs.count++;
       if (!G.board.mines.has(r + ',' + c)) bs.safeRevealed++;
       if (msg.own !== undefined && bs.owner) bs.owner[r][c] = msg.own ? msg.own : 0;
+      if (bs.fakeFlag) bs.fakeFlag[r][c] = false;
       if (!revealedAny){
         revealedAny = true;
         if (G.board.adj && G.board.adj[r]) firstVal = G.board.adj[r][c] || 0;
@@ -5764,11 +5834,15 @@ function applyDelta(msg){
         if (on && msg.own !== undefined) bs.owner[r][c] = msg.own ? msg.own : 0;
         else if (!on) bs.owner[r][c] = 0;
       }
+      if (bs.fakeFlag){
+        bs.fakeFlag[r][c] = on ? !!msg.fake : false;
+      }
     }
   }
   if (msg.mine && bs.owner){
     const r = msg.mine[0], c = msg.mine[1];
     bs.owner[r][c] = (msg.own !== undefined) ? msg.own : 0;
+    if (bs.fakeFlag) bs.fakeFlag[r][c] = false;
   }
   if (msg.lose){
     handleCoopLoss(msg.r, msg.c, false, msg.by === G.myOwner);
@@ -6762,6 +6836,7 @@ function buildFullRevealState(baseState, board){
     for (let c = 0; c < board.cols; c++){
       s.revealed[r][c] = true;
       if (baseState.owner) s.owner[r][c] = baseState.owner[r][c];
+      if (baseState.fakeFlag) s.fakeFlag[r][c] = baseState.fakeFlag[r][c];
     }
   }
   s.safeRevealed = board.safeCount;
@@ -6778,6 +6853,7 @@ function buildEndReviewState(baseState, board, deathTile){
       s.flagged[r][c]  = baseState.flagged[r][c];
       s.flagAt[r][c]   = 1;
       if (baseState.owner) s.owner[r][c] = baseState.owner[r][c];
+      if (baseState.fakeFlag) s.fakeFlag[r][c] = baseState.fakeFlag[r][c];
       if (rev && !isMine) s.safeRevealed++;
     }
   }

@@ -1777,8 +1777,319 @@ function solveBoard(board, opening){
   return { count: count, state: state };
 }
 
+/* ── Territory-aware solver ──────────────────────────────────────
+   Simulates two players expanding from their own start tiles.  A
+   tile may only be revealed or flagged by a player who already owns
+   that tile or owns a tile adjacent to it (mirroring the in-game
+   `canTouchTerritory` rule).  Revealing a zero tile floods and
+   claims the connected zero-region, exactly like the live game.
+   Returns `null` when the simulation would expose a mine, otherwise
+   `{ count, state }` where `count` is the number of safe tiles that
+   can be cleared using pure logic — no guessing required.
+   ─────────────────────────────────────────────────────────────── */
+function solveBoardTerritory(board, starts){
+  const rows = board.rows, cols = board.cols;
+  const N = rows * cols;
+  const state = new Uint8Array(N);      /* 0 hidden · 1 revealed · 2 flagged */
+  const owner = new Int8Array(N);       /* 0 none · 1 player1 · 2 player2     */
+  const adjFlat = new Int16Array(N);
+  const nbrs = new Array(N);
+
+  for (let r = 0; r < rows; r++){
+    for (let c = 0; c < cols; c++){
+      const i = r * cols + c;
+      adjFlat[i] = board.adj[r][c];
+      const list = [];
+      const nl = board.neighbors(r, c, rows, cols);
+      for (let k = 0; k < nl.length; k++) list.push(nl[k][0] * cols + nl[k][1]);
+      nbrs[i] = list;
+    }
+  }
+
+  function canTouch(i, who){
+    if (owner[i] === who) return true;
+    const list = nbrs[i];
+    for (let k = 0; k < list.length; k++){
+      if (owner[list[k]] === who) return true;
+    }
+    return false;
+  }
+  function toucher(i){
+    if (canTouch(i, 1)) return 1;
+    if (canTouch(i, 2)) return 2;
+    return 0;
+  }
+
+  function revealAt(r, c, who){
+    const stack = [r * cols + c];
+    while (stack.length){
+      const i = stack.pop();
+      if (state[i] === 1) continue;
+      const cr = (i / cols) | 0;
+      const cc = i - cr * cols;
+      if (board.mines.has(cr + ',' + cc)) return false;
+      state[i] = 1;
+      owner[i] = who;
+      if (adjFlat[i] === 0){
+        const list = nbrs[i];
+        for (let k = 0; k < list.length; k++){
+          const j = list[k];
+          if (state[j] !== 1) stack.push(j);
+        }
+      }
+    }
+    return true;
+  }
+
+  /* Both start tiles and every tile touching them are guaranteed
+     mine-free by the generator, so each player can always open with
+     them — this mirrors what a real player does on their first move. */
+  for (let s = 0; s < starts.length && s < 2; s++){
+    const who = s + 1;
+    const st = starts[s];
+    if (!st || st.r < 0 || st.r >= rows || st.c < 0 || st.c >= cols) continue;
+    if (!revealAt(st.r, st.c, who)) return null;
+    const ring = board.neighbors(st.r, st.c, rows, cols);
+    for (let k = 0; k < ring.length; k++){
+      if (!revealAt(ring[k][0], ring[k][1], who)) return null;
+    }
+  }
+
+  const MAX_ITER = 400;
+  const hiddenBuf = new Int32Array(64);
+
+  for (let iter = 0; iter < MAX_ITER; iter++){
+    let changed = false;
+
+    /* ── rule 1: plain counting ─────────────────────────────── */
+    for (let i = 0; i < N; i++){
+      if (state[i] !== 1) continue;
+      const a = adjFlat[i];
+      if (a <= 0) continue;
+      const list = nbrs[i];
+      let flags = 0, hn = 0;
+      for (let k = 0; k < list.length; k++){
+        const st = state[list[k]];
+        if (st === 2) flags++;
+        else if (st === 0) hiddenBuf[hn++] = list[k];
+      }
+      if (hn === 0) continue;
+      if (flags === a){
+        for (let k = 0; k < hn; k++){
+          const j = hiddenBuf[k];
+          if (state[j] !== 0) continue;
+          const who = toucher(j);
+          if (!who) continue;
+          const jr = (j / cols) | 0;
+          if (!revealAt(jr, j - jr * cols, who)) return null;
+          changed = true;
+        }
+      } else if (flags + hn === a){
+        for (let k = 0; k < hn; k++){
+          const j = hiddenBuf[k];
+          if (state[j] !== 0) continue;
+          const who = toucher(j);
+          if (!who) continue;
+          state[j] = 2;
+          owner[j] = who;
+          changed = true;
+        }
+      }
+    }
+    if (changed) continue;
+
+    /* ── rule 2: subset elimination ─────────────────────────── */
+    const consHidden = [], consRem = [];
+    for (let i = 0; i < N; i++){
+      if (state[i] !== 1) continue;
+      const a = adjFlat[i];
+      if (a <= 0) continue;
+      const list = nbrs[i];
+      let flags = 0;
+      const h = [];
+      for (let k = 0; k < list.length; k++){
+        const st = state[list[k]];
+        if (st === 2) flags++;
+        else if (st === 0) h.push(list[k]);
+      }
+      if (!h.length) continue;
+      const rem = a - flags;
+      if (rem < 0 || rem > h.length) continue;
+      consHidden.push(h);
+      consRem.push(rem);
+    }
+    const cn = consHidden.length;
+    if (cn){
+      const byCell = new Map();
+      for (let i = 0; i < cn; i++){
+        const h = consHidden[i];
+        for (let k = 0; k < h.length; k++){
+          let arr = byCell.get(h[k]);
+          if (!arr){ arr = []; byCell.set(h[k], arr); }
+          arr.push(i);
+        }
+      }
+      const toReveal = [], toFlag = [];
+      const seenPairs = new Set();
+      byCell.forEach(list => {
+        const L = list.length;
+        for (let x = 0; x < L; x++){
+          for (let y = x + 1; y < L; y++){
+            const i = list[x], j = list[y];
+            const key = i < j ? (i * 8192 + j) : (j * 8192 + i);
+            if (seenPairs.has(key)) continue;
+            seenPairs.add(key);
+            let A = i, B = j;
+            if (consHidden[A].length >= consHidden[B].length){ A = j; B = i; }
+            if (consHidden[A].length >= consHidden[B].length) continue;
+            const ha = consHidden[A], hb = consHidden[B];
+            let subset = true;
+            for (let t = 0; t < ha.length; t++){
+              if (hb.indexOf(ha[t]) === -1){ subset = false; break; }
+            }
+            if (!subset) continue;
+            const remDiff = consRem[B] - consRem[A];
+            const dLen = hb.length - ha.length;
+            if (remDiff === 0){
+              for (let t = 0; t < hb.length; t++)
+                if (ha.indexOf(hb[t]) === -1) toReveal.push(hb[t]);
+            } else if (remDiff === dLen){
+              for (let t = 0; t < hb.length; t++)
+                if (ha.indexOf(hb[t]) === -1) toFlag.push(hb[t]);
+            }
+          }
+        }
+      });
+      let subChanged = false;
+      for (let k = 0; k < toReveal.length; k++){
+        const idx = toReveal[k];
+        if (state[idx] !== 0) continue;
+        const who = toucher(idx);
+        if (!who) continue;
+        const ir = (idx / cols) | 0;
+        if (!revealAt(ir, idx - ir * cols, who)) return null;
+        subChanged = true;
+      }
+      for (let k = 0; k < toFlag.length; k++){
+        const idx = toFlag[k];
+        if (state[idx] !== 0) continue;
+        const who = toucher(idx);
+        if (!who) continue;
+        state[idx] = 2;
+        owner[idx] = who;
+        subChanged = true;
+      }
+      if (subChanged) continue;
+    }
+
+    /* ── rule 3: exhaustive enumeration of small components ─── */
+    const allCons = [];
+    const hiddenSet = new Set();
+    for (let i = 0; i < N; i++){
+      if (state[i] !== 1) continue;
+      const a = adjFlat[i];
+      if (a <= 0) continue;
+      const list = nbrs[i];
+      let flags = 0;
+      const h = [];
+      for (let k = 0; k < list.length; k++){
+        const st = state[list[k]];
+        if (st === 2) flags++;
+        else if (st === 0) h.push(list[k]);
+      }
+      if (!h.length) continue;
+      const rem = a - flags;
+      if (rem < 0 || rem > h.length) continue;
+      allCons.push({ cells: h, mines: rem });
+      for (let k = 0; k < h.length; k++) hiddenSet.add(h[k]);
+    }
+
+    let deduced = false;
+    let boom = false;
+    if (allCons.length && hiddenSet.size){
+      const parent = new Map();
+      const find = function(x){
+        let r = x;
+        while (parent.get(r) !== r) r = parent.get(r);
+        while (parent.get(x) !== r){
+          const nx = parent.get(x);
+          parent.set(x, r);
+          x = nx;
+        }
+        return r;
+      };
+      hiddenSet.forEach(function(h){ parent.set(h, h); });
+      for (let ci = 0; ci < allCons.length; ci++){
+        const cells = allCons[ci].cells;
+        for (let k = 1; k < cells.length; k++){
+          const ra = find(cells[0]);
+          const rb = find(cells[k]);
+          if (ra !== rb) parent.set(ra, rb);
+        }
+      }
+
+      const comps = new Map();
+      for (let ci = 0; ci < allCons.length; ci++){
+        const c = allCons[ci];
+        const root = find(c.cells[0]);
+        let comp = comps.get(root);
+        if (!comp){ comp = { cells: new Set(), constraints: [] }; comps.set(root, comp); }
+        for (let k = 0; k < c.cells.length; k++) comp.cells.add(c.cells[k]);
+        comp.constraints.push(c);
+      }
+
+      comps.forEach(function(comp){
+        if (deduced || boom) return;
+        const cells = [];
+        comp.cells.forEach(function(cell){ cells.push(cell); });
+        if (cells.length > 60) return;
+
+        const cellIndex = new Map();
+        for (let i = 0; i < cells.length; i++) cellIndex.set(cells[i], i);
+
+        const localCons = [];
+        for (let ci = 0; ci < comp.constraints.length; ci++){
+          const c = comp.constraints[ci];
+          const lc = [];
+          for (let k = 0; k < c.cells.length; k++) lc.push(cellIndex.get(c.cells[k]));
+          localCons.push({ cells: lc, mines: c.mines });
+        }
+
+        const res = enumerateSolutions(cells.length, localCons, 200000);
+        if (!res || res.count === 0) return;
+
+        for (let i = 0; i < cells.length; i++){
+          const cell = cells[i];
+          if (state[cell] !== 0) continue;
+          const isSafe = (res.mineCounts[i] === 0);
+          const isMine = (res.mineCounts[i] === res.count);
+          if (!isSafe && !isMine) continue;
+          const who = toucher(cell);
+          if (!who) continue;
+          if (isSafe){
+            const cr = (cell / cols) | 0;
+            if (!revealAt(cr, cell - cr * cols, who)){ boom = true; return; }
+          } else {
+            state[cell] = 2;
+            owner[cell] = who;
+          }
+          deduced = true;
+        }
+      });
+    }
+    if (boom) return null;
+    if (deduced) continue;
+
+    break;
+  }
+
+  let count = 0;
+  for (let i = 0; i < N; i++) if (state[i] === 1) count++;
+  return { count: count, state: state };
+}
+
 function generateSolvableBoard(seed, style, cols, rows, mineCount,
-                               clickR, clickC, starts, opening){
+                               clickR, clickC, starts, opening, territory){
   const buildLevels = (hi, lo, steps) => {
     const out = [];
     for (let i = 0; i <= steps; i++){
@@ -1788,21 +2099,35 @@ function generateSolvableBoard(seed, style, cols, rows, mineCount,
     return out;
   };
 
+  const solve = b => {
+    if (!territory) return solveBoard(b, opening);
+    const r = solveBoardTerritory(b, starts);
+    return r || { count: 0 };
+  };
+
   const floor = Math.max(1, Math.floor(mineCount * 0.4));
   const levels = buildLevels(mineCount, floor, 14);
 
   let best = null, bestSeed = seed, bestScore = -1;
   let attempt = 0;
 
+  const startedAt = Date.now();
+  /* Territory solving is heavier than the global solver, so cap the
+     work so the UI never freezes for an unreasonable amount of time.
+     A fully solvable board always short-circuits this loop anyway. */
+  const BUDGET = territory ? 4000 : 6000;
+  const overBudget = () => (Date.now() - startedAt) > BUDGET;
+
   const perLevel = Math.max(18, Math.floor(SOLVER_MAX_ATTEMPTS / levels.length));
 
   for (let li = 0; li < levels.length; li++){
+    if (overBudget()) break;
     const mines = levels[li];
     for (let k = 0; k < perLevel; k++){
       attempt++;
       const s = (seed + Math.imul(attempt, 0x9E3779B9)) >>> 0;
       const b = genBoardDeferred(s, style, cols, rows, mines, clickR, clickC, starts);
-      const res = solveBoard(b, opening);
+      const res = solve(b);
       if (res.count > bestScore){
         bestScore = res.count;
         best = b;
@@ -1817,12 +2142,13 @@ function generateSolvableBoard(seed, style, cols, rows, mineCount,
   const mid = Math.max(1, Math.floor(mineCount * 0.7));
   const midLevels = buildLevels(mid, floor, 8);
   for (let li = 0; li < midLevels.length; li++){
+    if (overBudget()) break;
     const mines = midLevels[li];
     for (let k = 0; k < 30; k++){
       attempt++;
       const s = (seed + Math.imul(attempt, 0x85EBCA6B)) >>> 0;
       const b = genBoardDeferred(s, style, cols, rows, mines, clickR, clickC, starts);
-      const res = solveBoard(b, opening);
+      const res = solve(b);
       if (res.count > bestScore){
         bestScore = res.count;
         best = b;
@@ -1834,12 +2160,14 @@ function generateSolvableBoard(seed, style, cols, rows, mineCount,
     }
   }
 
+  /* Sparse fallback — always attempted so we never hand back a board
+     that the solver could not touch at all. */
   const sparse = Math.max(1, Math.floor(mineCount * 0.3));
   for (let k = 0; k < 200; k++){
     attempt++;
     const s = (seed + Math.imul(attempt, 0xC2B2AE35)) >>> 0;
     const b = genBoardDeferred(s, style, cols, rows, sparse, clickR, clickC, starts);
-    const res = solveBoard(b, opening);
+    const res = solve(b);
     if (res.count > bestScore){
       bestScore = res.count;
       best = b;
@@ -1848,6 +2176,12 @@ function generateSolvableBoard(seed, style, cols, rows, mineCount,
     if (res.count >= b.safeCount){
       return { board: b, seed: s, score: res.count };
     }
+  }
+
+  if (!best){
+    best = genBoardDeferred(seed, style, cols, rows, mineCount, clickR, clickC, starts);
+    bestSeed = seed;
+    bestScore = 0;
   }
 
   return { board: best, seed: bestSeed, score: bestScore };
@@ -1866,12 +2200,13 @@ function buildBoardWorkerSource(){
     genBoardDeferred.toString(),
     enumerateSolutions.toString(),
     solveBoard.toString(),
+    solveBoardTerritory.toString(),
     generateSolvableBoard.toString(),
     'self.onmessage = function(ev){',
     '  var d = ev.data || {};',
     '  try {',
     '    var res = generateSolvableBoard(d.seed >>> 0, d.style, d.cols, d.rows, d.mineCount,',
-    '                                    d.clickR, d.clickC, d.starts, d.opening);',
+    '                                    d.clickR, d.clickC, d.starts, d.opening, !!d.territory);',
     '    self.postMessage({',
     '      id: d.id, ok: true,',
     '      mines: Array.from(res.board.mines),',
@@ -1925,7 +2260,8 @@ function ensureBoardWorker(){
 function generateBoardSync(params){
   const res = generateSolvableBoard(
     params.seed, params.style, params.cols, params.rows, params.mineCount,
-    params.clickR, params.clickC, params.starts, params.opening
+    params.clickR, params.clickC, params.starts, params.opening,
+    !!params.territory
   );
   return {
     ok: true,
@@ -1951,7 +2287,8 @@ function generateBoardAsync(params){
         seed: params.seed, style: params.style,
         cols: params.cols, rows: params.rows, mineCount: params.mineCount,
         clickR: params.clickR, clickC: params.clickC,
-        starts: params.starts, opening: params.opening
+        starts: params.starts, opening: params.opening,
+        territory: !!params.territory
       });
     } catch(e){
       boardWorkerPending.delete(id);
@@ -1994,7 +2331,8 @@ function kickPregen(){
     cols: d.cols, rows: d.rows, mineCount: d.mines,
     clickR: r, clickC: c,
     starts: [{ r: r, c: c }],
-    opening: [[r, c]]
+    opening: [[r, c]],
+    territory: false
   });
 }
 
@@ -2023,7 +2361,8 @@ function ensureBoardReadyAsync(clickR, clickC){
       style: G.config.style,
       cols: d.cols, rows: d.rows, mineCount: d.mines,
       clickR: clickR, clickC: clickC,
-      starts: starts, opening: opening
+      starts: starts, opening: opening,
+      territory: mode === 'territory'
     });
   }
   cancelPregen();
@@ -2040,7 +2379,8 @@ function ensureBoardReadyAsync(clickR, clickC){
       style: G.config.style,
       cols: d.cols, rows: d.rows, mineCount: d.mines,
       clickR: clickR, clickC: clickC,
-      starts: starts, opening: opening
+      starts: starts, opening: opening,
+      territory: mode === 'territory'
     }), clickR, clickC);
   });
   return genInFlight;
@@ -7371,9 +7711,12 @@ function startMatch(seed, role, seedGuest){
 
   if (mode === 'territory'){
     const opening = starts.map(s => [s.r, s.c]);
+    /* Territory boards must be solvable *from each player's own side
+       of the map*, so the generator runs a territory-aware solver
+       that respects ownership/adjacency while expanding. */
     const res = generateSolvableBoard(
       G.mySeed, G.config.style, d.cols, d.rows, d.mines,
-      undefined, undefined, starts, opening
+      undefined, undefined, starts, opening, true
     );
     G.board = res.board;
     G.boardSeed = res.seed;

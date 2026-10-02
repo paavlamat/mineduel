@@ -1051,7 +1051,7 @@ const ZOOM_RATE = 2.4;
 const OPPONENT_RENDER_MS = 33;
 
 /* Total solve attempts per generated board. */
-const SOLVER_MAX_ATTEMPTS = 300;
+const SOLVER_MAX_ATTEMPTS = 500;
 
 const TILES_PER_BOMB = {
   square: 4,
@@ -1737,24 +1737,36 @@ function solveBoard(board, opening){
   return { count: count, state: state };
 }
 
+/* ─────────────────────────────────────────────────────────────
+   Improved solvable board generator.
+
+   Previous version frequently gave up when only a handful of
+   tiles remained hidden — players would then be forced to guess.
+   This version:
+     · walks down through more (finer) mine-count levels
+     · runs more attempts per level
+     · adds a second sweep at ~70% and ~50% of nominal density
+     · falls back to a very sparse sweep which is almost always
+       fully solvable.
+   ───────────────────────────────────────────────────────────── */
 function generateSolvableBoard(seed, style, cols, rows, mineCount,
                                clickR, clickC, starts, opening){
-  const floor = Math.max(1, Math.floor(mineCount * 0.55));
-  const levels = [];
-  if (mineCount <= floor){
-    levels.push(mineCount);
-  } else {
-    const steps = 9;
+  const buildLevels = (hi, lo, steps) => {
+    const out = [];
     for (let i = 0; i <= steps; i++){
-      const m = Math.round(mineCount - (mineCount - floor) * (i / steps));
-      if (m >= 1 && levels[levels.length - 1] !== m) levels.push(m);
+      const m = Math.round(hi - (hi - lo) * (i / steps));
+      if (m >= 1 && (out.length === 0 || out[out.length - 1] !== m)) out.push(m);
     }
-  }
+    return out;
+  };
 
-  const perLevel = Math.max(24, Math.floor(SOLVER_MAX_ATTEMPTS / levels.length));
+  const floor = Math.max(1, Math.floor(mineCount * 0.4));
+  const levels = buildLevels(mineCount, floor, 14);
 
   let best = null, bestSeed = seed, bestScore = -1;
   let attempt = 0;
+
+  const perLevel = Math.max(18, Math.floor(SOLVER_MAX_ATTEMPTS / levels.length));
 
   for (let li = 0; li < levels.length; li++){
     const mines = levels[li];
@@ -1774,10 +1786,32 @@ function generateSolvableBoard(seed, style, cols, rows, mineCount,
     }
   }
 
+  /* Second wave — moderately sparse (70% density). */
+  const mid = Math.max(1, Math.floor(mineCount * 0.7));
+  const midLevels = buildLevels(mid, floor, 8);
+  for (let li = 0; li < midLevels.length; li++){
+    const mines = midLevels[li];
+    for (let k = 0; k < 30; k++){
+      attempt++;
+      const s = (seed + Math.imul(attempt, 0x85EBCA6B)) >>> 0;
+      const b = genBoardDeferred(s, style, cols, rows, mines, clickR, clickC, starts);
+      const res = solveBoard(b, opening);
+      if (res.count > bestScore){
+        bestScore = res.count;
+        best = b;
+        bestSeed = s;
+      }
+      if (res.count >= b.safeCount){
+        return { board: b, seed: s, score: res.count };
+      }
+    }
+  }
+
+  /* Final fallback — very sparse boards almost always solve. */
   const sparse = Math.max(1, Math.floor(mineCount * 0.3));
-  for (let k = 0; k < 100; k++){
+  for (let k = 0; k < 200; k++){
     attempt++;
-    const s = (seed + Math.imul(attempt, 0x85EBCA6B)) >>> 0;
+    const s = (seed + Math.imul(attempt, 0xC2B2AE35)) >>> 0;
     const b = genBoardDeferred(s, style, cols, rows, sparse, clickR, clickC, starts);
     const res = solveBoard(b, opening);
     if (res.count > bestScore){
@@ -2005,6 +2039,333 @@ function rebuildBoardFromMines(layout, mineArr, style){
   layout.mineCount = layout.mines.size;
   layout.safeCount = layout.rows * layout.cols - layout.mineCount;
   layout.pending = false;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   LOSS HINT — post-mortem analysis of a losing move.
+
+   When a player loses we snapshot the board state *just before*
+   the fatal click, then re-run the deduction engine from that
+   state.  Whatever it can prove is stored as a "hint" the player
+   can reveal in the map-review modal.
+   ══════════════════════════════════════════════════════════════ */
+function snapshotBoardState(bs){
+  if (!bs) return null;
+  const rows = bs.rows, cols = bs.cols;
+  const out = {
+    rows: rows, cols: cols,
+    revealed: new Array(rows),
+    flagged: new Array(rows),
+    owner: bs.owner ? new Array(rows) : null,
+    fakeFlag: bs.fakeFlag ? new Array(rows) : null
+  };
+  for (let r = 0; r < rows; r++){
+    out.revealed[r] = bs.revealed[r].slice();
+    out.flagged[r] = bs.flagged[r].slice();
+    if (bs.owner) out.owner[r] = bs.owner[r].slice();
+    if (bs.fakeFlag) out.fakeFlag[r] = bs.fakeFlag[r].slice();
+  }
+  return out;
+}
+
+/* Returns { reveal:[...], flag:[...], supports:Set } describing the
+   next set of *provable* moves available from `snap`, or null if the
+   solver cannot make any deduction (i.e. guess required).
+
+   reveal[] entries: { r, c, supports: [[sr,sc], ...] }
+   flag[]   entries: { r, c, supports: [[sr,sc], ...] }
+   supports: Set of "r,c" strings — the numbered cells that were
+             used to derive the deductions.                              */
+function getHintMoves(board, snap){
+  if (!board || !snap) return null;
+  const rows = board.rows, cols = board.cols;
+  const N = rows * cols;
+
+  const state = new Uint8Array(N);
+  for (let r = 0; r < rows; r++){
+    for (let c = 0; c < cols; c++){
+      const i = r * cols + c;
+      if (snap.revealed[r][c]) state[i] = 1;
+      else if (snap.flagged[r][c]) state[i] = 2;
+    }
+  }
+
+  const nbrs = new Array(N);
+  const adjFlat = new Int16Array(N);
+  for (let r = 0; r < rows; r++){
+    for (let c = 0; c < cols; c++){
+      const i = r * cols + c;
+      const list = [];
+      const nlist = board.neighbors(r, c, rows, cols);
+      for (let k = 0; k < nlist.length; k++) list.push(nlist[k][0] * cols + nlist[k][1]);
+      nbrs[i] = list;
+      adjFlat[i] = board.adj[r][c];
+    }
+  }
+
+  const reveals = [];
+  const flags = [];
+  const supports = new Set();
+  const revealSet = new Set();
+  const flagSet = new Set();
+
+  function addReveal(i, srcIdxs){
+    if (revealSet.has(i)) return;
+    revealSet.add(i);
+    reveals.push({
+      r: Math.floor(i / cols), c: i % cols,
+      supports: srcIdxs.map(k => [Math.floor(k / cols), k % cols])
+    });
+  }
+  function addFlag(i, srcIdxs){
+    if (flagSet.has(i)) return;
+    flagSet.add(i);
+    flags.push({
+      r: Math.floor(i / cols), c: i % cols,
+      supports: srcIdxs.map(k => [Math.floor(k / cols), k % cols])
+    });
+  }
+
+  const hiddenBuf = [];
+
+  /* Pass 1 — direct counting. */
+  for (let i = 0; i < N; i++){
+    if (state[i] !== 1) continue;
+    const a = adjFlat[i];
+    if (a < 0) continue;
+    const nb = nbrs[i];
+    let flagsCount = 0;
+    hiddenBuf.length = 0;
+    for (let k = 0; k < nb.length; k++){
+      const s = state[nb[k]];
+      if (s === 2) flagsCount++;
+      else if (s === 0) hiddenBuf.push(nb[k]);
+    }
+    if (!hiddenBuf.length) continue;
+    const key = Math.floor(i / cols) + ',' + (i % cols);
+    if (a === 0 || flagsCount === a){
+      for (let k = 0; k < hiddenBuf.length; k++) addReveal(hiddenBuf[k], [i]);
+      supports.add(key);
+    } else if (flagsCount + hiddenBuf.length === a){
+      for (let k = 0; k < hiddenBuf.length; k++) addFlag(hiddenBuf[k], [i]);
+      supports.add(key);
+    }
+  }
+  if (reveals.length || flags.length){
+    return { reveal: reveals, flag: flags, supports: supports };
+  }
+
+  /* Pass 2 — pairwise subset rule. */
+  const consHidden = [], consRem = [], consSrc = [];
+  for (let i = 0; i < N; i++){
+    if (state[i] !== 1) continue;
+    const a = adjFlat[i];
+    if (a <= 0) continue;
+    const nb = nbrs[i];
+    let flagsCount = 0;
+    const h = [];
+    for (let k = 0; k < nb.length; k++){
+      const s = state[nb[k]];
+      if (s === 2) flagsCount++;
+      else if (s === 0) h.push(nb[k]);
+    }
+    if (!h.length) continue;
+    const rem = a - flagsCount;
+    if (rem < 0 || rem > h.length) continue;
+    consHidden.push(h); consRem.push(rem); consSrc.push(i);
+  }
+  const cn = consHidden.length;
+  if (cn){
+    const byCell = new Map();
+    for (let i = 0; i < cn; i++){
+      const h = consHidden[i];
+      for (let k = 0; k < h.length; k++){
+        let arr = byCell.get(h[k]);
+        if (!arr){ arr = []; byCell.set(h[k], arr); }
+        arr.push(i);
+      }
+    }
+    const seenPairs = new Set();
+    byCell.forEach(list => {
+      const L = list.length;
+      for (let x = 0; x < L; x++){
+        for (let y = x + 1; y < L; y++){
+          let i = list[x], j = list[y];
+          const key = i < j ? (i * 8192 + j) : (j * 8192 + i);
+          if (seenPairs.has(key)) continue;
+          seenPairs.add(key);
+
+          let A = i, B = j;
+          if (consHidden[A].length >= consHidden[B].length){ A = j; B = i; }
+          if (consHidden[A].length >= consHidden[B].length) continue;
+
+          const ha = consHidden[A], hb = consHidden[B];
+          let subset = true;
+          for (let t = 0; t < ha.length; t++){
+            if (hb.indexOf(ha[t]) === -1){ subset = false; break; }
+          }
+          if (!subset) continue;
+
+          const remDiff = consRem[B] - consRem[A];
+          const dLen = hb.length - ha.length;
+          const srcA = consSrc[A], srcB = consSrc[B];
+
+          if (remDiff === 0){
+            for (let t = 0; t < hb.length; t++){
+              if (ha.indexOf(hb[t]) === -1) addReveal(hb[t], [srcA, srcB]);
+            }
+            supports.add(Math.floor(srcA / cols) + ',' + (srcA % cols));
+            supports.add(Math.floor(srcB / cols) + ',' + (srcB % cols));
+          } else if (remDiff === dLen){
+            for (let t = 0; t < hb.length; t++){
+              if (ha.indexOf(hb[t]) === -1) addFlag(hb[t], [srcA, srcB]);
+            }
+            supports.add(Math.floor(srcA / cols) + ',' + (srcA % cols));
+            supports.add(Math.floor(srcB / cols) + ',' + (srcB % cols));
+          }
+        }
+      }
+    });
+  }
+  if (reveals.length || flags.length){
+    return { reveal: reveals, flag: flags, supports: supports };
+  }
+
+  /* Pass 3 — exact enumeration per frontier component. */
+  const allCons = [];
+  const hiddenSet = new Set();
+  for (let i = 0; i < N; i++){
+    if (state[i] !== 1) continue;
+    const a = adjFlat[i];
+    if (a <= 0) continue;
+    const nb = nbrs[i];
+    let flagsCount = 0;
+    const h = [];
+    for (let k = 0; k < nb.length; k++){
+      const s = state[nb[k]];
+      if (s === 2) flagsCount++;
+      else if (s === 0) h.push(nb[k]);
+    }
+    if (!h.length) continue;
+    const rem = a - flagsCount;
+    if (rem < 0 || rem > h.length) continue;
+    allCons.push({ cells: h, mines: rem, src: i });
+    for (let k = 0; k < h.length; k++) hiddenSet.add(h[k]);
+  }
+
+  if (allCons.length && hiddenSet.size){
+    const parent = new Map();
+    const find = function(x){
+      let r = x;
+      while (parent.get(r) !== r) r = parent.get(r);
+      while (parent.get(x) !== r){
+        const nx = parent.get(x);
+        parent.set(x, r);
+        x = nx;
+      }
+      return r;
+    };
+    hiddenSet.forEach(function(h){ parent.set(h, h); });
+    for (let ci = 0; ci < allCons.length; ci++){
+      const cells = allCons[ci].cells;
+      for (let k = 1; k < cells.length; k++){
+        const ra = find(cells[0]);
+        const rb = find(cells[k]);
+        if (ra !== rb) parent.set(ra, rb);
+      }
+    }
+
+    const comps = new Map();
+    for (let ci = 0; ci < allCons.length; ci++){
+      const c = allCons[ci];
+      const root = find(c.cells[0]);
+      let comp = comps.get(root);
+      if (!comp){ comp = { cells: new Set(), constraints: [] }; comps.set(root, comp); }
+      for (let k = 0; k < c.cells.length; k++) comp.cells.add(c.cells[k]);
+      comp.constraints.push(c);
+    }
+
+    comps.forEach(function(comp){
+      const cells = [];
+      comp.cells.forEach(function(cell){ cells.push(cell); });
+      if (cells.length > 40) return;
+
+      const cellIndex = new Map();
+      for (let i = 0; i < cells.length; i++) cellIndex.set(cells[i], i);
+
+      const localCons = [];
+      const srcMap = [];
+      for (let ci = 0; ci < comp.constraints.length; ci++){
+        const c = comp.constraints[ci];
+        const lc = [];
+        for (let k = 0; k < c.cells.length; k++) lc.push(cellIndex.get(c.cells[k]));
+        localCons.push({ cells: lc, mines: c.mines });
+        srcMap.push(c.src);
+      }
+
+      const res = enumerateSolutions(cells.length, localCons, 200000);
+      if (!res || res.count === 0) return;
+
+      for (let i = 0; i < cells.length; i++){
+        const cell = cells[i];
+        if (state[cell] !== 0) continue;
+        const supSrcs = [];
+        for (let ci = 0; ci < comp.constraints.length; ci++){
+          if (comp.constraints[ci].cells.indexOf(cell) !== -1) supSrcs.push(srcMap[ci]);
+        }
+        if (res.mineCounts[i] === 0){
+          addReveal(cell, supSrcs);
+          for (let s = 0; s < supSrcs.length; s++)
+            supports.add(Math.floor(supSrcs[s] / cols) + ',' + (supSrcs[s] % cols));
+        } else if (res.mineCounts[i] === res.count){
+          addFlag(cell, supSrcs);
+          for (let s = 0; s < supSrcs.length; s++)
+            supports.add(Math.floor(supSrcs[s] / cols) + ',' + (supSrcs[s] % cols));
+        }
+      }
+    });
+  }
+
+  if (reveals.length || flags.length){
+    return { reveal: reveals, flag: flags, supports: supports };
+  }
+  return null;
+}
+
+function computeHintForBoard(board, snap, owner, unlocked, excludeR, excludeC){
+  const hints = getHintMoves(board, snap);
+  if (!hints) return null;
+  if (snap && snap.owner && owner){
+    const filter = function(h){
+      if (unlocked) return true;
+      if (snap.owner[h.r][h.c] === owner) return true;
+      const nbrs = board.neighbors(h.r, h.c, board.rows, board.cols);
+      for (let k = 0; k < nbrs.length; k++){
+        if (snap.owner[nbrs[k][0]][nbrs[k][1]] === owner) return true;
+      }
+      return false;
+    };
+    hints.reveal = hints.reveal.filter(filter);
+    hints.flag = hints.flag.filter(filter);
+  }
+  if (!hints.reveal.length && !hints.flag.length) return null;
+  return hints;
+}
+
+/* Convert the hint payload into fast Set lookups for the renderer. */
+function hintRenderState(hints){
+  if (!hints) return null;
+  const reveal = new Set();
+  for (let i = 0; i < (hints.reveal || []).length; i++){
+    const h = hints.reveal[i];
+    reveal.add(h.r + ',' + h.c);
+  }
+  const flag = new Set();
+  for (let i = 0; i < (hints.flag || []).length; i++){
+    const h = hints.flag[i];
+    flag.add(h.r + ',' + h.c);
+  }
+  return { reveal: reveal, flag: flag, supports: hints.supports || new Set() };
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -3240,7 +3601,13 @@ const G = {
   territoryUnlocked: false,
   terrBoardReady: true,
   reviewViews: [],
-  rematchMe: false, rematchThem: false, rematchLock: false
+  rematchMe: false, rematchThem: false, rematchLock: false,
+  /* Post-mortem hint shown in the map review after a loss. */
+  lossHint: null,
+  lossHintTarget: 'me',
+  /* Pending pre-dig snapshot (used when a guest in co-op /
+     territory needs to reconstruct the state that led to a loss). */
+  pendingPreSnap: null
 };
 
 /* Remembers the Instant Die toggle while the player hops between
@@ -3658,6 +4025,25 @@ class BoardView {
   }
   triggerShake(){ this.shake = 1; }
 
+  /* ── shared hint overlay drawing ─────────────────────────── */
+  _drawHintOutline(x, y, w, h, r, color, lineWidth, blur){
+    const ctx = this.ctx;
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = lineWidth;
+    ctx.shadowColor = color;
+    ctx.shadowBlur = blur;
+    if (this.metrics.style === 'hex'){
+      const cx = x + w/2, cy = y + h/2;
+      this.hexPath(cx, cy, Math.min(w, h) / 2);
+      ctx.stroke();
+    } else {
+      this.roundRect(ctx, x, y, w, h, r);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
   renderSquare(now, state){
     const ctx = this.ctx;
     const m = this.metrics;
@@ -3670,6 +4056,7 @@ class BoardView {
     const radius = Math.max(3, Math.floor(cell * 0.16));
     const mineSprite = this.getMineSprite(cell);
     const nowMs = now;
+    const hints = state.hints;
 
     for (let r = 0; r < rows; r++){
       for (let c = 0; c < cols; c++){
@@ -3679,6 +4066,7 @@ class BoardView {
         const flg = boardState.flagged[r][c];
         const isMine = board.mines.has(r + ',' + c);
         const own = (useOwner && boardState.owner) ? boardState.owner[r][c] : 0;
+        const isSupport = hints && hints.supports && hints.supports.has(r + ',' + c);
 
         if (rev && nowMs >= boardState.revealAt[r][c]){
           const t = (nowMs - boardState.revealAt[r][c]) / 200;
@@ -3712,7 +4100,7 @@ class BoardView {
           if (isMine){
             ctx.drawImage(mineSprite, 0, 0, cell, cell);
           } else if (board.adj[r][c] > 0){
-            const col = NUM_COLORS[board.adj[r][c]] || '#cfe4ff';
+            const col = isSupport ? '#ffd166' : (NUM_COLORS[board.adj[r][c]] || '#cfe4ff');
             ctx.font = '900 ' + (cell * 0.58) + 'px "Courier New", monospace';
             ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
             ctx.fillStyle = col;
@@ -3764,6 +4152,83 @@ class BoardView {
       }
     }
 
+    /* Hint overlay — pulsing outlines on top of everything. */
+    if (hints){
+      const pulse = 0.5 + 0.5 * Math.sin(nowMs / 200);
+
+      if (hints.supports){
+        hints.supports.forEach(function(key){
+          const parts = key.split(',');
+          const hr = +parts[0], hc = +parts[1];
+          if (hr < 0 || hr >= rows || hc < 0 || hc >= cols) return;
+          const hx = pad + hc * (cell + gap);
+          const hy = pad + hr * (cell + gap);
+          ctx.save();
+          ctx.strokeStyle = 'rgba(255,209,102,' + (0.55 + 0.4 * pulse).toFixed(3) + ')';
+          ctx.lineWidth = 3.5;
+          ctx.shadowColor = '#ffd166';
+          ctx.shadowBlur = 12;
+          ctx.beginPath();
+          ctx.moveTo(hx + radius, hy);
+          ctx.arcTo(hx + cell, hy, hx + cell, hy + cell, radius);
+          ctx.arcTo(hx + cell, hy + cell, hx, hy + cell, radius);
+          ctx.arcTo(hx, hy + cell, hx, hy, radius);
+          ctx.arcTo(hx, hy, hx + cell, hy, radius);
+          ctx.closePath();
+          ctx.stroke();
+          ctx.restore();
+        });
+      }
+
+      if (hints.reveal){
+        hints.reveal.forEach(function(key){
+          const parts = key.split(',');
+          const hr = +parts[0], hc = +parts[1];
+          if (hr < 0 || hr >= rows || hc < 0 || hc >= cols) return;
+          const hx = pad + hc * (cell + gap);
+          const hy = pad + hr * (cell + gap);
+          ctx.save();
+          ctx.strokeStyle = 'rgba(93,255,158,' + (0.65 + 0.35 * pulse).toFixed(3) + ')';
+          ctx.lineWidth = 3.5 + 2 * pulse;
+          ctx.shadowColor = '#5dff9e';
+          ctx.shadowBlur = 16;
+          ctx.beginPath();
+          ctx.moveTo(hx - 3 + radius, hy - 3);
+          ctx.arcTo(hx + cell + 3, hy - 3, hx + cell + 3, hy + cell + 3, radius + 4);
+          ctx.arcTo(hx + cell + 3, hy + cell + 3, hx - 3, hy + cell + 3, radius + 4);
+          ctx.arcTo(hx - 3, hy + cell + 3, hx - 3, hy - 3, radius + 4);
+          ctx.arcTo(hx - 3, hy - 3, hx + cell + 3, hy - 3, radius + 4);
+          ctx.closePath();
+          ctx.stroke();
+          ctx.restore();
+        });
+      }
+
+      if (hints.flag){
+        hints.flag.forEach(function(key){
+          const parts = key.split(',');
+          const hr = +parts[0], hc = +parts[1];
+          if (hr < 0 || hr >= rows || hc < 0 || hc >= cols) return;
+          const hx = pad + hc * (cell + gap);
+          const hy = pad + hr * (cell + gap);
+          ctx.save();
+          ctx.strokeStyle = 'rgba(255,77,109,' + (0.65 + 0.35 * pulse).toFixed(3) + ')';
+          ctx.lineWidth = 3.5 + 2 * pulse;
+          ctx.shadowColor = '#ff4d6d';
+          ctx.shadowBlur = 16;
+          ctx.beginPath();
+          ctx.moveTo(hx - 3 + radius, hy - 3);
+          ctx.arcTo(hx + cell + 3, hy - 3, hx + cell + 3, hy + cell + 3, radius + 4);
+          ctx.arcTo(hx + cell + 3, hy + cell + 3, hx - 3, hy + cell + 3, radius + 4);
+          ctx.arcTo(hx - 3, hy + cell + 3, hx - 3, hy - 3, radius + 4);
+          ctx.arcTo(hx - 3, hy - 3, hx + cell + 3, hy - 3, radius + 4);
+          ctx.closePath();
+          ctx.stroke();
+          ctx.restore();
+        });
+      }
+    }
+
     if (state.highlights){
       for (const h of state.highlights){
         const x = pad + h.c * (cell + gap);
@@ -3801,6 +4266,7 @@ class BoardView {
                         '#b98cff', '#ff5c5c', '#ff9f43', '#7ef9ff'];
     const mineSprite = this.getMineSprite(size * 1.6);
     const nowMs = now;
+    const hints = state.hints;
 
     for (let r = 0; r < rows; r++){
       for (let c = 0; c < cols; c++){
@@ -3810,6 +4276,7 @@ class BoardView {
         const flg = boardState.flagged[r][c];
         const isMine = board.mines.has(r + ',' + c);
         const own = (useOwner && boardState.owner) ? boardState.owner[r][c] : 0;
+        const isSupport = hints && hints.supports && hints.supports.has(r + ',' + c);
 
         if (rev && nowMs >= boardState.revealAt[r][c]){
           const t = (nowMs - boardState.revealAt[r][c]) / 240;
@@ -3836,7 +4303,7 @@ class BoardView {
             const sz = size * 1.6;
             ctx.drawImage(mineSprite, -sz/2, -sz/2, sz, sz);
           } else if (board.adj[r][c] > 0){
-            const col = NUM_COLORS[board.adj[r][c]] || '#cfe4ff';
+            const col = isSupport ? '#ffd166' : (NUM_COLORS[board.adj[r][c]] || '#cfe4ff');
             ctx.font = '900 ' + (size * 1.0) + 'px "Courier New", monospace';
             ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
             ctx.fillStyle = col;
@@ -3883,6 +4350,62 @@ class BoardView {
             ctx.restore();
           }
         }
+      }
+    }
+
+    /* Hint overlay */
+    if (hints){
+      const pulse = 0.5 + 0.5 * Math.sin(nowMs / 200);
+
+      if (hints.supports){
+        hints.supports.forEach(function(key){
+          const parts = key.split(',');
+          const hr = +parts[0], hc = +parts[1];
+          if (hr < 0 || hr >= rows || hc < 0 || hc >= cols) return;
+          const hp = this.hexCenter(hr, hc);
+          ctx.save();
+          ctx.strokeStyle = 'rgba(255,209,102,' + (0.55 + 0.4 * pulse).toFixed(3) + ')';
+          ctx.lineWidth = 3.5;
+          ctx.shadowColor = '#ffd166';
+          ctx.shadowBlur = 12;
+          this.hexPath(hp.x, hp.y, size - 4);
+          ctx.stroke();
+          ctx.restore();
+        }.bind(this));
+      }
+
+      if (hints.reveal){
+        hints.reveal.forEach(function(key){
+          const parts = key.split(',');
+          const hr = +parts[0], hc = +parts[1];
+          if (hr < 0 || hr >= rows || hc < 0 || hc >= cols) return;
+          const hp = this.hexCenter(hr, hc);
+          ctx.save();
+          ctx.strokeStyle = 'rgba(93,255,158,' + (0.65 + 0.35 * pulse).toFixed(3) + ')';
+          ctx.lineWidth = 3.5 + 2 * pulse;
+          ctx.shadowColor = '#5dff9e';
+          ctx.shadowBlur = 16;
+          this.hexPath(hp.x, hp.y, size - 1);
+          ctx.stroke();
+          ctx.restore();
+        }.bind(this));
+      }
+
+      if (hints.flag){
+        hints.flag.forEach(function(key){
+          const parts = key.split(',');
+          const hr = +parts[0], hc = +parts[1];
+          if (hr < 0 || hr >= rows || hc < 0 || hc >= cols) return;
+          const hp = this.hexCenter(hr, hc);
+          ctx.save();
+          ctx.strokeStyle = 'rgba(255,77,109,' + (0.65 + 0.35 * pulse).toFixed(3) + ')';
+          ctx.lineWidth = 3.5 + 2 * pulse;
+          ctx.shadowColor = '#ff4d6d';
+          ctx.shadowBlur = 16;
+          this.hexPath(hp.x, hp.y, size - 1);
+          ctx.stroke();
+          ctx.restore();
+        }.bind(this));
       }
     }
 
@@ -4815,6 +5338,10 @@ async function localDig(){
         await ensureBoardReadyAsync(r, c);
         sendBoardToGuest();
       } else {
+        /* Guest in coop / territory: snapshot the pre-state so we can
+           reconstruct what the player could have done differently if
+           this dig turns out to be fatal. */
+        G.pendingPreSnap = snapshotBoardState(G.myBoard);
         send({ t:'dig', r: r, c: c });
         G.pendingDig = { r: r, c: c };
         return;
@@ -4833,16 +5360,22 @@ function doLocalDig(r, c){
 
   if (mode === 'coop' || mode === 'territory'){
     if (G.role === 'host') hostApplyDig(r, c, G.myOwner);
-    else send({ t:'dig', r, c });
+    else {
+      G.pendingPreSnap = snapshotBoardState(G.myBoard);
+      send({ t:'dig', r, c });
+    }
     return;
   }
   if (mode === 'duel'){
     const bs = G.myBoard;
     ensureFirstDigSafe(G.board, bs, G.me, r, c, true);
+    const preSnap = snapshotBoardState(bs);
     const res = applyReveal(bs, G.board, r, c, 0);
     if (!res) return;
     if (res.type === 'mine'){
       G.me.hits++; G.deathTile = { r, c };
+      G.lossHint = computeHintForBoard(G.board, preSnap, null, false, r, c);
+      G.lossHintTarget = 'me';
       send({ t:'hit', r, c });
 
       if (insta){
@@ -4875,10 +5408,13 @@ function doLocalDig(r, c){
   /* solo */
   const bs = G.myBoard;
   ensureFirstDigSafe(G.board, bs, G.me, r, c, false);
+  const preSnap = snapshotBoardState(bs);
   const res = applyReveal(bs, G.board, r, c, 0);
   if (!res) return;
   if (res.type === 'mine'){
     G.me.hits++;
+    G.lossHint = computeHintForBoard(G.board, preSnap, null, false, r, c);
+    G.lossHintTarget = 'me';
     handleLoss(r, c, G.viewMe, bs, G.board);
     return;
   }
@@ -5228,17 +5764,23 @@ function localChord(){
   if (mode === 'coop' || mode === 'territory'){
     if (mode === 'territory' && !canTouchTerritory(G.myBoard, G.board, r, c, G.myOwner)) return;
     if (G.role === 'host') hostApplyChord(r, c, G.myOwner);
-    else send({ t:'chord', r, c });
+    else {
+      G.pendingPreSnap = snapshotBoardState(G.myBoard);
+      send({ t:'chord', r, c });
+    }
     return;
   }
   if (mode === 'duel'){
     const bs = G.myBoard;
+    const preSnap = snapshotBoardState(bs);
     const res = applyChord(bs, G.board, r, c, 0);
     if (!res) return;
     if (res.type === 'mine'){
       G.me.hits++;
       const mr = res.tiles[0][0], mc = res.tiles[0][1];
       G.deathTile = { r: mr, c: mc };
+      G.lossHint = computeHintForBoard(G.board, preSnap, null, false, mr, mc);
+      G.lossHintTarget = 'me';
       send({ t:'hit', r: mr, c: mc });
 
       if (insta){
@@ -5268,10 +5810,13 @@ function localChord(){
     return;
   }
   const bs = G.myBoard;
+  const preSnap = snapshotBoardState(bs);
   const res = applyChord(bs, G.board, r, c, 0);
   if (!res) return;
   if (res.type === 'mine'){
     G.me.hits++;
+    G.lossHint = computeHintForBoard(G.board, preSnap, null, false, res.tiles[0][0], res.tiles[0][1]);
+    G.lossHintTarget = 'me';
     handleLoss(res.tiles[0][0], res.tiles[0][1], G.viewMe, bs, G.board);
     return;
   }
@@ -5341,9 +5886,20 @@ function hostApplyDig(r, c, owner){
     else hostApplyFlag(r, c);
     return;
   }
+  const preSnap = snapshotBoardState(bs);
   const res = applyReveal(bs, G.board, r, c, owner);
   if (!res) return;
   if (res.type === 'mine'){
+    /* Local (host) player triggered — capture the hint on our side. */
+    if (owner === G.myOwner){
+      G.lossHint = computeHintForBoard(
+        G.board, preSnap,
+        G.config.mode === 'territory' ? G.myOwner : null,
+        G.territoryUnlocked,
+        r, c
+      );
+      G.lossHintTarget = 'me';
+    }
     if (G.config.mode === 'coop') handleCoopLoss(r, c, true, owner === G.myOwner);
     else handleTerritoryBoom(r, c, owner);
     return;
@@ -5455,10 +6011,20 @@ function hostApplyTerritoryFlag(r, c, owner){
 function hostApplyChord(r, c, owner){
   if (G.state !== 'playing') return;
   const bs = G.myBoard;
+  const preSnap = snapshotBoardState(bs);
   const res = applyChord(bs, G.board, r, c, owner);
   if (!res) return;
   if (res.type === 'mine'){
     const mr = res.tiles[0][0], mc = res.tiles[0][1];
+    if (owner === G.myOwner){
+      G.lossHint = computeHintForBoard(
+        G.board, preSnap,
+        G.config.mode === 'territory' ? G.myOwner : null,
+        G.territoryUnlocked,
+        mr, mc
+      );
+      G.lossHintTarget = 'me';
+    }
     if (G.config.mode === 'coop') handleCoopLoss(mr, mc, true, owner === G.myOwner);
     else handleTerritoryBoom(mr, mc, owner);
     return;
@@ -5704,7 +6270,21 @@ function handleMessage(msg){
       }
       break;
 
-    case 'hit':
+    case 'hit': {
+      /* Duel only: opponent hit a mine.  Snapshot their board state
+         (before we reveal the mine) so we can later show, on their
+         side of the review board, what they could have done. */
+      if (G.config.mode === 'duel' && G.theirBoard && G.theirBoardLayout &&
+          msg.r !== undefined && msg.c !== undefined &&
+          !G.theirBoard.revealed[msg.r][msg.c]){
+        const preSnap = snapshotBoardState(G.theirBoard);
+        preSnap.revealed[msg.r][msg.c] = false;
+        const hint = computeHintForBoard(G.theirBoardLayout, preSnap, null, false, msg.r, msg.c);
+        if (hint){
+          G.lossHint = hint;
+          G.lossHintTarget = 'them';
+        }
+      }
       if (G.them){
         G.them.hits++;
         G.them.stunUntil = performance.now() + STUN_MS;
@@ -5723,6 +6303,7 @@ function handleMessage(msg){
       if (G.viewThem) G.viewThem.triggerShake();
       SFX.oppStun();
       break;
+    }
 
     case 'swapmine': {
       const layout = (G.config.mode === 'duel') ? G.theirBoardLayout : G.board;
@@ -5779,6 +6360,22 @@ function handleMessage(msg){
             'Together you swept every safe tile.',
             performance.now() - G.startTime);
         } else {
+          /* Duel / Territory — guest lost.  Compute the hint now
+             (from the guest's board before it was updated). */
+          if (!G.lossHint){
+            const snap = G.pendingPreSnap || snapshotBoardState(G.myBoard);
+            if (snap && G.board){
+              G.lossHint = computeHintForBoard(
+                G.board, snap,
+                G.config.mode === 'territory' ? G.myOwner : null,
+                G.territoryUnlocked,
+                G.deathTile ? G.deathTile.r : undefined,
+                G.deathTile ? G.deathTile.c : undefined
+              );
+              G.lossHintTarget = 'me';
+            }
+          }
+          G.pendingPreSnap = null;
           endGame('lose', '💀', 'DEFEATED',
             'Your opponent cleared their field first.',
             performance.now() - G.startTime);
@@ -5800,6 +6397,7 @@ function applyDelta(msg){
   const bs = G.myBoard;
   if (!bs || !G.board) return;
   const now = performance.now();
+
   if (msg.rev){
     let revealedAny = false;
     let firstVal = 0;
@@ -5817,8 +6415,6 @@ function applyDelta(msg){
         if (G.board.adj && G.board.adj[r]) firstVal = G.board.adj[r][c] || 0;
       }
     }
-    /* Play the reveal chime on the local side too, so the guest in
-       co-op/territory gets audio feedback for their own clicks. */
     if (revealedAny && (msg.own === undefined || msg.own === G.myOwner)){
       SFX.reveal(firstVal);
     }
@@ -5845,6 +6441,14 @@ function applyDelta(msg){
     if (bs.fakeFlag) bs.fakeFlag[r][c] = false;
   }
   if (msg.lose){
+    /* Guest in co-op: reconstruct the hint from our pre-dig snapshot
+       BEFORE handleCoopLoss mutates the board (it calls
+       revealAllMines). */
+    if (!G.lossHint && G.pendingPreSnap && G.board){
+      G.lossHint = computeHintForBoard(G.board, G.pendingPreSnap, null, false, msg.r, msg.c);
+      G.lossHintTarget = 'me';
+    }
+    G.pendingPreSnap = null;
     handleCoopLoss(msg.r, msg.c, false, msg.by === G.myOwner);
   }
 }
@@ -6471,6 +7075,9 @@ function idleOverlay(){
   G.terrBoardReady = true;
   G.reviewViews = [];
   G.rematchMe = false; G.rematchThem = false; G.rematchLock = false;
+  G.lossHint = null;
+  G.lossHintTarget = 'me';
+  G.pendingPreSnap = null;
   lastUnlockCheck = 0;
   clearHeldKeys();
   hotkeyCapture = null;
@@ -6709,6 +7316,9 @@ function startMatch(seed, role, seedGuest){
   G.territoryUnlocked = false; G.reviewViews = [];
   G.boardOpening = null;
   G.rematchMe = false; G.rematchThem = false; G.rematchLock = false;
+  G.lossHint = null;
+  G.lossHintTarget = 'me';
+  G.pendingPreSnap = null;
   lastUnlockCheck = 0;
   clearHeldKeys();
   hotkeyCapture = null;
@@ -6875,6 +7485,43 @@ function showMapReview(){
     themFull = buildFullRevealState(G.theirBoard, theirLayout);
   }
 
+  /* The tile that killed the player is now shown as a revealed mine.
+     For the solution view we hide it again — the player never saw it
+     when they made the click, so showing it is hindsight.  These
+     variants are built once so we don't allocate per animation frame. */
+  const hideCell = (state, r, c) => {
+    if (!state || r === undefined || c === undefined) return state;
+    const s = makeBoardState(state.rows, state.cols);
+    for (let rr = 0; rr < state.rows; rr++){
+      s.revealed[rr] = state.revealed[rr].slice();
+      s.flagged[rr]  = state.flagged[rr].slice();
+      s.owner[rr]    = state.owner[rr].slice();
+      s.fakeFlag[rr] = state.fakeFlag[rr].slice();
+      s.revealAt[rr] = state.revealAt[rr].slice();
+      s.flagAt[rr]   = state.flagAt[rr].slice();
+    }
+    s.revealed[r][c] = false;
+    s.flagged[r][c]  = false;
+    if (s.owner)    s.owner[r][c]    = 0;
+    if (s.fakeFlag) s.fakeFlag[r][c] = false;
+    s.count        = state.count;
+    s.safeRevealed = state.safeRevealed;
+    s.flagCount    = state.flagCount;
+    return s;
+  };
+
+  const meSolution       = G.deathTile ? hideCell(meEnd, G.deathTile.r, G.deathTile.c) : meEnd;
+  const meSolutionFull   = G.deathTile ? hideCell(meFull, G.deathTile.r, G.deathTile.c) : meFull;
+  const themSolution     = (isDuel && G.theirDeathTile)
+    ? hideCell(themEnd,  G.theirDeathTile.r, G.theirDeathTile.c) : themEnd;
+  const themSolutionFull = (isDuel && G.theirDeathTile)
+    ? hideCell(themFull, G.theirDeathTile.r, G.theirDeathTile.c) : themFull;
+
+  const hasHints = !!G.lossHint;
+  const hintBtnHtml = hasHints
+    ? '<button id="btnShowHints">💡 SHOW SOLUTION</button>'
+    : '';
+
   const cells =
     '<div class="review-cell">' +
       '<canvas data-review="me"></canvas>' +
@@ -6892,8 +7539,8 @@ function showMapReview(){
       '<h2>MAP <span>REVIEW</span></h2>' +
       '<div class="mapreview-canvas' + (isDuel ? ' two' : '') + '">' + cells + '</div>' +
       '<div class="mapreview-foot">' +
+        hintBtnHtml +
         '<button id="btnToggleView">SHOW FULL MAP</button>' +
-        '<button class="ghost" id="btnResetView">RESET VIEW</button>' +
         '<button class="ghost" id="btnCloseReview">CLOSE</button>' +
       '</div>' +
     '</div>';
@@ -6910,6 +7557,7 @@ function showMapReview(){
   G.reviewViews = views;
 
   let showingFull = false;
+  let showingHints = false;
   const highlights = G.deathTile
     ? [{ r: G.deathTile.r, c: G.deathTile.c, color: '#ffe066' }]
     : [];
@@ -6917,20 +7565,40 @@ function showMapReview(){
   const draw = (now) => {
     reviewRafId = requestAnimationFrame(draw);
     const t = now + 60000;
+
+    const meHints   = (showingHints && G.lossHint && G.lossHintTarget === 'me')   ? hintRenderState(G.lossHint) : null;
+    const themHints = (showingHints && G.lossHint && G.lossHintTarget === 'them') ? hintRenderState(G.lossHint) : null;
+
+    /* Pick the right board state for each side.
+       · normal            → end-of-match view (death tile shown as mine)
+       · SHOW SOLUTION     → same view but the stepped-on bomb is hidden
+       · SHOW FULL MAP     → every tile revealed
+       · both              → full map with the stepped-on bomb hidden   */
+    let meState, themState;
+    if (showingFull){
+      meState   = showingHints ? meSolutionFull   : meFull;
+      themState = showingHints ? themSolutionFull : themFull;
+    } else {
+      meState   = showingHints ? meSolution   : meEnd;
+      themState = showingHints ? themSolution : themEnd;
+    }
+
     if (views[0]){
       views[0].render(t, {
         board: myLayout,
-        boardState: showingFull ? meFull : meEnd,
+        boardState: meState,
         cursors: [],
-        highlights
+        highlights: showingHints ? [] : highlights,
+        hints: meHints
       });
     }
     if (views[1]){
       views[1].render(t, {
         board: theirLayout,
-        boardState: showingFull ? themFull : themEnd,
+        boardState: themState,
         cursors: [],
-        highlights: []
+        highlights: [],
+        hints: themHints
       });
     }
   };
@@ -6942,9 +7610,14 @@ function showMapReview(){
     toggleBtn.textContent = showingFull ? 'SHOW END STATE' : 'SHOW FULL MAP';
     toggleBtn.classList.toggle('primary', showingFull);
   };
-  modal.querySelector('#btnResetView').onclick = () => {
-    views.forEach(v => v.resetView());
-  };
+  const hintBtn = modal.querySelector('#btnShowHints');
+  if (hintBtn){
+    hintBtn.onclick = () => {
+      showingHints = !showingHints;
+      hintBtn.textContent = showingHints ? '💡 HIDE SOLUTION' : '💡 SHOW SOLUTION';
+      hintBtn.classList.toggle('primary', showingHints);
+    };
+  }
   const closeReview = () => {
     if (reviewRafId){ cancelAnimationFrame(reviewRafId); reviewRafId = null; }
     views.forEach(v => v.destroy());

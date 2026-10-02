@@ -359,6 +359,10 @@
     color:#4dd8ff; font-weight:900; letter-spacing:.08em;
   }
   .cd-rule.insta b{ color:#ff9f43; text-shadow:0 0 10px rgba(255,159,67,.4); }
+  .cd-rule b.hex{ color:#b98cff; text-shadow:0 0 10px rgba(185,140,255,.45); }
+  .cd-rule b.green{ color:#5dff9e; text-shadow:0 0 10px rgba(93,255,158,.45); }
+  .cd-rule b.yellow{ color:#ffd166; text-shadow:0 0 10px rgba(255,209,102,.45); }
+  .cd-rule b.red{ color:#ff6b8a; text-shadow:0 0 10px rgba(255,107,138,.45); }
 
   .endmsg{
     font-size:12px;letter-spacing:.1em;margin-top:12px;min-height:16px;
@@ -493,6 +497,31 @@
     font-size:14px;color:#4dd8ff;font-weight:900;
   }
   .opt.active .opt-name{color:#4dd8ff}
+  /* Colour-coded active states */
+  .opt.active.color-hex{
+    background:linear-gradient(180deg,rgba(185,140,255,.20),rgba(185,140,255,.08));
+    border-color:#b98cff;
+  }
+  .opt.active.color-hex::before{color:#b98cff}
+  .opt.active.color-hex .opt-name{color:#b98cff}
+  .opt.active.color-green{
+    background:linear-gradient(180deg,rgba(93,255,158,.20),rgba(93,255,158,.08));
+    border-color:#5dff9e;
+  }
+  .opt.active.color-green::before{color:#5dff9e}
+  .opt.active.color-green .opt-name{color:#5dff9e}
+  .opt.active.color-yellow{
+    background:linear-gradient(180deg,rgba(255,209,102,.20),rgba(255,209,102,.08));
+    border-color:#ffd166;
+  }
+  .opt.active.color-yellow::before{color:#ffd166}
+  .opt.active.color-yellow .opt-name{color:#ffd166}
+  .opt.active.color-red{
+    background:linear-gradient(180deg,rgba(255,107,138,.20),rgba(255,107,138,.08));
+    border-color:#ff6b8a;
+  }
+  .opt.active.color-red::before{color:#ff6b8a}
+  .opt.active.color-red .opt-name{color:#ff6b8a}
   .opt.danger.active{
     background:linear-gradient(180deg,rgba(255,61,129,.20),rgba(255,61,129,.08));
     border-color:#ff3d81;
@@ -837,6 +866,10 @@
     color:#7fb0e0;margin-bottom:5px;
     text-transform:uppercase;
   }
+  .lb-ov-card-title .sty.hex{ color:#b98cff; text-shadow:0 0 8px rgba(185,140,255,.4); }
+  .lb-ov-card-title .sz.green{ color:#5dff9e; text-shadow:0 0 8px rgba(93,255,158,.4); }
+  .lb-ov-card-title .sz.yellow{ color:#ffd166; text-shadow:0 0 8px rgba(255,209,102,.4); }
+  .lb-ov-card-title .sz.red{ color:#ff6b8a; text-shadow:0 0 8px rgba(255,107,138,.4); }
   .lb-ov-row{
     display:flex;gap:6px;align-items:center;
     font-size:clamp(9px,1.35vh,11px);
@@ -2064,6 +2097,7 @@ function serializeHint(h){
   return {
     reveal: (h.reveal || []).map(x => [x.r, x.c]),
     flag:   (h.flag   || []).map(x => [x.r, x.c]),
+    wrong:  (h.wrong  || []).map(x => [x.r, x.c]),
     supports: Array.from(h.supports || []).map(s => {
       const parts = String(s).split(',');
       return [Number(parts[0]) || 0, Number(parts[1]) || 0];
@@ -2080,6 +2114,7 @@ function deserializeHint(data){
   return {
     reveal: (data.reveal || []).map(p => ({ r: p[0], c: p[1] })),
     flag:   (data.flag   || []).map(p => ({ r: p[0], c: p[1] })),
+    wrong:  (data.wrong  || []).map(p => ({ r: p[0], c: p[1] })),
     supports: supports
   };
 }
@@ -2113,9 +2148,20 @@ function getHintMoves(board, snap){
 
   const reveals = [];
   const flags = [];
+  const wrongs = [];
   const supports = new Set();
   const revealSet = new Set();
   const flagSet = new Set();
+
+  /* Detect flags placed on tiles that are NOT mines — these are
+     highlighted as "wrong flags" in the solution view. */
+  for (let r = 0; r < rows; r++){
+    for (let c = 0; c < cols; c++){
+      if (!snap.flagged[r][c]) continue;
+      if (board.mines.has(r + ',' + c)) continue;
+      wrongs.push({ r, c, supports: [] });
+    }
+  }
 
   function addReveal(i, srcIdxs){
     if (revealSet.has(i)) return;
@@ -2158,8 +2204,8 @@ function getHintMoves(board, snap){
       supports.add(key);
     }
   }
-  if (reveals.length || flags.length){
-    return { reveal: reveals, flag: flags, supports: supports };
+  if (reveals.length || flags.length || wrongs.length){
+    return { reveal: reveals, flag: flags, wrong: wrongs, supports: supports };
   }
 
   const consHidden = [], consRem = [], consSrc = [];
@@ -2233,8 +2279,8 @@ function getHintMoves(board, snap){
       }
     });
   }
-  if (reveals.length || flags.length){
-    return { reveal: reveals, flag: flags, supports: supports };
+  if (reveals.length || flags.length || wrongs.length){
+    return { reveal: reveals, flag: flags, wrong: wrongs, supports: supports };
   }
 
   const allCons = [];
@@ -2331,8 +2377,8 @@ function getHintMoves(board, snap){
     });
   }
 
-  if (reveals.length || flags.length){
-    return { reveal: reveals, flag: flags, supports: supports };
+  if (reveals.length || flags.length || wrongs.length){
+    return { reveal: reveals, flag: flags, wrong: wrongs, supports: supports };
   }
   return null;
 }
@@ -2352,8 +2398,10 @@ function computeHintForBoard(board, snap, owner, unlocked, excludeR, excludeC){
     };
     hints.reveal = hints.reveal.filter(filter);
     hints.flag = hints.flag.filter(filter);
+    if (hints.wrong) hints.wrong = hints.wrong.filter(filter);
   }
-  if (!hints.reveal.length && !hints.flag.length) return null;
+  if (!hints.reveal.length && !hints.flag.length &&
+      (!hints.wrong || !hints.wrong.length)) return null;
   return hints;
 }
 
@@ -2369,7 +2417,12 @@ function hintRenderState(hints){
     const h = hints.flag[i];
     flag.add(h.r + ',' + h.c);
   }
-  return { reveal: reveal, flag: flag, supports: hints.supports || new Set() };
+  const wrong = new Set();
+  for (let i = 0; i < (hints.wrong || []).length; i++){
+    const h = hints.wrong[i];
+    wrong.add(h.r + ',' + h.c);
+  }
+  return { reveal: reveal, flag: flag, wrong: wrong, supports: hints.supports || new Set() };
 }
 
 /* Merge two hint-render payloads into one, so a shared board can
@@ -2381,9 +2434,11 @@ function mergeHintStates(a, b){
   b.reveal.forEach(x => reveal.add(x));
   const flag = new Set(a.flag);
   b.flag.forEach(x => flag.add(x));
+  const wrong = new Set(a.wrong || []);
+  (b.wrong || new Set()).forEach(x => wrong.add(x));
   const supports = new Set(a.supports);
   b.supports.forEach(x => supports.add(x));
-  return { reveal: reveal, flag: flag, supports: supports };
+  return { reveal: reveal, flag: flag, wrong: wrong, supports: supports };
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -2503,6 +2558,7 @@ function lbKey(mode, style, size, insta){
 
 function currentLbCategory(){
   if (G.config.mode === 'duel') return 'wins';
+  if (G.config.mode === 'territory') return 'wins';
   return LB_STATE.category || 'time';
 }
 
@@ -2645,6 +2701,7 @@ async function recordWin(mode, style, size, insta, timeMs, countAsWin, partner){
 
   const key = lbKey(mode, style, size, insta);
   const isDuel = (mode === 'duel');
+  const isTerr = (mode === 'territory');
   const isTeamMode = (mode === 'coop' || mode === 'territory');
   const timeVal = Math.max(1, Math.round(timeMs || 0));
   const addWin = (countAsWin === undefined) ? true : !!countAsWin;
@@ -2656,7 +2713,8 @@ async function recordWin(mode, style, size, insta, timeMs, countAsWin, partner){
   try {
     const ref = db.collection('leaderboards').doc(key).collection('entries').doc(nameKey);
     const snap = await ref.get();
-    const writesTime = !isDuel && !useTeam;
+    /* Territory never keeps a time entry — only wins. */
+    const writesTime = !isDuel && !isTerr && !useTeam;
 
     if (!snap.exists){
       const doc = {
@@ -2676,7 +2734,7 @@ async function recordWin(mode, style, size, insta, timeMs, countAsWin, partner){
       if (writesTime){
         const prev = data.bestTime;
         if (!prev || timeVal < prev) upd.bestTime = timeVal;
-      } else if (isTeamMode && data.bestTime !== undefined){
+      } else if ((isTerr || (isTeamMode && data.bestTime !== undefined)) && data.bestTime !== undefined){
         upd.bestTime = firebase.firestore.FieldValue.delete();
       }
       await ref.update(upd);
@@ -3265,7 +3323,8 @@ function renderLeaderboardRows(mode, cat){
 function renderLeaderboardHTML(){
   const mode = G.config.mode;
   const insta = !!G.config.insta;
-  const showTime = (mode !== 'duel');
+  /* Duel & Territory leaderboards are wins-only. */
+  const showTime = (mode !== 'duel' && mode !== 'territory');
   const cat = currentLbCategory();
   const modeName = (MODES[mode] || MODES.solo).name;
   const styleName = (STYLES[G.config.style] || STYLES.square).name;
@@ -3386,7 +3445,7 @@ async function fetchTopForConfig(g, style, size, cat, limit){
   const col = db.collection('leaderboards').doc(key).collection('entries');
   let q;
   if (cat === 'time'){
-    if (g.mode === 'duel') return [];
+    if (g.mode === 'duel' || g.mode === 'territory') return [];
     q = col.orderBy('bestTime', 'asc').limit(limit);
   } else {
     q = col.orderBy('wins', 'desc').limit(limit);
@@ -3400,7 +3459,7 @@ async function fetchTopForConfig(g, style, size, cat, limit){
 async function fetchOverviewData(cat){
   const all = [];
   for (const g of OV_GROUPS){
-    if (cat === 'time' && g.mode === 'duel') continue;
+    if (cat === 'time' && (g.mode === 'duel' || g.mode === 'territory')) continue;
     for (const style of ['square','hex']){
       for (const size of ['small','medium','large']){
         all.push({ g, style, size });
@@ -3444,8 +3503,16 @@ function renderOverviewData(cat, data){
     for (const item of items){
       const styleName = (STYLES[item.style] || {}).name || item.style;
       const sizeName = (SIZES[item.size] || {}).name || item.size;
+      const styleCls = (item.style === 'hex') ? ' hex' : '';
+      const sizeCls = (item.size === 'small') ? ' green'
+                    : (item.size === 'medium') ? ' yellow'
+                    : (item.size === 'large') ? ' red' : '';
       html += '<div class="lb-ov-card">';
-      html += '<div class="lb-ov-card-title">' + escapeHtml(styleName + ' · ' + sizeName) + '</div>';
+      html += '<div class="lb-ov-card-title">' +
+                '<span class="sty' + styleCls + '">' + escapeHtml(styleName) + '</span>' +
+                ' · ' +
+                '<span class="sz' + sizeCls + '">' + escapeHtml(sizeName) + '</span>' +
+              '</div>';
       if (!item.entries.length){
         html += '<div class="lb-ov-empty">No scores</div>';
       } else {
@@ -3484,7 +3551,7 @@ function openLeaderboardOverview(){
     '<div class="ovbox menu-pop">' +
       '<div class="big">📊</div>' +
       '<h2>ALL <span>LEADERBOARDS</span></h2>' +
-      '<p>Combined view of every game mode · top 3 per board.</p>' +
+      '<p>Combined view of every game mode · top 3 per board.<br>Territorial & Duel only track wins.</p>' +
       '<div class="lb-ov-cats">' +
         '<button class="lb-cat active" data-ovcat="wins">🏆 WINS</button>' +
         '<button class="lb-cat" data-ovcat="time">⏱ TIME</button>' +
@@ -3583,7 +3650,7 @@ const G = {
   reviewViews: [],
   rematchMe: false, rematchThem: false, rematchLock: false,
   /* Post-mortem hints shown in the map review after a loss.
-     Duel and Territory now track hints for BOTH players so the
+     Duel and Territory track hints for BOTH players so the
      review can display each side's solution.  In Territory the
      two hints are computed from the same shared pre-state and
      filtered by each player's owner. */
@@ -4200,6 +4267,30 @@ class BoardView {
           ctx.restore();
         });
       }
+
+      /* Wrongly-placed flags (flagged tile that is not a mine). */
+      if (hints.wrong){
+        hints.wrong.forEach(function(key){
+          const parts = key.split(',');
+          const hr = +parts[0], hc = +parts[1];
+          if (hr < 0 || hr >= rows || hc < 0 || hc >= cols) return;
+          const hx = pad + hc * (cell + gap);
+          const hy = pad + hr * (cell + gap);
+          ctx.save();
+          ctx.strokeStyle = 'rgba(255,77,109,' + (0.75 + 0.25 * pulse).toFixed(3) + ')';
+          ctx.lineWidth = 3.5;
+          ctx.shadowColor = '#ff4d6d';
+          ctx.shadowBlur = 16;
+          const inset = Math.max(3, cell * 0.24);
+          ctx.beginPath();
+          ctx.moveTo(hx + inset, hy + inset);
+          ctx.lineTo(hx + cell - inset, hy + cell - inset);
+          ctx.moveTo(hx + cell - inset, hy + inset);
+          ctx.lineTo(hx + inset, hy + cell - inset);
+          ctx.stroke();
+          ctx.restore();
+        });
+      }
     }
 
     if (state.highlights){
@@ -4375,6 +4466,28 @@ class BoardView {
           ctx.shadowColor = '#ff4d6d';
           ctx.shadowBlur = 16;
           this.hexPath(hp.x, hp.y, size - 1);
+          ctx.stroke();
+          ctx.restore();
+        }.bind(this));
+      }
+
+      if (hints.wrong){
+        hints.wrong.forEach(function(key){
+          const parts = key.split(',');
+          const hr = +parts[0], hc = +parts[1];
+          if (hr < 0 || hr >= rows || hc < 0 || hc >= cols) return;
+          const hp = this.hexCenter(hr, hc);
+          ctx.save();
+          ctx.strokeStyle = 'rgba(255,77,109,' + (0.75 + 0.25 * pulse).toFixed(3) + ')';
+          ctx.lineWidth = 3.5;
+          ctx.shadowColor = '#ff4d6d';
+          ctx.shadowBlur = 16;
+          const inset = Math.max(3, size * 0.42);
+          ctx.beginPath();
+          ctx.moveTo(hp.x - inset, hp.y - inset);
+          ctx.lineTo(hp.x + inset, hp.y + inset);
+          ctx.moveTo(hp.x + inset, hp.y - inset);
+          ctx.lineTo(hp.x - inset, hp.y + inset);
           ctx.stroke();
           ctx.restore();
         }.bind(this));
@@ -6632,13 +6745,16 @@ function menuHTML(err){
   }).join('');
   const styleBtns = Object.keys(STYLES).map(k => {
     const s = STYLES[k];
-    return '<button class="opt' + (cfg.style === s.id ? ' active' : '') + '" data-style="' + s.id + '">' +
+    const colorCls = (s.id === 'hex') ? ' color-hex' : '';
+    return '<button class="opt' + (cfg.style === s.id ? ' active' : '') + colorCls + '" data-style="' + s.id + '">' +
       '<div class="opt-name">' + s.name + '</div>' +
     '</button>';
   }).join('');
+  const sizeColor = { small:'color-green', medium:'color-yellow', large:'color-red' };
   const sizeBtns = Object.keys(SIZES).map(k => {
     const s = SIZES[k];
-    return '<button class="opt' + (cfg.size === s.id ? ' active' : '') + '" data-size="' + s.id + '">' +
+    const colorCls = ' ' + (sizeColor[s.id] || '');
+    return '<button class="opt' + (cfg.size === s.id ? ' active' : '') + colorCls + '" data-size="' + s.id + '">' +
       '<div class="opt-name">' + s.name + '</div>' +
       '<div class="opt-desc">' + sizeDesc(s.id, cfg.mode, cfg.style) + '</div>' +
     '</button>';
@@ -7314,21 +7430,27 @@ function revealTerritoryStart(){
 }
 
 /* Pre-match countdown, showing the rules of the upcoming match and
-   counting down from 5 seconds. */
+   counting down from 5 seconds.  BOARD size / mine count have been
+   removed — only SIZE is shown now. */
 function countdown(done){
   const cfg = G.config;
   const modeName  = (MODES[cfg.mode]  || {}).name || cfg.mode;
   const styleName = (STYLES[cfg.style]|| {}).name || cfg.style;
   const sizeName  = (SIZES[cfg.size]  || {}).name || cfg.size;
-  const d = dimsFor(cfg);
+
+  const styleCls = (cfg.style === 'hex') ? 'hex' : '';
+  const sizeCls = (cfg.size === 'small') ? 'green'
+                 : (cfg.size === 'medium') ? 'yellow'
+                 : (cfg.size === 'large') ? 'red' : '';
 
   const rulesHtml =
     '<div class="cd-rules">' +
       '<div class="cd-rule' + (cfg.insta ? ' insta' : '') + '"><span>MODE</span><b>' +
         escapeHtml(modeName) + (cfg.insta ? ' · INSTANT' : '') + '</b></div>' +
-      '<div class="cd-rule"><span>STYLE</span><b>' + escapeHtml(styleName) + '</b></div>' +
-      '<div class="cd-rule"><span>SIZE</span><b>' + escapeHtml(sizeName) + '</b></div>' +
-      '<div class="cd-rule"><span>BOARD</span><b>' + d.cols + ' × ' + d.rows + ' · ' + d.mines + ' 💣</b></div>' +
+      '<div class="cd-rule"><span>STYLE</span><b class="' + styleCls + '">' +
+        escapeHtml(styleName) + '</b></div>' +
+      '<div class="cd-rule"><span>SIZE</span><b class="' + sizeCls + '">' +
+        escapeHtml(sizeName) + '</b></div>' +
     '</div>';
 
   let n = 5;
@@ -7464,6 +7586,29 @@ function showMapReview(){
     ? hideCell(themEnd,  G.theirDeathTile.r, G.theirDeathTile.c) : themEnd;
   const themSolutionFull = (isDuel && G.theirDeathTile)
     ? hideCell(themFull, G.theirDeathTile.r, G.theirDeathTile.c) : themFull;
+
+  /* Fallback: for duel we want to show a solution on BOTH sides of
+     the review, even when one of the two didn't lose.  Any side
+     without a stored hint gets a fresh one computed from its end
+     state — this will surface wrongly-placed flags (and, when the
+     board still has hidden tiles — e.g. after a win by opponent
+     death in Instant mode — the remaining safe cells as well). */
+  if (isDuel){
+    if (!G.lossHintMe && myLayout && G.myBoard){
+      G.lossHintMe = computeHintForBoard(
+        myLayout, G.myBoard, null, false,
+        G.deathTile ? G.deathTile.r : undefined,
+        G.deathTile ? G.deathTile.c : undefined
+      );
+    }
+    if (!G.lossHintThem && theirLayout && G.theirBoard){
+      G.lossHintThem = computeHintForBoard(
+        theirLayout, G.theirBoard, null, false,
+        G.theirDeathTile ? G.theirDeathTile.r : undefined,
+        G.theirDeathTile ? G.theirDeathTile.c : undefined
+      );
+    }
+  }
 
   const hasHints = !!(G.lossHintMe || G.lossHintThem);
   const hintBtnHtml = hasHints

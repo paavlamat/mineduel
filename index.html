@@ -196,10 +196,7 @@
     -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;
   }
 
-  /* ── STUN OVERLAY (player frozen) ─────────────────────────
-     Blurred + heavily darkened so the board cannot be read
-     while the player is stunned. Pointer events are captured
-     so pan/zoom is disabled too.                            */
+  /* ── STUN OVERLAY (player frozen) ───────────────────────── */
   .stun{
     position:absolute;inset:0;display:none;flex-direction:column;
     align-items:center;justify-content:center;gap:8px;border-radius:12px;
@@ -239,7 +236,7 @@
   .stun.ice .stun-sub{color:#a5e8ff}
   @keyframes stunpulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.08);opacity:.85}}
 
-  /* ── OPPONENT FROZEN PILL (top right, bigger) ────────────── */
+  /* ── OPPONENT FROZEN PILL ────────────────────────────────── */
   .oppstun{
     position:absolute;top:12px;right:12px;display:none;
     padding:10px 18px;border-radius:99px;
@@ -338,7 +335,31 @@
     text-shadow:0 0 34px #4dd8ff,0 0 80px #4dd8ff;
   }
 
-  /* ── end-of-match message line (rematch / disconnect) ───── */
+  /* ── Pre-match countdown with rules ─────────────────────── */
+  .cd-box{ padding: clamp(18px, 3vh, 36px) clamp(18px, 3vw, 40px); }
+  .cd-rules{
+    display:flex; flex-wrap:wrap; gap:8px; justify-content:center;
+    margin: clamp(8px,1.6vh,18px) 0 clamp(10px,2vh,22px);
+  }
+  .cd-rule{
+    display:flex; flex-direction:column; gap:3px;
+    padding: clamp(7px,1.3vh,11px) clamp(11px,1.6vw,16px);
+    background:rgba(255,255,255,.04);
+    border:1px solid rgba(255,255,255,.10);
+    border-radius:12px;
+    min-width: clamp(84px, 16vw, 130px);
+    text-align:center;
+  }
+  .cd-rule span{
+    font-size:clamp(8px, 1.4vh, 10px);
+    letter-spacing:.24em; color:#5d7fa8; font-weight:800;
+  }
+  .cd-rule b{
+    font-size:clamp(11px, 1.7vh, 14px);
+    color:#4dd8ff; font-weight:900; letter-spacing:.08em;
+  }
+  .cd-rule.insta b{ color:#ff9f43; text-shadow:0 0 10px rgba(255,159,67,.4); }
+
   .endmsg{
     font-size:12px;letter-spacing:.1em;margin-top:12px;min-height:16px;
     font-weight:800;color:#8b9ab4;
@@ -346,7 +367,6 @@
   .endmsg.bad{color:#ff6b8a}
   .endmsg.good{color:#8affc1}
 
-  /* ── menu pop-in animations ────────────────────────────── */
   @keyframes ovPop{
     0%{ transform:scale(.88) translateY(14px); opacity:0; }
     55%{ transform:scale(1.015) translateY(-3px); opacity:1; }
@@ -404,7 +424,6 @@
   @keyframes sp{to{transform:rotate(360deg)}}
   .err{color:#ff6b8a;font-size:12px;letter-spacing:.08em;margin-top:10px;min-height:14px;font-weight:700}
 
-  /* ── Name entry input (standalone, wide) ──────────────── */
   .name-input{
     font-family:inherit;
     font-size:clamp(16px,2.4vh,22px);
@@ -425,7 +444,6 @@
   .name-input:focus{border-color:#4dd8ff;background:rgba(77,216,255,.08)}
   .name-input::placeholder{color:#4a5f7d;letter-spacing:.08em}
 
-  /* ══ MENU CONFIG SECTIONS ══ */
   .config-section{
     margin:22px 0;
     padding:18px 18px 20px;
@@ -489,9 +507,6 @@
   .opt-desc{font-size:11px;color:#7c8aa5;letter-spacing:.05em;line-height:1.5}
   .opt-desc:empty{display:none}
 
-  /* ══════════════════════════════════════════════════════════
-     MAIN MENU / HOTKEYS / HOW-TO overlays
-     ══════════════════════════════════════════════════════════ */
   .ovbox.menu-pop{
     max-width:min(100%, 1300px);
     max-height:calc(100dvh - 84px);
@@ -587,7 +602,6 @@
     border-radius:clamp(7px,1.2vh,11px);
   }
 
-  /* ══ NAME BUTTON / TOP BAR ══ */
   .menu-topbar{
     display:flex;
     justify-content:space-between;
@@ -660,7 +674,6 @@
     transform:translateY(-1px);
   }
 
-  /* ══ MAIN MENU GRID (config | leaderboard) ══ */
   .menu-grid{
     display:grid;
     grid-template-columns:minmax(0, 1fr) minmax(240px, 330px);
@@ -671,7 +684,6 @@
   .menu-main{min-width:0}
   .menu-grid .opt{flex:1 1 clamp(100px, 12vw, 165px)}
 
-  /* ══ LEADERBOARD PANEL ══ */
   .menu-lb{
     background:rgba(255,255,255,.022);
     border:1px solid rgba(255,255,255,.08);
@@ -776,7 +788,6 @@
     color:#5d7fa8;font-weight:800;line-height:1.7;
   }
 
-  /* ══ COMBINED LEADERBOARD OVERVIEW ══ */
   .lb-ov-cats{
     display:flex;gap:8px;justify-content:center;margin:0 0 clamp(8px,1.4vh,16px);
   }
@@ -858,7 +869,6 @@
     color:#4a5f7d;font-style:italic;font-weight:700;
   }
 
-  /* ══ HOTKEY ROWS ══ */
   .hk-row{
     display:flex;align-items:center;gap:10px;
     padding:7px 10px;border-radius:11px;
@@ -1038,6 +1048,10 @@ const STUN_MS = 10000;
 const PREFIX  = 'mineduel-v5-';
 const LINK_PREFIX = 'mineduel-link-';
 const HEARTBEAT_MS      = 2000;
+/* How long without any data before we start showing the "reconnecting"
+   warning in the status bar.  After HEARTBEAT_TIMEOUT the connection
+   is torn down and the match ends with an opponent-disconnect. */
+const HEARTBEAT_WARN    = 10000;
 const HEARTBEAT_TIMEOUT = 20000;
 
 const TARGET_FPS = 120;
@@ -1045,12 +1059,8 @@ const FRAME_MIN_MS = 1000 / TARGET_FPS;
 const PAN_SPEED_CSS = 900;
 const ZOOM_RATE = 2.4;
 
-/* Opponent board in duel mode is a passive "live view".  We render it
-   at a lower cadence (~30 fps) to keep duel matches smooth on devices
-   that would otherwise struggle to paint two full boards at 120 fps. */
 const OPPONENT_RENDER_MS = 33;
 
-/* Total solve attempts per generated board. */
 const SOLVER_MAX_ATTEMPTS = 500;
 
 const TILES_PER_BOMB = {
@@ -1336,7 +1346,7 @@ const SFX = {
     setTimeout(() => beep(1180, 0.2, 'square', 0.05), 140);
   },
   lose(){ beep(200, 0.35, 'sawtooth', 0.06); },
-  countdown(n){ beep(520 + (3 - n) * 130, 0.12, 'square', 0.04); },
+  countdown(n){ beep(520 + (3 - Math.min(n, 5)) * 110, 0.14, 'square', 0.04); },
   go(){ beep(1200, 0.22, 'square', 0.05); }
 };
 
@@ -1506,7 +1516,7 @@ function enumerateSolutions(n, constraints, maxSolutions){
 function solveBoard(board, opening){
   const rows = board.rows, cols = board.cols;
   const N = rows * cols;
-  const state = new Uint8Array(N); // 0 = hidden, 1 = revealed, 2 = flagged
+  const state = new Uint8Array(N);
   for (let i = 0; i < opening.length; i++){
     const r = opening[i][0], c = opening[i][1];
     if (r >= 0 && r < rows && c >= 0 && c < cols) state[r * cols + c] = 1;
@@ -1531,7 +1541,6 @@ function solveBoard(board, opening){
   for (let iter = 0; iter < MAX_ITER; iter++){
     let changed = false;
 
-    /* ── Pass 1 — basic counting ───────────────────────────── */
     for (let i = 0; i < N; i++){
       if (state[i] !== 1) continue;
       const a = adjFlat[i];
@@ -1554,7 +1563,6 @@ function solveBoard(board, opening){
     }
     if (changed) continue;
 
-    /* ── Pass 2 — pairwise subset rule ──────────────────────── */
     const consHidden = [], consRem = [];
     for (let i = 0; i < N; i++){
       if (state[i] !== 1) continue;
@@ -1638,7 +1646,6 @@ function solveBoard(board, opening){
       if (subChanged) continue;
     }
 
-    /* ── Pass 3 — exact enumeration of the frontier ────────── */
     const allCons = [];
     const hiddenSet = new Set();
     for (let i = 0; i < N; i++){
@@ -1737,18 +1744,6 @@ function solveBoard(board, opening){
   return { count: count, state: state };
 }
 
-/* ─────────────────────────────────────────────────────────────
-   Improved solvable board generator.
-
-   Previous version frequently gave up when only a handful of
-   tiles remained hidden — players would then be forced to guess.
-   This version:
-     · walks down through more (finer) mine-count levels
-     · runs more attempts per level
-     · adds a second sweep at ~70% and ~50% of nominal density
-     · falls back to a very sparse sweep which is almost always
-       fully solvable.
-   ───────────────────────────────────────────────────────────── */
 function generateSolvableBoard(seed, style, cols, rows, mineCount,
                                clickR, clickC, starts, opening){
   const buildLevels = (hi, lo, steps) => {
@@ -1786,7 +1781,6 @@ function generateSolvableBoard(seed, style, cols, rows, mineCount,
     }
   }
 
-  /* Second wave — moderately sparse (70% density). */
   const mid = Math.max(1, Math.floor(mineCount * 0.7));
   const midLevels = buildLevels(mid, floor, 8);
   for (let li = 0; li < midLevels.length; li++){
@@ -1807,7 +1801,6 @@ function generateSolvableBoard(seed, style, cols, rows, mineCount,
     }
   }
 
-  /* Final fallback — very sparse boards almost always solve. */
   const sparse = Math.max(1, Math.floor(mineCount * 0.3));
   for (let k = 0; k < 200; k++){
     attempt++;
@@ -2043,11 +2036,6 @@ function rebuildBoardFromMines(layout, mineArr, style){
 
 /* ══════════════════════════════════════════════════════════════
    LOSS HINT — post-mortem analysis of a losing move.
-
-   When a player loses we snapshot the board state *just before*
-   the fatal click, then re-run the deduction engine from that
-   state.  Whatever it can prove is stored as a "hint" the player
-   can reveal in the map-review modal.
    ══════════════════════════════════════════════════════════════ */
 function snapshotBoardState(bs){
   if (!bs) return null;
@@ -2068,14 +2056,34 @@ function snapshotBoardState(bs){
   return out;
 }
 
-/* Returns { reveal:[...], flag:[...], supports:Set } describing the
-   next set of *provable* moves available from `snap`, or null if the
-   solver cannot make any deduction (i.e. guess required).
+/* Serialize / deserialize a hint payload for sending over the wire
+   (territory mode shares one board, so the host computes hints for
+   both owners and ships them to the guest). */
+function serializeHint(h){
+  if (!h) return null;
+  return {
+    reveal: (h.reveal || []).map(x => [x.r, x.c]),
+    flag:   (h.flag   || []).map(x => [x.r, x.c]),
+    supports: Array.from(h.supports || []).map(s => {
+      const parts = String(s).split(',');
+      return [Number(parts[0]) || 0, Number(parts[1]) || 0];
+    })
+  };
+}
+function deserializeHint(data){
+  if (!data) return null;
+  const supports = new Set();
+  (data.supports || []).forEach(p => {
+    if (!Array.isArray(p) || p.length < 2) return;
+    supports.add(p[0] + ',' + p[1]);
+  });
+  return {
+    reveal: (data.reveal || []).map(p => ({ r: p[0], c: p[1] })),
+    flag:   (data.flag   || []).map(p => ({ r: p[0], c: p[1] })),
+    supports: supports
+  };
+}
 
-   reveal[] entries: { r, c, supports: [[sr,sc], ...] }
-   flag[]   entries: { r, c, supports: [[sr,sc], ...] }
-   supports: Set of "r,c" strings — the numbered cells that were
-             used to derive the deductions.                              */
 function getHintMoves(board, snap){
   if (!board || !snap) return null;
   const rows = board.rows, cols = board.cols;
@@ -2128,7 +2136,6 @@ function getHintMoves(board, snap){
 
   const hiddenBuf = [];
 
-  /* Pass 1 — direct counting. */
   for (let i = 0; i < N; i++){
     if (state[i] !== 1) continue;
     const a = adjFlat[i];
@@ -2155,7 +2162,6 @@ function getHintMoves(board, snap){
     return { reveal: reveals, flag: flags, supports: supports };
   }
 
-  /* Pass 2 — pairwise subset rule. */
   const consHidden = [], consRem = [], consSrc = [];
   for (let i = 0; i < N; i++){
     if (state[i] !== 1) continue;
@@ -2231,7 +2237,6 @@ function getHintMoves(board, snap){
     return { reveal: reveals, flag: flags, supports: supports };
   }
 
-  /* Pass 3 — exact enumeration per frontier component. */
   const allCons = [];
   const hiddenSet = new Set();
   for (let i = 0; i < N; i++){
@@ -2352,7 +2357,6 @@ function computeHintForBoard(board, snap, owner, unlocked, excludeR, excludeC){
   return hints;
 }
 
-/* Convert the hint payload into fast Set lookups for the renderer. */
 function hintRenderState(hints){
   if (!hints) return null;
   const reveal = new Set();
@@ -2366,6 +2370,20 @@ function hintRenderState(hints){
     flag.add(h.r + ',' + h.c);
   }
   return { reveal: reveal, flag: flag, supports: hints.supports || new Set() };
+}
+
+/* Merge two hint-render payloads into one, so a shared board can
+   show both players' solutions simultaneously. */
+function mergeHintStates(a, b){
+  if (!a) return b;
+  if (!b) return a;
+  const reveal = new Set(a.reveal);
+  b.reveal.forEach(x => reveal.add(x));
+  const flag = new Set(a.flag);
+  b.flag.forEach(x => flag.add(x));
+  const supports = new Set(a.supports);
+  b.supports.forEach(x => supports.add(x));
+  return { reveal: reveal, flag: flag, supports: supports };
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -2456,10 +2474,6 @@ function trySignIn(){
 const LB_TTL = 45 * 1000;
 const lbCache = new Map();
 
-/* Config keys are generated with optional "insta" variants for
-   the two modes that support it (duel & territory).  The literal
-   "_insta_" token is part of the Firestore document path and must
-   never change or existing scores would be orphaned.            */
 const LB_CONFIG_KEYS = (() => {
   const out = [];
   for (const mode of ['solo','coop','duel','territory']){
@@ -2542,7 +2556,6 @@ function formatTime(ms){
   const rem = s - m * 60;
   return m + 'm ' + rem.toFixed(1) + 's';
 }
-/* In-game clock: plain seconds below 1 minute, then M:SS.S */
 function formatClock(ms){
   const total = Math.max(0, ms || 0) / 1000;
   if (total < 60) return total.toFixed(1);
@@ -2613,9 +2626,6 @@ async function isNameRegisteredOnServer(){
   }
 }
 
-/* ──────────────────────────────────────────────────────────────
-   recordWin
-   ────────────────────────────────────────────────────────────── */
 async function recordWin(mode, style, size, insta, timeMs, countAsWin, partner){
   if (!db || !auth) return;
   if (isGuest) return;
@@ -2671,7 +2681,6 @@ async function recordWin(mode, style, size, insta, timeMs, countAsWin, partner){
       }
       await ref.update(upd);
     }
-    console.log('[fb] recorded individual win for', name, 'on', key);
   } catch(e){
     console.warn('[fb] record win failed:', e && (e.code || e.message || e));
   }
@@ -2706,7 +2715,6 @@ async function recordWin(mode, style, size, insta, timeMs, countAsWin, partner){
         if (!prev || timeVal < prev) upd.bestTime = timeVal;
         await ref.update(upd);
       }
-      console.log('[fb] recorded team time for', pairId, 'on', key);
     } catch(e){
       console.warn('[fb] record team time failed:', e && (e.code || e.message || e));
     }
@@ -2834,20 +2842,6 @@ async function migrateLeaderboardEntry(oldKey, newKey, newName){
   if (touched) lbCache.clear();
 }
 
-/* ──────────────────────────────────────────────────────────────
-   migrateTeamEntries
-   Moves team (pair) leaderboard entries from one name key to
-   another.  Team entries live under a composite document ID
-   built from the two players' keys sorted alphabetically
-   (e.g. "alice__bob"), so renaming a player means moving the
-   entry to a new ID and rewriting the names / nameKeys arrays
-   stored inside the document.  If an entry already exists
-   under the destination ID it is merged.
-
-   Uses a per-config array-contains query so no composite index
-   needs to be created — single-field array queries are served
-   by the automatic single-field index.
-   ────────────────────────────────────────────────────────────── */
 async function migrateTeamEntries(oldKey, newKey, newName){
   if (!db || !auth || !auth.currentUser) return false;
   if (!oldKey || !newKey || oldKey === newKey) return false;
@@ -2871,7 +2865,7 @@ async function migrateTeamEntries(oldKey, newKey, newName){
     const items = [];
     snap.forEach(d => {
       const data = d.data() || {};
-      if (!Array.isArray(data.nameKeys)) return;   // skip individual entries
+      if (!Array.isArray(data.nameKeys)) return;
       items.push({ ref: d.ref, data });
     });
 
@@ -2891,8 +2885,6 @@ async function migrateTeamEntries(oldKey, newKey, newName){
       newKeys[idx]  = newKey;
       newNames[idx] = newName;
 
-      /* Rebuild the canonical pair order (sorted by key) so the
-         document ID matches what recordWin() would produce. */
       const pairs = newKeys.map((k, i) => ({ k, n: newNames[i] }));
       pairs.sort((a, b) => a.k < b.k ? -1 : a.k > b.k ? 1 : 0);
       const sortedKeys  = pairs.map(p => p.k);
@@ -2903,7 +2895,6 @@ async function migrateTeamEntries(oldKey, newKey, newName){
       const oldPairId = oldSortedKeys.join('__');
 
       if (newPairId === oldPairId){
-        /* Document ID unchanged — just rewrite the arrays in place. */
         try {
           await ref.update({
             names: sortedNames,
@@ -3121,7 +3112,6 @@ async function applyLinkedName(hostName, hostKey){
 async function removeLeaderboardEntries(nameKey){
   if (!db || !nameKey) return;
 
-  /* ── 1. Individual entries (one doc per config) ─────────────── */
   const CHUNK = 8;
   for (let i = 0; i < LB_CONFIG_KEYS.length; i += CHUNK){
     const slice = LB_CONFIG_KEYS.slice(i, i + CHUNK);
@@ -3138,7 +3128,6 @@ async function removeLeaderboardEntries(nameKey){
     }
   }
 
-  /* ── 2. Team entries that include this key ──────────────────── */
   for (const configKey of LB_CONFIG_KEYS){
     let snap;
     try {
@@ -3157,7 +3146,7 @@ async function removeLeaderboardEntries(nameKey){
     let n = 0;
     snap.forEach(d => {
       const data = d.data() || {};
-      if (!Array.isArray(data.nameKeys)) return;   // skip individual entries
+      if (!Array.isArray(data.nameKeys)) return;
       batch.delete(d.ref);
       n++;
     });
@@ -3383,9 +3372,6 @@ async function refreshLeaderboard(force){
   }
 }
 
-/* ──────────────────────────────────────────────────────────────
-   Combined Leaderboard Overview
-   ────────────────────────────────────────────────────────────── */
 const OV_GROUPS = [
   { mode:'solo',      insta:false, label:'SOLO' },
   { mode:'coop',      insta:false, label:'CO-OP' },
@@ -3400,7 +3386,6 @@ async function fetchTopForConfig(g, style, size, cat, limit){
   const col = db.collection('leaderboards').doc(key).collection('entries');
   let q;
   if (cat === 'time'){
-    /* Duel boards never store times — nothing to query. */
     if (g.mode === 'duel') return [];
     q = col.orderBy('bestTime', 'asc').limit(limit);
   } else {
@@ -3415,8 +3400,6 @@ async function fetchTopForConfig(g, style, size, cat, limit){
 async function fetchOverviewData(cat){
   const all = [];
   for (const g of OV_GROUPS){
-    /* Duel boards have no time entries — skip them entirely in the
-       TIME view so the overview never shows empty duel cards. */
     if (cat === 'time' && g.mode === 'duel') continue;
     for (const style of ['square','hex']){
       for (const size of ['small','medium','large']){
@@ -3561,9 +3544,6 @@ function makeBoardState(rows, cols){
     revealed: Array.from({length: rows}, () => new Array(cols).fill(false)),
     flagged:  Array.from({length: rows}, () => new Array(cols).fill(false)),
     owner:    Array.from({length: rows}, () => new Array(cols).fill(0)),
-    /* Tiles claimed by a wrongfully-placed flag.  They still show as
-       the flagger's territory and feed the on-screen land counter,
-       but are excluded from the final land-grab comparison. */
     fakeFlag: Array.from({length: rows}, () => new Array(cols).fill(false)),
     revealAt: Array.from({length: rows}, () => new Array(cols).fill(0)),
     flagAt:   Array.from({length: rows}, () => new Array(cols).fill(0)),
@@ -3596,23 +3576,24 @@ const G = {
   panelMe: null, panelThem: null,
   peer: null, conn: null,
   startTime: 0, lossPending: false, winSent: false,
-  opponentGone: false, lastRecv: 0,
+  opponentGone: false, lastRecv: 0, reconnecting: false,
   deathTile: null, theirDeathTile: null,
   territoryUnlocked: false,
   terrBoardReady: true,
   reviewViews: [],
   rematchMe: false, rematchThem: false, rematchLock: false,
-  /* Post-mortem hint shown in the map review after a loss. */
-  lossHint: null,
-  lossHintTarget: 'me',
+  /* Post-mortem hints shown in the map review after a loss.
+     Duel and Territory now track hints for BOTH players so the
+     review can display each side's solution.  In Territory the
+     two hints are computed from the same shared pre-state and
+     filtered by each player's owner. */
+  lossHintMe: null,
+  lossHintThem: null,
   /* Pending pre-dig snapshot (used when a guest in co-op /
      territory needs to reconstruct the state that led to a loss). */
   pendingPreSnap: null
 };
 
-/* Remembers the Instant Die toggle while the player hops between
-   modes that don't support it.  Intentionally in-memory only —
-   a page reload resets it to OFF. */
 let rememberedInsta = false;
 
 const overlay    = document.getElementById('overlay');
@@ -3632,7 +3613,6 @@ function fitMenuBox(){
   const box = overlay.querySelector('.ovbox.menu-pop');
   if (!box || !box.parentElement) return;
 
-  /* Reset to natural size so we can measure the real content. */
   box.style.zoom = '';
   box.style.maxHeight = 'none';
   box.style.overflowY = 'hidden';
@@ -3663,11 +3643,6 @@ function fitMenuBox(){
     maxH = Math.floor(availH);
   }
   box.style.maxHeight = maxH + 'px';
-
-  /* Only show a scrollbar when the content really overflows —
-     this prevents the "full but useless" phantom slider that
-     appears when the Instant Die section pushes the box 1–2px
-     past the available height. */
   box.style.overflowY = (h > maxH + 8) ? 'auto' : 'hidden';
 }
 
@@ -4025,7 +4000,6 @@ class BoardView {
   }
   triggerShake(){ this.shake = 1; }
 
-  /* ── shared hint overlay drawing ─────────────────────────── */
   _drawHintOutline(x, y, w, h, r, color, lineWidth, blur){
     const ctx = this.ctx;
     ctx.save();
@@ -4152,7 +4126,6 @@ class BoardView {
       }
     }
 
-    /* Hint overlay — pulsing outlines on top of everything. */
     if (hints){
       const pulse = 0.5 + 0.5 * Math.sin(nowMs / 200);
 
@@ -4353,7 +4326,6 @@ class BoardView {
       }
     }
 
-    /* Hint overlay */
     if (hints){
       const pulse = 0.5 + 0.5 * Math.sin(nowMs / 200);
 
@@ -4481,18 +4453,12 @@ function setStunFace(el, reason){
   if (sub) sub.textContent = ice ? 'WRONG FLAG' : 'BOMB TRIGGERED';
 }
 
-/* ─────────────────────────────────────────────────────────────
-   Mode helpers
-   ───────────────────────────────────────────────────────────── */
-/* True when a bomb (or a wrong flag) freezes the player for 10 s.
-   That is: Duel / Territorial with "Instant Die" turned OFF.     */
 function usesStunPenalty(){
   if (G.config.insta) return false;
   const m = G.config.mode;
   return m === 'duel' || m === 'territory';
 }
 
-/* Tiles this player has revealed (chain-reveals included). */
 function myRevealedCount(){
   if (!G.myBoard) return 0;
   const mode = G.config.mode;
@@ -4502,7 +4468,6 @@ function myRevealedCount(){
   return G.myBoard.safeRevealed || 0;
 }
 
-/* Tiles the opponent / partner has revealed. */
 function theirRevealedCount(){
   if (!G.myBoard) return 0;
   const mode = G.config.mode;
@@ -4654,7 +4619,6 @@ function buildArena(){
     arena.appendChild(panelB);
     G.viewThem = new BoardView(panelB.querySelector('canvas'));
     G.viewThem.setConfig(viewConfig());
-    /* Opponent's board in duel mode: view only — no zoom, no pan. */
     bindCanvasInput(G.viewThem, false, false);
     panelB._els = {
       mines: panelB.querySelector('[data-mines]'),
@@ -4756,7 +4720,7 @@ function bindCanvasInput(view, gameplay, allowZoom){
   canvas.addEventListener('contextmenu', e => e.preventDefault());
   canvas.addEventListener('wheel', e => {
     if (!view.metrics) return;
-    if (!allowZoom) return;          /* zoom disabled for this board */
+    if (!allowZoom) return;
     e.preventDefault();
     let delta = e.deltaY;
     if (e.deltaMode === 1) delta *= 16;
@@ -5154,10 +5118,6 @@ function countLand(boardState, owner){
       if (boardState.owner[r][c] === owner) n++;
   return n;
 }
-/* Land that actually counts towards the final land-grab comparison.
-   Wrongfully-placed flags are shown as the flagger's territory and
-   are counted in countLand() for the on-screen stats, but they are
-   excluded here so a fake claim never decides the match. */
 function countRealLand(boardState, owner){
   let n = 0;
   if (!boardState.owner) return 0;
@@ -5170,9 +5130,6 @@ function countRealLand(boardState, owner){
   }
   return n;
 }
-/* Like countLand, but only counts tiles that are actually revealed.
-   Used by the end-of-match "% of map revealed" stat so that flagged
-   mines in Territory mode don't inflate the totals. */
 function countRevealedBy(boardState, owner){
   let n = 0;
   if (!boardState.owner) return 0;
@@ -5207,11 +5164,6 @@ function mapRevealStats(){
     return { mine, theirs };
   }
 
-  /* Co-op / Territory: report each player's share of the safe map
-     they uncovered.  Every tile a player reveals — including the
-     extra tiles auto-uncovered by zero-mine chain reveals — is
-     stamped with that player's owner id, so the two percentages
-     always add up to 100% once the field is fully cleared.        */
   const safeTotal = Math.max(1, G.board.safeCount || (G.board.rows * G.board.cols));
   const c1 = countRevealedBy(G.myBoard, 1);
   const c2 = countRevealedBy(G.myBoard, 2);
@@ -5223,8 +5175,6 @@ function mapRevealStats(){
 
 function canTouchTerritoryRaw(boardState, board, r, c, owner){
   if (!boardState || !boardState.owner || !board) return true;
-  /* An enemy flag that sits on a non-mine tile is fake and may be
-     removed from anywhere, even before the map has unlocked. */
   if (boardState.flagged && boardState.flagged[r][c] &&
       boardState.fakeFlag && boardState.fakeFlag[r][c] &&
       boardState.owner[r][c] && boardState.owner[r][c] !== owner){
@@ -5246,8 +5196,6 @@ function hasAvailableMove(boardState, board, owner){
     for (let c = 0; c < board.cols; c++){
       if (boardState.revealed[r][c]) continue;
       if (boardState.flagged[r][c]){
-        /* A wrongfully-placed enemy flag can be removed, so it still
-           counts as a legal move for the player. */
         const flagOwner = boardState.owner[r][c];
         const isFake = boardState.fakeFlag && boardState.fakeFlag[r][c];
         if (!(isFake && flagOwner && flagOwner !== owner)) continue;
@@ -5338,9 +5286,6 @@ async function localDig(){
         await ensureBoardReadyAsync(r, c);
         sendBoardToGuest();
       } else {
-        /* Guest in coop / territory: snapshot the pre-state so we can
-           reconstruct what the player could have done differently if
-           this dig turns out to be fatal. */
         G.pendingPreSnap = snapshotBoardState(G.myBoard);
         send({ t:'dig', r: r, c: c });
         G.pendingDig = { r: r, c: c };
@@ -5374,12 +5319,10 @@ function doLocalDig(r, c){
     if (!res) return;
     if (res.type === 'mine'){
       G.me.hits++; G.deathTile = { r, c };
-      G.lossHint = computeHintForBoard(G.board, preSnap, null, false, r, c);
-      G.lossHintTarget = 'me';
+      G.lossHintMe = computeHintForBoard(G.board, preSnap, null, false, r, c);
       send({ t:'hit', r, c });
 
       if (insta){
-        /* ── INSTANT DIE: bomb = instant loss, opponent wins ── */
         send({ t:'lose' });
         revealAllMines(bs, G.board, r, c);
         const view = G.viewMe;
@@ -5405,7 +5348,6 @@ function doLocalDig(r, c){
     if (checkWin(bs, G.board)) duelWin();
     return;
   }
-  /* solo */
   const bs = G.myBoard;
   ensureFirstDigSafe(G.board, bs, G.me, r, c, false);
   const preSnap = snapshotBoardState(bs);
@@ -5413,8 +5355,7 @@ function doLocalDig(r, c){
   if (!res) return;
   if (res.type === 'mine'){
     G.me.hits++;
-    G.lossHint = computeHintForBoard(G.board, preSnap, null, false, r, c);
-    G.lossHintTarget = 'me';
+    G.lossHintMe = computeHintForBoard(G.board, preSnap, null, false, r, c);
     handleLoss(r, c, G.viewMe, bs, G.board);
     return;
   }
@@ -5538,24 +5479,32 @@ function handleTerritoryBoom(r, c, owner){
     view.boom(p.x, p.y, '#ffd166', iTriggered ? 18 : 10, 140);
   }
 
-  /* ── INSTANT DIE territory: bomb = instant loss for the digger,
-        opponent records the win. ── */
+  /* Package both sides' solution hints so the guest can display them
+     in the post-game review.  Territory shares one board, so the
+     host is the authoritative source for both. */
+  const hintPayload = {};
+  if (G.lossHintMe)   hintPayload[G.myOwner]    = serializeHint(G.lossHintMe);
+  if (G.lossHintThem) hintPayload[G.theirOwner] = serializeHint(G.lossHintThem);
+
+  const deltaMsg = {
+    t:'delta', mine:[r, c], own: owner, rev: [[r, c]],
+    hints: (Object.keys(hintPayload).length ? hintPayload : undefined)
+  };
+
   if (G.config.insta){
-    send({ t:'delta', mine:[r, c], own: owner, rev: [[r, c]] });
-
+    send(deltaMsg);
     const elapsed = performance.now() - G.startTime;
-
     if (iTriggered){
       SFX.mine(); vibrate(220);
       revealAllMines(bs, G.board, r, c);
-      send({ t:'lose' });   /* tells the guest they won */
+      send({ t:'lose' });
       setTimeout(() => {
         endGame('lose', '💀', 'BOOM!', 'You hit a mine. Instant defeat.', elapsed);
       }, 1000);
     } else {
       SFX.oppStun();
       revealAllMines(bs, G.board, r, c);
-      send({ t:'win' });    /* tells the guest they lost */
+      send({ t:'win' });
       setTimeout(() => {
         endGame('win', '🏆', 'VICTORY!', 'Your opponent hit a mine.', elapsed);
       }, 1000);
@@ -5564,7 +5513,7 @@ function handleTerritoryBoom(r, c, owner){
   }
 
   applyPenalty(owner, 'bomb');
-  send({ t:'delta', mine:[r, c], own: owner, rev: [[r, c]] });
+  send(deltaMsg);
 }
 function afterSharedReveal(){
   if (G.config.mode === 'coop'){
@@ -5636,19 +5585,6 @@ function endTerritoryScreen(land1, land2, real1, real2){
   endGame(result, icon, title, sub, elapsed, cards, { skipRecord: true });
 }
 
-/* ──────────────────────────────────────────────────────────────
-   localFlag
-
-   Solo / Co-op     → flag is a plain marker.  Toggling does nothing
-                      else.
-   Duel / Territory → flagging an EMPTY tile is a mistake: the tile
-                      is revealed and the player is frozen for 10 s
-                      ("wrong flag" penalty).  Flagging an actual
-                      mine just toggles the marker as usual.
-
-   INSTANT DIE modes → flag is always a plain marker.  No penalty
-                      ever (this is the "no flag penalty" toggle).
-   ────────────────────────────────────────────────────────────── */
 function localFlag(){
   if (!canAct()) return;
   const r = G.me.cursor.r, c = G.me.cursor.c;
@@ -5661,10 +5597,6 @@ function localFlag(){
     if (!canTouchTerritory(bs, G.board, r, c, G.myOwner)) return;
 
     if (insta){
-      /* Standard rules: no penalty, but wrong flags still claim
-         the tile visually.  The host processes the flag through
-         the authoritative handler so both peers agree on which
-         claims are fake. */
       if (G.role === 'host'){
         hostApplyTerritoryFlag(r, c, G.myOwner);
       } else {
@@ -5699,7 +5631,6 @@ function localFlag(){
     const isMine = G.board.mines.has(r + ',' + c);
 
     if (insta){
-      /* No flag penalty — plain marker toggle. */
       const on = bs.flagged[r][c] ? 0 : 1;
       bs.flagged[r][c] = !!on;
       bs.flagAt[r][c] = performance.now();
@@ -5710,7 +5641,6 @@ function localFlag(){
     }
 
     if (isMine){
-      /* Flagging a real mine just toggles the marker. */
       const on = bs.flagged[r][c] ? 0 : 1;
       bs.flagged[r][c] = !!on;
       bs.flagAt[r][c] = performance.now();
@@ -5720,7 +5650,6 @@ function localFlag(){
       return;
     }
 
-    /* Wrong flag: reveal the tile and freeze for 10 s (like territorial). */
     bs.revealed[r][c] = true;
     bs.revealAt[r][c] = performance.now();
     bs.count++;
@@ -5747,7 +5676,6 @@ function localFlag(){
     return;
   }
 
-  /* Solo */
   const on = bs.flagged[r][c] ? 0 : 1;
   bs.flagged[r][c] = !!on;
   bs.flagAt[r][c] = performance.now();
@@ -5779,8 +5707,7 @@ function localChord(){
       G.me.hits++;
       const mr = res.tiles[0][0], mc = res.tiles[0][1];
       G.deathTile = { r: mr, c: mc };
-      G.lossHint = computeHintForBoard(G.board, preSnap, null, false, mr, mc);
-      G.lossHintTarget = 'me';
+      G.lossHintMe = computeHintForBoard(G.board, preSnap, null, false, mr, mc);
       send({ t:'hit', r: mr, c: mc });
 
       if (insta){
@@ -5815,8 +5742,7 @@ function localChord(){
   if (!res) return;
   if (res.type === 'mine'){
     G.me.hits++;
-    G.lossHint = computeHintForBoard(G.board, preSnap, null, false, res.tiles[0][0], res.tiles[0][1]);
-    G.lossHintTarget = 'me';
+    G.lossHintMe = computeHintForBoard(G.board, preSnap, null, false, res.tiles[0][0], res.tiles[0][1]);
     handleLoss(res.tiles[0][0], res.tiles[0][1], G.viewMe, bs, G.board);
     return;
   }
@@ -5890,15 +5816,19 @@ function hostApplyDig(r, c, owner){
   const res = applyReveal(bs, G.board, r, c, owner);
   if (!res) return;
   if (res.type === 'mine'){
-    /* Local (host) player triggered — capture the hint on our side. */
-    if (owner === G.myOwner){
-      G.lossHint = computeHintForBoard(
-        G.board, preSnap,
-        G.config.mode === 'territory' ? G.myOwner : null,
-        G.territoryUnlocked,
-        r, c
-      );
-      G.lossHintTarget = 'me';
+    /* Compute hint payloads for BOTH players so the post-game review
+       can show each side's solution.  In territory mode the board
+       is shared, so we filter the same pre-state snapshot by each
+       player's owner id. */
+    if (G.config.mode === 'territory'){
+      G.lossHintMe   = computeHintForBoard(G.board, preSnap, G.myOwner,    G.territoryUnlocked, r, c);
+      G.lossHintThem = computeHintForBoard(G.board, preSnap, G.theirOwner, G.territoryUnlocked, r, c);
+    } else {
+      if (owner === G.myOwner){
+        G.lossHintMe = computeHintForBoard(G.board, preSnap, null, false, r, c);
+      } else {
+        G.lossHintThem = computeHintForBoard(G.board, preSnap, null, false, r, c);
+      }
     }
     if (G.config.mode === 'coop') handleCoopLoss(r, c, true, owner === G.myOwner);
     else handleTerritoryBoom(r, c, owner);
@@ -5924,19 +5854,12 @@ function hostApplyTerritoryFlag(r, c, owner){
   const bs = G.myBoard;
   if (bs.revealed[r][c]) return;
 
-  /* ── INSTANT: wrongfully placed flags still claim the tile for
-        the flagger so it appears in their territory colour and
-        bumps their land counter, but they are tagged as fake so
-        they never decide the final land-grab comparison.  Enemies
-        may remove a fake flag from anywhere on the board. ── */
   if (G.config.insta){
     if (bs.flagged[r][c]){
-      /* Removing an existing flag */
       const flagOwner  = bs.owner ? bs.owner[r][c] : 0;
       const flagIsFake = bs.fakeFlag ? bs.fakeFlag[r][c] : false;
       const isEnemyFlag = flagOwner && flagOwner !== owner;
 
-      /* An enemy's *correct* flag cannot be removed. */
       if (isEnemyFlag && !flagIsFake){
         if (owner === G.myOwner) SFX.denied();
         return;
@@ -5953,7 +5876,6 @@ function hostApplyTerritoryFlag(r, c, owner){
       return;
     }
 
-    /* Placing a flag */
     const isMine = G.board.mines.has(r + ',' + c);
     bs.flagged[r][c] = true;
     bs.flagAt[r][c] = performance.now();
@@ -6016,14 +5938,15 @@ function hostApplyChord(r, c, owner){
   if (!res) return;
   if (res.type === 'mine'){
     const mr = res.tiles[0][0], mc = res.tiles[0][1];
-    if (owner === G.myOwner){
-      G.lossHint = computeHintForBoard(
-        G.board, preSnap,
-        G.config.mode === 'territory' ? G.myOwner : null,
-        G.territoryUnlocked,
-        mr, mc
-      );
-      G.lossHintTarget = 'me';
+    if (G.config.mode === 'territory'){
+      G.lossHintMe   = computeHintForBoard(G.board, preSnap, G.myOwner,    G.territoryUnlocked, mr, mc);
+      G.lossHintThem = computeHintForBoard(G.board, preSnap, G.theirOwner, G.territoryUnlocked, mr, mc);
+    } else {
+      if (owner === G.myOwner){
+        G.lossHintMe = computeHintForBoard(G.board, preSnap, null, false, mr, mc);
+      } else {
+        G.lossHintThem = computeHintForBoard(G.board, preSnap, null, false, mr, mc);
+      }
     }
     if (G.config.mode === 'coop') handleCoopLoss(mr, mc, true, owner === G.myOwner);
     else handleTerritoryBoom(mr, mc, owner);
@@ -6049,14 +5972,6 @@ function send(msg){
   }
 }
 
-/* ─────────────────────────────────────────────────────────────
-   sendBoardToGuest — Co-op only.
-   Ships the host's ACTUAL mine layout to the guest so both players
-   sweep the identical field.  We deliberately send the full mine
-   array rather than just a seed, because the host may have had to
-   lower the density during the solvability search — replaying a
-   seed at the nominal density would produce a different board.
-   ───────────────────────────────────────────────────────────── */
 function sendBoardToGuest(){
   if (G.config.mode !== 'coop') return;
   if (!G.board || G.boardPending) return;
@@ -6076,8 +5991,20 @@ function startHeartbeat(){
   hbTimer = setInterval(() => {
     if (G.state === 'lobby' && !G.conn) return;
     if (!G.conn || !G.conn.open){ onConnClosed(); return; }
-    if (G.lastRecv && (performance.now() - G.lastRecv) > HEARTBEAT_TIMEOUT){
-      onConnClosed(); return;
+    const since = performance.now() - G.lastRecv;
+    if (since > HEARTBEAT_TIMEOUT){
+      /* The opponent has been silent for too long — end the match
+         as a disconnect so the remaining player isn't stuck. */
+      console.warn('[net] heartbeat timeout (' + Math.round(since) + 'ms) — disconnecting opponent');
+      onConnClosed();
+      return;
+    }
+    if (since > HEARTBEAT_WARN && !G.reconnecting && G.state !== 'lobby'){
+      G.reconnecting = true;
+      setStatus('RECONNECTING', 'warn');
+    } else if (since <= HEARTBEAT_WARN && G.reconnecting){
+      G.reconnecting = false;
+      if (G.state === 'playing') setStatus(G.role === 'solo' ? 'SOLO' : 'LIVE', 'live');
     }
     send({ t:'ping' });
   }, HEARTBEAT_MS);
@@ -6088,6 +6015,7 @@ function onConnClosed(){
   stopHeartbeat();
   if (G.opponentGone) return;
   G.opponentGone = true;
+  G.reconnecting = false;
   if (G.state === 'playing' || G.state === 'countdown'){
     endGame('disconnect', '🔌', 'OPPONENT DISCONNECTED',
             'Your opponent left the match.', performance.now() - G.startTime);
@@ -6105,6 +6033,7 @@ function attachConn(c){
   G.conn = c;
   G.lastRecv = performance.now();
   G.opponentGone = false;
+  G.reconnecting = false;
   G.theirName = '';
   G.theirNameKey = '';
   c.on('data', msg => { G.lastRecv = performance.now(); handleMessage(msg); });
@@ -6271,9 +6200,6 @@ function handleMessage(msg){
       break;
 
     case 'hit': {
-      /* Duel only: opponent hit a mine.  Snapshot their board state
-         (before we reveal the mine) so we can later show, on their
-         side of the review board, what they could have done. */
       if (G.config.mode === 'duel' && G.theirBoard && G.theirBoardLayout &&
           msg.r !== undefined && msg.c !== undefined &&
           !G.theirBoard.revealed[msg.r][msg.c]){
@@ -6281,8 +6207,7 @@ function handleMessage(msg){
         preSnap.revealed[msg.r][msg.c] = false;
         const hint = computeHintForBoard(G.theirBoardLayout, preSnap, null, false, msg.r, msg.c);
         if (hint){
-          G.lossHint = hint;
-          G.lossHintTarget = 'them';
+          G.lossHintThem = hint;
         }
       }
       if (G.them){
@@ -6360,19 +6285,16 @@ function handleMessage(msg){
             'Together you swept every safe tile.',
             performance.now() - G.startTime);
         } else {
-          /* Duel / Territory — guest lost.  Compute the hint now
-             (from the guest's board before it was updated). */
-          if (!G.lossHint){
+          if (!G.lossHintMe){
             const snap = G.pendingPreSnap || snapshotBoardState(G.myBoard);
             if (snap && G.board){
-              G.lossHint = computeHintForBoard(
+              G.lossHintMe = computeHintForBoard(
                 G.board, snap,
                 G.config.mode === 'territory' ? G.myOwner : null,
                 G.territoryUnlocked,
                 G.deathTile ? G.deathTile.r : undefined,
                 G.deathTile ? G.deathTile.c : undefined
               );
-              G.lossHintTarget = 'me';
             }
           }
           G.pendingPreSnap = null;
@@ -6440,13 +6362,15 @@ function applyDelta(msg){
     bs.owner[r][c] = (msg.own !== undefined) ? msg.own : 0;
     if (bs.fakeFlag) bs.fakeFlag[r][c] = false;
   }
+  /* Territory: the host ships both players' hint payloads alongside
+     the mine update so the review can show each side's solution. */
+  if (msg.hints && G.myOwner && G.theirOwner){
+    if (msg.hints[G.myOwner])    G.lossHintMe   = deserializeHint(msg.hints[G.myOwner]);
+    if (msg.hints[G.theirOwner]) G.lossHintThem = deserializeHint(msg.hints[G.theirOwner]);
+  }
   if (msg.lose){
-    /* Guest in co-op: reconstruct the hint from our pre-dig snapshot
-       BEFORE handleCoopLoss mutates the board (it calls
-       revealAllMines). */
-    if (!G.lossHint && G.pendingPreSnap && G.board){
-      G.lossHint = computeHintForBoard(G.board, G.pendingPreSnap, null, false, msg.r, msg.c);
-      G.lossHintTarget = 'me';
+    if (!G.lossHintMe && G.pendingPreSnap && G.board){
+      G.lossHintMe = computeHintForBoard(G.board, G.pendingPreSnap, null, false, msg.r, msg.c);
     }
     G.pendingPreSnap = null;
     handleCoopLoss(msg.r, msg.c, false, msg.by === G.myOwner);
@@ -6455,6 +6379,7 @@ function applyDelta(msg){
 
 function cleanupNet(){
   stopHeartbeat();
+  G.reconnecting = false;
   if (G.conn){ try { G.conn.close(); } catch(e){} G.conn = null; }
   if (G.peer){ try { G.peer.destroy(); } catch(e){} G.peer = null; }
 }
@@ -6719,9 +6644,6 @@ function menuHTML(err){
     '</button>';
   }).join('');
 
-  /* Instant Die toggle — only shown for duel / territory.
-     Both options use the "danger" flavour so the SELECTED one is
-     always highlighted in red, matching the section's danger styling. */
   const supportsInsta = (cfg.mode === 'duel' || cfg.mode === 'territory');
   const instaSection = supportsInsta
     ? ('<div class="config-section danger-mode">' +
@@ -6854,7 +6776,6 @@ function howToHTML(){
 function renderMenu(err){
   if (err !== undefined) menuError = err;
 
-  /* The combined overview manages its own DOM. */
   if (menuView === 'lboverview') return;
 
   if (menuView === 'hotkeys'){
@@ -6980,10 +6901,6 @@ function renderMenu(err){
   overlay.querySelectorAll('[data-mode]').forEach(b => {
     b.onclick = () => {
       G.config.mode = b.dataset.mode;
-      /* Instant Die only applies to duel / territory.
-         Remember the last choice made inside a supporting mode so
-         hopping to solo/co-op and back restores it.  This is
-         in-memory only — a page reload resets it to OFF. */
       if (G.config.mode === 'duel' || G.config.mode === 'territory'){
         G.config.insta = rememberedInsta;
       } else {
@@ -7069,14 +6986,15 @@ function idleOverlay(){
   G.winSent = false;
   G.opponentGone = false;
   G.lastRecv = 0;
+  G.reconnecting = false;
   G.deathTile = null;
   G.theirDeathTile = null;
   G.territoryUnlocked = false;
   G.terrBoardReady = true;
   G.reviewViews = [];
   G.rematchMe = false; G.rematchThem = false; G.rematchLock = false;
-  G.lossHint = null;
-  G.lossHintTarget = 'me';
+  G.lossHintMe = null;
+  G.lossHintThem = null;
   G.pendingPreSnap = null;
   lastUnlockCheck = 0;
   clearHeldKeys();
@@ -7312,12 +7230,13 @@ function startMatch(seed, role, seedGuest){
   G.theirOwner = (role === 'guest') ? 1 : 2;
   G.lossPending = false; G.winSent = false; G.opponentGone = false;
   G.pendingDig = null; G.lastRecv = performance.now();
+  G.reconnecting = false;
   G.deathTile = null; G.theirDeathTile = null;
   G.territoryUnlocked = false; G.reviewViews = [];
   G.boardOpening = null;
   G.rematchMe = false; G.rematchThem = false; G.rematchLock = false;
-  G.lossHint = null;
-  G.lossHintTarget = 'me';
+  G.lossHintMe = null;
+  G.lossHintThem = null;
   G.pendingPreSnap = null;
   lastUnlockCheck = 0;
   clearHeldKeys();
@@ -7377,7 +7296,8 @@ function startMatch(seed, role, seedGuest){
     G.state = 'playing';
     G.startTime = performance.now();
     lastCursorSent = 0;
-    setStatus(role === 'solo' ? 'SOLO' : 'LIVE', 'live');
+    if (role === 'solo') setStatus('SOLO', 'live');
+    else setStatus('LIVE', 'live');
     SFX.go();
     if (mode === 'territory' && G.terrBoardReady) revealTerritoryStart();
   });
@@ -7393,16 +7313,45 @@ function revealTerritoryStart(){
   applyReveal(G.myBoard, G.board, theirS.r, theirS.c, G.theirOwner);
 }
 
+/* Pre-match countdown, showing the rules of the upcoming match and
+   counting down from 5 seconds. */
 function countdown(done){
-  let n = 3;
+  const cfg = G.config;
+  const modeName  = (MODES[cfg.mode]  || {}).name || cfg.mode;
+  const styleName = (STYLES[cfg.style]|| {}).name || cfg.style;
+  const sizeName  = (SIZES[cfg.size]  || {}).name || cfg.size;
+  const d = dimsFor(cfg);
+
+  const rulesHtml =
+    '<div class="cd-rules">' +
+      '<div class="cd-rule' + (cfg.insta ? ' insta' : '') + '"><span>MODE</span><b>' +
+        escapeHtml(modeName) + (cfg.insta ? ' · INSTANT' : '') + '</b></div>' +
+      '<div class="cd-rule"><span>STYLE</span><b>' + escapeHtml(styleName) + '</b></div>' +
+      '<div class="cd-rule"><span>SIZE</span><b>' + escapeHtml(sizeName) + '</b></div>' +
+      '<div class="cd-rule"><span>BOARD</span><b>' + d.cols + ' × ' + d.rows + ' · ' + d.mines + ' 💣</b></div>' +
+    '</div>';
+
+  let n = 5;
   const step = () => {
     if (n > 0){
-      showOverlay('<div class="ovbox"><h2>GET <span>READY</span></h2><div class="cd">' + n + '</div></div>');
+      showOverlay(
+        '<div class="ovbox cd-box">' +
+          '<h2>GET <span>READY</span></h2>' +
+          rulesHtml +
+          '<div class="cd">' + n + '</div>' +
+        '</div>'
+      );
       SFX.countdown(n);
       n--;
-      setTimeout(step, 750);
+      setTimeout(step, 1000);
     } else {
-      showOverlay('<div class="ovbox"><div class="cd" style="color:#5dff9e;text-shadow:0 0 34px #5dff9e,0 0 80px #5dff9e">GO!</div></div>');
+      showOverlay(
+        '<div class="ovbox cd-box">' +
+          '<h2>GET <span>READY</span></h2>' +
+          rulesHtml +
+          '<div class="cd" style="color:#5dff9e;text-shadow:0 0 34px #5dff9e,0 0 80px #5dff9e">GO!</div>' +
+        '</div>'
+      );
       SFX.go();
       setTimeout(() => { hideOverlay(); done(); }, 550);
     }
@@ -7426,6 +7375,8 @@ function buildControls(){
 }
 
 async function onLeaveClick(){
+  /* Always confirm before abandoning an active match so a misclick
+     can never silently disconnect the opponent. */
   if (G.state === 'playing' || G.state === 'countdown'){
     const ok = await confirmDialog({
       title: 'LEAVE MATCH?',
@@ -7474,6 +7425,7 @@ let reviewRafId = null;
 function showMapReview(){
   if (!G.board || !G.myBoard) return;
   const isDuel = (G.config.mode === 'duel') && !!G.theirBoard;
+  const isTerr = (G.config.mode === 'territory');
   const myLayout = G.board;
   const theirLayout = (G.config.mode === 'duel') ? (G.theirBoardLayout || G.board) : G.board;
 
@@ -7485,10 +7437,6 @@ function showMapReview(){
     themFull = buildFullRevealState(G.theirBoard, theirLayout);
   }
 
-  /* The tile that killed the player is now shown as a revealed mine.
-     For the solution view we hide it again — the player never saw it
-     when they made the click, so showing it is hindsight.  These
-     variants are built once so we don't allocate per animation frame. */
   const hideCell = (state, r, c) => {
     if (!state || r === undefined || c === undefined) return state;
     const s = makeBoardState(state.rows, state.cols);
@@ -7517,7 +7465,7 @@ function showMapReview(){
   const themSolutionFull = (isDuel && G.theirDeathTile)
     ? hideCell(themFull, G.theirDeathTile.r, G.theirDeathTile.c) : themFull;
 
-  const hasHints = !!G.lossHint;
+  const hasHints = !!(G.lossHintMe || G.lossHintThem);
   const hintBtnHtml = hasHints
     ? '<button id="btnShowHints">💡 SHOW SOLUTION</button>'
     : '';
@@ -7525,7 +7473,7 @@ function showMapReview(){
   const cells =
     '<div class="review-cell">' +
       '<canvas data-review="me"></canvas>' +
-      (isDuel ? '<div class="review-label me">YOU</div>' : '') +
+      (isDuel || isTerr ? '<div class="review-label me">YOU</div>' : '') +
     '</div>' +
     (isDuel
       ? '<div class="review-cell">' +
@@ -7566,14 +7514,9 @@ function showMapReview(){
     reviewRafId = requestAnimationFrame(draw);
     const t = now + 60000;
 
-    const meHints   = (showingHints && G.lossHint && G.lossHintTarget === 'me')   ? hintRenderState(G.lossHint) : null;
-    const themHints = (showingHints && G.lossHint && G.lossHintTarget === 'them') ? hintRenderState(G.lossHint) : null;
+    const meHints   = (showingHints && G.lossHintMe)   ? hintRenderState(G.lossHintMe)   : null;
+    const themHints = (showingHints && G.lossHintThem) ? hintRenderState(G.lossHintThem) : null;
 
-    /* Pick the right board state for each side.
-       · normal            → end-of-match view (death tile shown as mine)
-       · SHOW SOLUTION     → same view but the stepped-on bomb is hidden
-       · SHOW FULL MAP     → every tile revealed
-       · both              → full map with the stepped-on bomb hidden   */
     let meState, themState;
     if (showingFull){
       meState   = showingHints ? meSolutionFull   : meFull;
@@ -7584,12 +7527,17 @@ function showMapReview(){
     }
 
     if (views[0]){
+      /* Territory: single shared board — display hints for BOTH
+         players simultaneously.  Duel / Solo: only this side's. */
+      const combinedHints = isTerr
+        ? mergeHintStates(meHints, themHints)
+        : meHints;
       views[0].render(t, {
         board: myLayout,
         boardState: meState,
         cursors: [],
         highlights: showingHints ? [] : highlights,
-        hints: meHints
+        hints: combinedHints
       });
     }
     if (views[1]){
@@ -7686,9 +7634,6 @@ function endGame(result, icon, title, sub, elapsed, cards, opts){
   G.rematchThem = false;
   G.rematchLock = false;
 
-  /* Record the win for every mode that reaches this path — including
-     Territory.  endTerritoryScreen() records its own result and calls
-     this with skipRecord:true, so the two paths never double-count. */
   if (!opts.skipRecord && result === 'win' && G.config && elapsed > 0){
     const mode = G.config.mode;
     const isTeam = (mode === 'coop' || mode === 'territory');
@@ -7789,14 +7734,6 @@ function endGame(result, icon, title, sub, elapsed, cards, opts){
   else if (result === 'lose' || result === 'disconnect') SFX.lose();
 }
 
-/* ─────────────────────────────────────────────────────────────
-   Render loop
-
-   The opponent's board in duel mode is a passive live view — it
-   doesn't need 120 fps.  We throttle it to OPPONENT_RENDER_MS so
-   duel matches stay smooth even on devices that struggle to paint
-   two full boards at the target frame rate.
-   ───────────────────────────────────────────────────────────── */
 let lastTheirBoardRender = 0;
 
 function renderAll(now){

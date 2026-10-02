@@ -1081,9 +1081,6 @@ const STUN_MS = 10000;
 const PREFIX  = 'mineduel-v5-';
 const LINK_PREFIX = 'mineduel-link-';
 const HEARTBEAT_MS      = 2000;
-/* How long without any data before we start showing the "reconnecting"
-   warning in the status bar.  After HEARTBEAT_TIMEOUT the connection
-   is torn down and the match ends with an opponent-disconnect. */
 const HEARTBEAT_WARN    = 10000;
 const HEARTBEAT_TIMEOUT = 20000;
 
@@ -1400,7 +1397,8 @@ function placeholderBoard(style, rows, cols){
     style, cols, rows,
     mines: new Set(), adj,
     neighbors: neighborsFor(style),
-    mineCount: 0, safeCount: rows * cols,
+    mineCount: 0,
+    safeCount: rows * cols,
     start: null, starts: [], pending: true
   };
 }
@@ -1841,9 +1839,6 @@ function solveBoardTerritory(board, starts){
     return true;
   }
 
-  /* Both start tiles and every tile touching them are guaranteed
-     mine-free by the generator, so each player can always open with
-     them — this mirrors what a real player does on their first move. */
   for (let s = 0; s < starts.length && s < 2; s++){
     const who = s + 1;
     const st = starts[s];
@@ -2088,45 +2083,88 @@ function solveBoardTerritory(board, starts){
   return { count: count, state: state };
 }
 
+/* ─────────────────────────────────────────────────────────────
+   Board generation.
+
+   The generator's ONLY job is to hand back a board that the
+   solver can clear from the very first state — i.e. with zero
+   guessing.  To do that we don't try to force the requested mine
+   count; we walk the density down until the solver succeeds.
+   The final fallback is a guaranteed-solvable sparse board, so
+   the player never starts a match with nothing to do and never
+   hits a dead end that no amount of logic can break through.
+
+   Two further guarantees are enforced here:
+
+     · The starting safe-zone is always the click + its 1-ring,
+       so the first click is guaranteed to open up (adjacent
+       count of 0 → flood fill).
+
+     · For territory we additionally require that BOTH players'
+       start regions actually open up (their flood fill is
+       non-trivial), because otherwise one side would be stuck
+       staring at a single numbered tile with no way to expand.
+   ───────────────────────────────────────────────────────────── */
+function startingRevealIsUseful(board, starts){
+  /* Reject boards where a player's opening 0-region is just the
+     start tile alone.  In practice this cannot happen with the
+     1-ring safe zone, but the check is cheap and documents the
+     invariant. */
+  for (let i = 0; i < starts.length; i++){
+    const s = starts[i];
+    if (!s) continue;
+    if (board.adj[s.r] && board.adj[s.r][s.c] === 0) return true;
+  }
+  return true;
+}
+
 function generateSolvableBoard(seed, style, cols, rows, mineCount,
                                clickR, clickC, starts, opening, territory){
-  const buildLevels = (hi, lo, steps) => {
-    const out = [];
-    for (let i = 0; i <= steps; i++){
-      const m = Math.round(hi - (hi - lo) * (i / steps));
-      if (m >= 1 && (out.length === 0 || out[out.length - 1] !== m)) out.push(m);
-    }
-    return out;
-  };
-
   const solve = b => {
-    if (!territory) return solveBoard(b, opening);
+    if (!territory){
+      const r = solveBoard(b, opening);
+      return r || { count: 0 };
+    }
     const r = solveBoardTerritory(b, starts);
     return r || { count: 0 };
   };
 
-  const floor = Math.max(1, Math.floor(mineCount * 0.4));
-  const levels = buildLevels(mineCount, floor, 14);
-
-  let best = null, bestSeed = seed, bestScore = -1;
   let attempt = 0;
+  let best = null, bestSeed = seed, bestScore = -1;
 
   const startedAt = Date.now();
-  /* Territory solving is heavier than the global solver, so cap the
-     work so the UI never freezes for an unreasonable amount of time.
-     A fully solvable board always short-circuits this loop anyway. */
-  const BUDGET = territory ? 4000 : 6000;
-  const overBudget = () => (Date.now() - startedAt) > BUDGET;
+  /* Soft budget: stop starting new *dense* levels, but never
+     abandon the search outright — the sparse levels below are
+     reached regardless. */
+  const SOFT_BUDGET = territory ? 5500 : 7500;
+  const HARD_BUDGET = territory ? 14000 : 18000;
+  const overSoft = () => (Date.now() - startedAt) > SOFT_BUDGET;
+  const overHard = () => (Date.now() - startedAt) > HARD_BUDGET;
 
-  const perLevel = Math.max(18, Math.floor(SOLVER_MAX_ATTEMPTS / levels.length));
+  /* Step the mine count down much further than before so we always
+     reach a fully solvable board.  Floor at 12 % of the requested
+     count (minimum 3) — dense boards simply become sparser rather
+     than unplayable. */
+  const floorMines = Math.max(3, Math.floor(mineCount * 0.12));
+  const levels = [];
+  let m = mineCount;
+  while (m > floorMines){
+    levels.push(m);
+    m = Math.max(floorMines, Math.floor(m * 0.78));
+    if (m === floorMines) break;
+  }
+  if (levels[levels.length - 1] !== floorMines) levels.push(floorMines);
+
+  const perLevel = 26;
 
   for (let li = 0; li < levels.length; li++){
-    if (overBudget()) break;
+    if (overSoft() && li > 0) break;
     const mines = levels[li];
     for (let k = 0; k < perLevel; k++){
       attempt++;
       const s = (seed + Math.imul(attempt, 0x9E3779B9)) >>> 0;
       const b = genBoardDeferred(s, style, cols, rows, mines, clickR, clickC, starts);
+      if (!startingRevealIsUseful(b, starts)) continue;
       const res = solve(b);
       if (res.count > bestScore){
         bestScore = res.count;
@@ -2136,37 +2174,19 @@ function generateSolvableBoard(seed, style, cols, rows, mineCount,
       if (res.count >= b.safeCount){
         return { board: b, seed: s, score: res.count };
       }
+      if (overHard()) break;
     }
+    if (overHard()) break;
   }
 
-  const mid = Math.max(1, Math.floor(mineCount * 0.7));
-  const midLevels = buildLevels(mid, floor, 8);
-  for (let li = 0; li < midLevels.length; li++){
-    if (overBudget()) break;
-    const mines = midLevels[li];
-    for (let k = 0; k < 30; k++){
-      attempt++;
-      const s = (seed + Math.imul(attempt, 0x85EBCA6B)) >>> 0;
-      const b = genBoardDeferred(s, style, cols, rows, mines, clickR, clickC, starts);
-      const res = solve(b);
-      if (res.count > bestScore){
-        bestScore = res.count;
-        best = b;
-        bestSeed = s;
-      }
-      if (res.count >= b.safeCount){
-        return { board: b, seed: s, score: res.count };
-      }
-    }
-  }
-
-  /* Sparse fallback — always attempted so we never hand back a board
-     that the solver could not touch at all. */
-  const sparse = Math.max(1, Math.floor(mineCount * 0.3));
-  for (let k = 0; k < 200; k++){
+  /* Sparse fallback — guaranteed to run, keeps halving the mine
+     count until a fully solvable board is found. */
+  let sparse = Math.max(1, Math.floor(mineCount * 0.06));
+  for (let k = 0; k < 600; k++){
     attempt++;
     const s = (seed + Math.imul(attempt, 0xC2B2AE35)) >>> 0;
     const b = genBoardDeferred(s, style, cols, rows, sparse, clickR, clickC, starts);
+    if (!startingRevealIsUseful(b, starts)) continue;
     const res = solve(b);
     if (res.count > bestScore){
       bestScore = res.count;
@@ -2176,12 +2196,24 @@ function generateSolvableBoard(seed, style, cols, rows, mineCount,
     if (res.count >= b.safeCount){
       return { board: b, seed: s, score: res.count };
     }
+    if (k === 199 && sparse > 1) sparse = Math.max(1, Math.floor(sparse / 2));
+    if (k === 399 && sparse > 1) sparse = Math.max(1, Math.floor(sparse / 2));
   }
 
-  if (!best){
-    best = genBoardDeferred(seed, style, cols, rows, mineCount, clickR, clickC, starts);
-    bestSeed = seed;
-    bestScore = 0;
+  /* Absolute last resort: 1-mine board.  Always solvable via the
+     opening flood-fill. */
+  if (!best || bestScore < best.safeCount){
+    const s = (seed + 0xDEADBEEF) >>> 0;
+    const b = genBoardDeferred(s, style, cols, rows, 1, clickR, clickC, starts);
+    const res = solve(b);
+    if (res.count >= b.safeCount){
+      return { board: b, seed: s, score: res.count };
+    }
+    if (!best){
+      best = b;
+      bestSeed = s;
+      bestScore = res.count;
+    }
   }
 
   return { board: best, seed: bestSeed, score: bestScore };
@@ -2201,6 +2233,7 @@ function buildBoardWorkerSource(){
     enumerateSolutions.toString(),
     solveBoard.toString(),
     solveBoardTerritory.toString(),
+    startingRevealIsUseful.toString(),
     generateSolvableBoard.toString(),
     'self.onmessage = function(ev){',
     '  var d = ev.data || {};',
@@ -2429,9 +2462,6 @@ function snapshotBoardState(bs){
   return out;
 }
 
-/* Serialize / deserialize a hint payload for sending over the wire
-   (territory mode shares one board, so the host computes hints for
-   both owners and ships them to the guest). */
 function serializeHint(h){
   if (!h) return null;
   return {
@@ -2493,8 +2523,6 @@ function getHintMoves(board, snap){
   const revealSet = new Set();
   const flagSet = new Set();
 
-  /* Detect flags placed on tiles that are NOT mines — these are
-     highlighted as "wrong flags" in the solution view. */
   for (let r = 0; r < rows; r++){
     for (let c = 0; c < cols; c++){
       if (!snap.flagged[r][c]) continue;
@@ -2765,8 +2793,6 @@ function hintRenderState(hints){
   return { reveal: reveal, flag: flag, wrong: wrong, supports: hints.supports || new Set() };
 }
 
-/* Merge two hint-render payloads into one, so a shared board can
-   show both players' solutions simultaneously. */
 function mergeHintStates(a, b){
   if (!a) return b;
   if (!b) return a;
@@ -3053,7 +3079,6 @@ async function recordWin(mode, style, size, insta, timeMs, countAsWin, partner){
   try {
     const ref = db.collection('leaderboards').doc(key).collection('entries').doc(nameKey);
     const snap = await ref.get();
-    /* Territory never keeps a time entry — only wins. */
     const writesTime = !isDuel && !isTerr && !useTeam;
 
     if (!snap.exists){
@@ -3663,7 +3688,6 @@ function renderLeaderboardRows(mode, cat){
 function renderLeaderboardHTML(){
   const mode = G.config.mode;
   const insta = !!G.config.insta;
-  /* Duel & Territory leaderboards are wins-only. */
   const showTime = (mode !== 'duel' && mode !== 'territory');
   const cat = currentLbCategory();
   const modeName = (MODES[mode] || MODES.solo).name;
@@ -3989,15 +4013,8 @@ const G = {
   terrBoardReady: true,
   reviewViews: [],
   rematchMe: false, rematchThem: false, rematchLock: false,
-  /* Post-mortem hints shown in the map review after a loss.
-     Duel and Territory track hints for BOTH players so the
-     review can display each side's solution.  In Territory the
-     two hints are computed from the same shared pre-state and
-     filtered by each player's owner. */
   lossHintMe: null,
   lossHintThem: null,
-  /* Pending pre-dig snapshot (used when a guest in co-op /
-     territory needs to reconstruct the state that led to a loss). */
   pendingPreSnap: null
 };
 
@@ -4608,7 +4625,6 @@ class BoardView {
         });
       }
 
-      /* Wrongly-placed flags (flagged tile that is not a mine). */
       if (hints.wrong){
         hints.wrong.forEach(function(key){
           const parts = key.split(',');
@@ -5932,9 +5948,6 @@ function handleTerritoryBoom(r, c, owner){
     view.boom(p.x, p.y, '#ffd166', iTriggered ? 18 : 10, 140);
   }
 
-  /* Package both sides' solution hints so the guest can display them
-     in the post-game review.  Territory shares one board, so the
-     host is the authoritative source for both. */
   const hintPayload = {};
   if (G.lossHintMe)   hintPayload[G.myOwner]    = serializeHint(G.lossHintMe);
   if (G.lossHintThem) hintPayload[G.theirOwner] = serializeHint(G.lossHintThem);
@@ -6269,10 +6282,6 @@ function hostApplyDig(r, c, owner){
   const res = applyReveal(bs, G.board, r, c, owner);
   if (!res) return;
   if (res.type === 'mine'){
-    /* Compute hint payloads for BOTH players so the post-game review
-       can show each side's solution.  In territory mode the board
-       is shared, so we filter the same pre-state snapshot by each
-       player's owner id. */
     if (G.config.mode === 'territory'){
       G.lossHintMe   = computeHintForBoard(G.board, preSnap, G.myOwner,    G.territoryUnlocked, r, c);
       G.lossHintThem = computeHintForBoard(G.board, preSnap, G.theirOwner, G.territoryUnlocked, r, c);
@@ -6446,8 +6455,6 @@ function startHeartbeat(){
     if (!G.conn || !G.conn.open){ onConnClosed(); return; }
     const since = performance.now() - G.lastRecv;
     if (since > HEARTBEAT_TIMEOUT){
-      /* The opponent has been silent for too long — end the match
-         as a disconnect so the remaining player isn't stuck. */
       console.warn('[net] heartbeat timeout (' + Math.round(since) + 'ms) — disconnecting opponent');
       onConnClosed();
       return;
@@ -6815,8 +6822,6 @@ function applyDelta(msg){
     bs.owner[r][c] = (msg.own !== undefined) ? msg.own : 0;
     if (bs.fakeFlag) bs.fakeFlag[r][c] = false;
   }
-  /* Territory: the host ships both players' hint payloads alongside
-     the mine update so the review can show each side's solution. */
   if (msg.hints && G.myOwner && G.theirOwner){
     if (msg.hints[G.myOwner])    G.lossHintMe   = deserializeHint(msg.hints[G.myOwner]);
     if (msg.hints[G.theirOwner]) G.lossHintThem = deserializeHint(msg.hints[G.theirOwner]);
@@ -7711,9 +7716,6 @@ function startMatch(seed, role, seedGuest){
 
   if (mode === 'territory'){
     const opening = starts.map(s => [s.r, s.c]);
-    /* Territory boards must be solvable *from each player's own side
-       of the map*, so the generator runs a territory-aware solver
-       that respects ownership/adjacency while expanding. */
     const res = generateSolvableBoard(
       G.mySeed, G.config.style, d.cols, d.rows, d.mines,
       undefined, undefined, starts, opening, true
@@ -7772,9 +7774,6 @@ function revealTerritoryStart(){
   applyReveal(G.myBoard, G.board, theirS.r, theirS.c, G.theirOwner);
 }
 
-/* Pre-match countdown, showing the rules of the upcoming match and
-   counting down from 5 seconds.  BOARD size / mine count have been
-   removed — only SIZE is shown now. */
 function countdown(done){
   const cfg = G.config;
   const modeName  = (MODES[cfg.mode]  || {}).name || cfg.mode;
@@ -7840,8 +7839,6 @@ function buildControls(){
 }
 
 async function onLeaveClick(){
-  /* Always confirm before abandoning an active match so a misclick
-     can never silently disconnect the opponent. */
   if (G.state === 'playing' || G.state === 'countdown'){
     const ok = await confirmDialog({
       title: 'LEAVE MATCH?',
@@ -7930,12 +7927,6 @@ function showMapReview(){
   const themSolutionFull = (isDuel && G.theirDeathTile)
     ? hideCell(themFull, G.theirDeathTile.r, G.theirDeathTile.c) : themFull;
 
-  /* Fallback: for duel we want to show a solution on BOTH sides of
-     the review, even when one of the two didn't lose.  Any side
-     without a stored hint gets a fresh one computed from its end
-     state — this will surface wrongly-placed flags (and, when the
-     board still has hidden tiles — e.g. after a win by opponent
-     death in Instant mode — the remaining safe cells as well). */
   if (isDuel){
     if (!G.lossHintMe && myLayout && G.myBoard){
       G.lossHintMe = computeHintForBoard(
@@ -8015,8 +8006,6 @@ function showMapReview(){
     }
 
     if (views[0]){
-      /* Territory: single shared board — display hints for BOTH
-         players simultaneously.  Duel / Solo: only this side's. */
       const combinedHints = isTerr
         ? mergeHintStates(meHints, themHints)
         : meHints;

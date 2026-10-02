@@ -4510,7 +4510,11 @@ class BoardView {
           this.roundRect(ctx, x, y, cell, cell, radius);
           ctx.fill();
 
-          if (own && !isMine){
+          /* NOTE: the owner tint on a *hidden* tile must never depend on
+             whether the tile really hides a mine, otherwise a placed
+             flag would visually leak its correctness.  Every owned
+             hidden tile gets exactly the same tint. */
+          if (own){
             ctx.fillStyle = this.ownerTint[own];
             this.roundRect(ctx, x, y, cell, cell, radius);
             ctx.fill();
@@ -4742,7 +4746,9 @@ class BoardView {
             ctx.restore();
           } else {
             ctx.fillStyle = '#111a2c'; ctx.fill();
-            if (own && !isMine){ ctx.fillStyle = this.ownerTint[own]; ctx.fill(); }
+            /* Same rule as the square renderer: the tint must not depend
+               on the real mine layout, or flag correctness leaks. */
+            if (own){ ctx.fillStyle = this.ownerTint[own]; ctx.fill(); }
             const pulse = 0.22 + 0.11 * Math.sin(nowMs / 800 + (r * 0.7 + c * 0.45));
             ctx.strokeStyle = own ? this.ownerEdge[own]
               : 'rgba(90,165,255,' + pulse.toFixed(3) + ')';
@@ -4893,6 +4899,31 @@ class BoardView {
     ctx.arcTo(x, y, x + w, y, r);
     ctx.closePath();
   }
+}
+
+/* ── Owner colour palette ───────────────────────────────────────
+   The two territory colours are fixed: the local player is ALWAYS
+   cyan (#4dd8ff) and the opponent is ALWAYS pink (#ff3d81), no
+   matter which player is owner 1 or owner 2 internally.  Every
+   BoardView that draws a territory board must use `myPalette()`
+   so the colours never flip between the live match and the map
+   review. */
+const PALETTE_CYAN = {
+  tint:     'rgba(77,216,255,.17)',
+  tintMine: 'rgba(77,216,255,.30)',
+  edge:     'rgba(77,216,255,.72)',
+  solid:    '#4dd8ff'
+};
+const PALETTE_PINK = {
+  tint:     'rgba(255,61,129,.17)',
+  tintMine: 'rgba(255,61,129,.30)',
+  edge:     'rgba(255,61,129,.72)',
+  solid:    '#ff3d81'
+};
+function myPalette(){
+  return (G.myOwner === 1)
+    ? { 1: PALETTE_CYAN, 2: PALETTE_PINK }
+    : { 1: PALETTE_PINK, 2: PALETTE_CYAN };
 }
 
 function hexOrSqCenter(view, r, c){
@@ -5114,15 +5145,9 @@ function buildTerritoryArena(){
   arena.appendChild(panel);
   G.viewMe = new BoardView(panel.querySelector('canvas'));
   G.viewMe.setConfig(viewConfig());
-  const CYAN = {
-    tint: 'rgba(77,216,255,.17)', tintMine: 'rgba(77,216,255,.30)',
-    edge: 'rgba(77,216,255,.72)', solid: '#4dd8ff'
-  };
-  const PINK = {
-    tint: 'rgba(255,61,129,.17)', tintMine: 'rgba(255,61,129,.30)',
-    edge: 'rgba(255,61,129,.72)', solid: '#ff3d81'
-  };
-  G.viewMe.setOwnerPalette(G.myOwner === 1 ? { 1: CYAN, 2: PINK } : { 1: PINK, 2: CYAN });
+  /* Always colour the local player cyan and the opponent pink,
+     regardless of whether we are owner 1 or owner 2 internally. */
+  G.viewMe.setOwnerPalette(myPalette());
   bindCanvasInput(G.viewMe, true, true);
   wireZoomBadge(panel, G.viewMe);
   panel._els = {
@@ -7949,10 +7974,15 @@ function showMapReview(){
     ? '<button id="btnShowHints">💡 SHOW SOLUTION</button>'
     : '';
 
+  /* Duel shows two boards side by side, so each one gets its own
+     "YOU" / "OPPONENT" label.  Territory only ever shows a single
+     combined board with both territories on it, so the old "YOU"
+     label that used to sit at the top has been removed — the
+     colours alone identify the players. */
   const cells =
     '<div class="review-cell">' +
       '<canvas data-review="me"></canvas>' +
-      (isDuel || isTerr ? '<div class="review-label me">YOU</div>' : '') +
+      (isDuel ? '<div class="review-label me">YOU</div>' : '') +
     '</div>' +
     (isDuel
       ? '<div class="review-cell">' +
@@ -7978,6 +8008,9 @@ function showMapReview(){
   modal.querySelectorAll('canvas[data-review]').forEach(c => {
     const v = new BoardView(c);
     v.setConfig(vc);
+    /* Keep the same colour identity as the live match: the local
+       player is always cyan, the opponent always pink. */
+    if (isTerr) v.setOwnerPalette(myPalette());
     bindCanvasInput(v, false, true);
     views.push(v);
   });

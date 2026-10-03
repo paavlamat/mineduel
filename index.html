@@ -3548,57 +3548,59 @@ async function recordWin(mode, style, size, insta, timeMs, countAsWin, partner, 
                   partner && partner.name && partner.key &&
                   partner.key !== nameKey;
 
-  try {
-    const ref = db.collection('leaderboards').doc(key).collection('entries').doc(nameKey);
-    const snap = await ref.get();
+  if (!useTeam || !isInf){
+    try {
+      const ref = db.collection('leaderboards').doc(key).collection('entries').doc(nameKey);
+      const snap = await ref.get();
 
-    if (isInf){
-      if (!snap.exists){
-        await ref.set({
-          name,
-          bestTiles: tilesVal,
-          bestTime: timeVal,
-          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-      } else {
-        const data = snap.data() || {};
-        const upd = {
-          name,
-          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        };
-        const prev = data.bestTiles || 0;
-        if (tilesVal > prev){
-          upd.bestTiles = tilesVal;
-          upd.bestTime = timeVal;
+      if (isInf){
+        if (!snap.exists){
+          await ref.set({
+            name,
+            bestTiles: tilesVal,
+            bestTime: timeVal,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+        } else {
+          const data = snap.data() || {};
+          const upd = {
+            name,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          };
+          const prev = data.bestTiles || 0;
+          if (tilesVal > prev){
+            upd.bestTiles = tilesVal;
+            upd.bestTime = timeVal;
+          }
+          await ref.update(upd);
         }
-        await ref.update(upd);
-      }
-    } else {
-      const writesTime = !isDuel && !isTerr && !useTeam;
-      if (!snap.exists){
-        const doc = {
-          name,
-          wins: addWin ? 1 : 0,
-          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        };
-        if (writesTime) doc.bestTime = timeVal;
-        await ref.set(doc);
       } else {
-        const data = snap.data() || {};
-        const upd = {
-          name,
-          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        };
-        if (addWin) upd.wins = (data.wins || 0) + 1;
-        if (writesTime){
-          const prev = data.bestTime;
-          if (!prev || timeVal < prev) upd.bestTime = timeVal;
+        const writesTime = !isDuel && !isTerr && !useTeam;
+        if (!snap.exists){
+          const doc = {
+            name,
+            wins: addWin ? 1 : 0,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          };
+          if (writesTime) doc.bestTime = timeVal;
+          await ref.set(doc);
+        } else {
+          const data = snap.data() || {};
+          const upd = {
+            name,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          };
+          if (addWin) upd.wins = (data.wins || 0) + 1;
+          if (writesTime){
+            const prev = data.bestTime;
+            if (!prev || timeVal < prev) upd.bestTime = timeVal;
+          }
+          await ref.update(upd);
         }
-        await ref.update(upd);
       }
+    } catch(e){
+      console.warn('[fb] record win failed:', e && (e.code || e.message || e));
     }
-  } catch(e){
-    console.warn('[fb] record win failed:', e && (e.code || e.message || e));
   }
 
   if (useTeam){

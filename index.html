@@ -6439,6 +6439,7 @@ function revealCountsAndPct(){
   if (!G.board || !G.myBoard) return null;
   const mode = G.config.mode;
   const isDuel = (mode === 'duel');
+  const isInf = isInfiniteSize(G.config.size);
   const theirLayout = isDuel ? (G.theirBoardLayout || G.board) : G.board;
 
   const myTotal = Math.max(1, G.board.safeCount || (G.board.rows * G.board.cols) || 1);
@@ -6446,6 +6447,19 @@ function revealCountsAndPct(){
 
   const mine = myRevealedCount();
   const theirs = G.them ? theirRevealedCount() : 0;
+
+  /* Infinite co-op has no finite board to divide by, so split the
+     percentage by each player's share of the team's combined reveals.
+     The two numbers then always add up to 100%. */
+  if (isInf && mode === 'coop'){
+    const teamTotal = Math.max(1, mine + theirs);
+    return {
+      mine: mine,
+      theirs: theirs,
+      minePct: clamp(mine / teamTotal * 100, 0, 100),
+      theirsPct: clamp(theirs / teamTotal * 100, 0, 100)
+    };
+  }
 
   return {
     mine: mine,
@@ -9277,12 +9291,16 @@ function endGame(result, icon, title, sub, elapsed, cards, opts){
         cardsHtml += statCardHtml('lose', 'THEIR HITS', G.them.hits);
       }
     } else {
-      /* One box per player: tile amount + percentage of the board.
-         Works for solo, co-op, instant duel and infinite runs. */
+      /* One box per player: tile amount + percentage.
+         Solo infinite runs show only the raw tile count — there is no
+         meaningful board total to take a percentage of.  Co-op infinite
+         runs split the percentage between both players so the two
+         numbers always add up to 100%. */
       const st = revealCountsAndPct();
       if (st){
+        const soloInf = isInf && G.config.mode === 'solo';
         cardsHtml += statCardHtml(isInf ? 'inf' : 'win', 'YOU REVEALED',
-                                  st.mine, formatRevealPct(st.minePct));
+                                  st.mine, soloInf ? '' : formatRevealPct(st.minePct));
         if (G.them){
           cardsHtml += statCardHtml('lose', 'THEY REVEALED',
                                     st.theirs, formatRevealPct(st.theirsPct));

@@ -34,6 +34,20 @@
     -webkit-mask-image:radial-gradient(circle at 50% 40%, #000 0%, transparent 78%);
   }
   .hidden{display:none !important}
+
+  /* ── Hover tooltip for infinite-mode leaderboard entries ── */
+  #lbTip{
+    position:fixed;z-index:120;pointer-events:none;
+    padding:7px 13px;border-radius:10px;
+    background:rgba(8,13,24,.97);
+    border:1px solid rgba(185,140,255,.6);
+    color:#d4b8ff;
+    font-family:'Courier New',monospace;
+    font-size:11.5px;font-weight:900;letter-spacing:.08em;
+    white-space:nowrap;
+    box-shadow:0 12px 28px -14px #000, 0 0 20px rgba(185,140,255,.28);
+    text-shadow:0 0 10px rgba(185,140,255,.55);
+  }
   #app{
     position:relative;
     width:100%;max-width:1900px;margin:0 auto;
@@ -832,6 +846,8 @@
     background:rgba(77,216,255,.1);
     border-color:rgba(77,216,255,.4);
   }
+  .lb-row.tiles{cursor:help}
+  .lb-ov-row.tiles{cursor:help}
   .lb-rank{
     width:22px;text-align:center;flex:none;
     font-family:'Courier New',monospace;font-weight:900;
@@ -1208,8 +1224,10 @@ const OPPONENT_RENDER_MS = 33;
 const INFINITE_REVEAL_RADIUS = 10;
 /* Infinite mode: how far out the user can zoom. */
 const INFINITE_MIN_ZOOM = 0.6;
-/* Infinite mode: mine density multiplier (1.5× the standard density). */
-const INFINITE_MINE_MULT = 1.5;
+/* Infinite mode: mine density multiplier (relative to the standard
+   1 mine per 4 tiles density).  Lowered from 1.5× to 0.9× so the
+   endless boards are noticeably less bomb-heavy and runs last longer. */
+const INFINITE_MINE_MULT = 0.9;
 
 const TILES_PER_BOMB = {
   square: 4,
@@ -1271,7 +1289,7 @@ function dimsFor(config){
     const cols = INFINITE_COLS;
     const rows = config.style === 'hex' ? INFINITE_ROWS_HEX : INFINITE_ROWS_SQ;
     const per = TILES_PER_BOMB[config.style] || 4;
-    /* Infinite maps are 1.5× denser than the standard density. */
+    /* Infinite maps use a reduced density (see INFINITE_MINE_MULT). */
     const mines = Math.max(1, Math.round((cols * rows) / per * INFINITE_MINE_MULT));
     return { cols, rows, mines, infinite: true };
   }
@@ -3102,13 +3120,84 @@ function formatTiles(n){
   return n + (n === 1 ? ' tile' : ' tiles');
 }
 
-/* Tooltip for infinite-map entries: how long the run took. */
-function tilesTitle(e){
-  const t = (typeof e.bestTime === 'number' && e.bestTime > 0)
-    ? formatTime(e.bestTime)
-    : 'not recorded';
-  return ' title="Reached this in ' + t + '"';
+/* ── Time tooltip for infinite-map entries ─────────────────────
+   Every infinite-size board (TILES category) records the run time
+   alongside the tile count.  Hovering an entry with the mouse now
+   shows how long that run actually lasted. */
+function tilesTimeText(e){
+  if (typeof e.bestTime === 'number' && e.bestTime > 0) return formatTime(e.bestTime);
+  return 'not recorded';
 }
+function tilesTitle(e){
+  const t = tilesTimeText(e);
+  const safe = String(t).replace(/"/g, '&quot;');
+  return ' data-tip="⏱ Time used: ' + safe + '"';
+}
+
+/* Floating tooltip shared by every leaderboard list. */
+(function initLbTooltip(){
+  let tip = null;
+  let current = null;
+
+  const ensure = () => {
+    if (tip) return tip;
+    tip = document.createElement('div');
+    tip.id = 'lbTip';
+    tip.className = 'hidden';
+    document.body.appendChild(tip);
+    return tip;
+  };
+
+  const place = (x, y) => {
+    const el = ensure();
+    const pad = 14;
+    const w = el.offsetWidth, h = el.offsetHeight;
+    let left = x + pad;
+    let top  = y + pad;
+    if (left + w > window.innerWidth - 6)  left = x - w - pad;
+    if (left < 6) left = 6;
+    if (top + h > window.innerHeight - 6)  top = y - h - pad;
+    if (top < 6) top = 6;
+    el.style.left = left + 'px';
+    el.style.top  = top + 'px';
+  };
+
+  const hide = () => {
+    current = null;
+    if (tip) tip.classList.add('hidden');
+  };
+
+  document.addEventListener('pointerover', e => {
+    if (e.pointerType && e.pointerType !== 'mouse') return;
+    const t = e.target;
+    const el = (t && t.closest) ? t.closest('[data-tip]') : null;
+    if (!el) return;
+    current = el;
+    const box = ensure();
+    box.textContent = el.getAttribute('data-tip') || '';
+    box.classList.remove('hidden');
+    place(e.clientX, e.clientY);
+  });
+
+  document.addEventListener('pointermove', e => {
+    if (!current) return;
+    if (!current.isConnected){ hide(); return; }
+    place(e.clientX, e.clientY);
+  });
+
+  document.addEventListener('pointerout', e => {
+    if (!current) return;
+    const t = e.target;
+    const el = (t && t.closest) ? t.closest('[data-tip]') : null;
+    if (el !== current) return;
+    const rt = e.relatedTarget;
+    const to = (rt && rt.closest) ? rt.closest('[data-tip]') : null;
+    if (to === el) return;
+    hide();
+  });
+
+  window.addEventListener('scroll', hide, true);
+})();
 
 async function fetchLeaderboard(mode, style, size, cat, insta){
   const key = lbKey(mode, style, size, insta);
@@ -3913,12 +4002,17 @@ function renderLeaderboardHTML(){
                     ? '<span style="color:#b98cff;font-weight:900">INFINITE</span>'
                     : escapeHtml(sizeName));
 
+  const infHint = isInf
+    ? '<div class="lb-config-name" style="border:none;background:none;padding:0;color:#5d7fa8">hover an entry to see its run time</div>'
+    : '';
+
   return (
     unlockBtn +
     '<div class="lb-head">' +
       '<span class="lb-title">🏆 LEADERBOARD</span>' +
     '</div>' +
     '<div class="lb-config-name' + cfgNameCls + '">' + cfgName + '</div>' +
+    infHint +
     '<div class="lb-cats">' + catsHtml + '</div>' +
     '<div class="lb-list">' + renderLeaderboardRows(mode, cat) + '</div>'
   );
@@ -4097,10 +4191,11 @@ function renderOverviewData(cat, data){
         } else {
           nm = e.name || 'Anon';
         }
-        let val, title = '';
+        let val, title = '', cls = '';
         if (cat === 'tiles'){
           val = formatTiles(e.bestTiles);
           title = tilesTitle(e);
+          cls = ' tiles';
         }
         else if (cat === 'time') val = formatTime(e.bestTime);
         else val = formatWins(e.wins);
@@ -4110,7 +4205,7 @@ function renderOverviewData(cat, data){
           (Array.isArray(e.nameKeys) && e.nameKeys.indexOf(myKey) !== -1)
         );
 
-        html += '<div class="lb-ov-row' + (rankCls[i + 1] || '') + (isMe ? ' me' : '') + '"' + title + '>' +
+        html += '<div class="lb-ov-row' + (rankCls[i + 1] || '') + (isMe ? ' me' : '') + cls + '"' + title + '>' +
           '<span class="lb-ov-rank">' + (i + 1) + '</span>' +
           '<span class="lb-ov-name">' + escapeHtml(nm) + '</span>' +
           '<span class="lb-ov-val">' + val + '</span>' +
@@ -4163,7 +4258,7 @@ function openLeaderboardOverview(){
     '<div class="ovbox menu-pop">' +
       '<div class="big">📊</div>' +
       '<h2>ALL <span>LEADERBOARDS</span></h2>' +
-      '<p>Every mode at a glance · top 3 per board.<br>Duel &amp; Territorial track wins · Infinite tracks tiles.</p>' +
+      '<p>Every mode at a glance · top 3 per board.<br>Duel &amp; Territorial track wins · Infinite tracks tiles (hover an entry for its time).</p>' +
       '<div class="lb-ov-cats">' +
         '<button class="lb-cat active" data-ovcat="wins">🏆 WINS</button>' +
         '<button class="lb-cat" data-ovcat="time">⏱ TIME</button>' +
@@ -7739,10 +7834,11 @@ function howToHTML(){
     '<div class="config-section" style="border-left-color:rgba(185,140,255,.75);background:rgba(185,140,255,.035)">' +
       '<div class="config-label" style="color:#d4b8ff">INFINITE MODE</div>' +
       '<div class="ht-text">' +
-        'An endless minefield — and it is <b style="color:#b98cff">50 % denser</b> than the standard boards. ' +
+        'An endless minefield — and it is <b style="color:#b98cff">less bomb-heavy</b> than the standard boards ' +
+        '(about 10 % fewer mines), so runs last longer. ' +
         '<b style="color:#b98cff">Survive as long as you can</b> — the leaderboard tracks ' +
         '<b style="color:#b98cff">how many tiles you revealed</b> before triggering a mine ' +
-        '(hover an entry to see how long the run took).<br><br>' +
+        '(hover an entry with the mouse to see how long the run took).<br><br>' +
         '<b style="color:#b98cff">Return to start</b> — tap the ⌖ button (or press R) to smoothly pan the camera back to where you spawned.<br>' +
         '<b style="color:#b98cff">Map review</b> — after a run, use <b style="color:#b98cff">FULL MAP</b> to see your entire uncovered area, and press it again to zoom back to the ±' +
         INFINITE_REVEAL_RADIUS + ' tile view.' +

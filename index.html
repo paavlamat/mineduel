@@ -157,6 +157,30 @@
     color:var(--pc);
     font-variant-numeric:tabular-nums;
   }
+  button.pstat-action{
+    flex:0 0 auto;
+    font-family:inherit;
+    cursor:pointer;
+    background:linear-gradient(180deg, rgba(185,140,255,.14), rgba(185,140,255,.04));
+    border:1px solid rgba(185,140,255,.42);
+    border-radius:10px;
+    padding:9px 44px;
+    min-width:170px;
+    display:flex;align-items:center;justify-content:center;
+    text-align:center;
+    transition:all .18s;
+    font-size:14px;
+    letter-spacing:.22em;
+    font-weight:900;
+    color:#b98cff;
+  }
+  button.pstat-action:hover{
+    background:linear-gradient(180deg, rgba(185,140,255,.28), rgba(185,140,255,.10));
+    border-color:#b98cff;
+    transform:translateY(-1px);
+    box-shadow:0 0 14px rgba(185,140,255,.35);
+  }
+  button.pstat-action:active{transform:translateY(0) scale(.98)}
 
   .pbar{
     flex:none;
@@ -196,7 +220,6 @@
     -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;
   }
 
-  /* ── STUN OVERLAY (player frozen) ───────────────────────── */
   .stun{
     position:absolute;inset:0;display:none;flex-direction:column;
     align-items:center;justify-content:center;gap:8px;border-radius:12px;
@@ -236,7 +259,6 @@
   .stun.ice .stun-sub{color:#a5e8ff}
   @keyframes stunpulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.08);opacity:.85}}
 
-  /* ── OPPONENT FROZEN PILL ────────────────────────────────── */
   .oppstun{
     position:absolute;top:12px;right:12px;display:none;
     padding:10px 18px;border-radius:99px;
@@ -335,7 +357,6 @@
     text-shadow:0 0 34px #4dd8ff,0 0 80px #4dd8ff;
   }
 
-  /* ── Pre-match countdown with rules ─────────────────────── */
   .cd-box{ padding: clamp(18px, 3vh, 36px) clamp(18px, 3vw, 40px); }
   .cd-rules{
     display:flex; flex-wrap:wrap; gap:8px; justify-content:center;
@@ -363,6 +384,7 @@
   .cd-rule b.green{ color:#5dff9e; text-shadow:0 0 10px rgba(93,255,158,.45); }
   .cd-rule b.yellow{ color:#ffd166; text-shadow:0 0 10px rgba(255,209,102,.45); }
   .cd-rule b.red{ color:#ff6b8a; text-shadow:0 0 10px rgba(255,107,138,.45); }
+  .cd-rule b.infinite{ color:#b98cff; text-shadow:0 0 12px rgba(185,140,255,.7); font-weight:900; }
 
   .endmsg{
     font-size:12px;letter-spacing:.1em;margin-top:12px;min-height:16px;
@@ -392,6 +414,7 @@
   .statcard .sval{font-family:'Courier New',monospace;font-size:22px;font-weight:900;line-height:1;color:#4dd8ff;font-variant-numeric:tabular-nums}
   .statcard.win .sval{color:#8affc1}
   .statcard.lose .sval{color:#ff6b8a}
+  .statcard.inf .sval{color:#b98cff}
 
   .codebox{display:flex;gap:16px;align-items:center;justify-content:center;margin:22px 0 8px;flex-wrap:wrap}
   .codeval{
@@ -497,7 +520,6 @@
     font-size:14px;color:#4dd8ff;font-weight:900;
   }
   .opt.active .opt-name{color:#4dd8ff}
-  /* Colour-coded active states */
   .opt.active.color-hex{
     background:linear-gradient(180deg,rgba(185,140,255,.20),rgba(185,140,255,.08));
     border-color:#b98cff;
@@ -522,6 +544,18 @@
   }
   .opt.active.color-red::before{color:#ff6b8a}
   .opt.active.color-red .opt-name{color:#ff6b8a}
+  .opt.active.color-infinite{
+    background:linear-gradient(180deg,rgba(185,140,255,.30),rgba(185,140,255,.10));
+    border-color:#b98cff;
+    box-shadow:0 0 22px rgba(185,140,255,.45), inset 0 0 14px rgba(185,140,255,.18);
+  }
+  .opt.active.color-infinite::before{color:#d4b8ff;text-shadow:0 0 12px #b98cff}
+  .opt.active.color-infinite .opt-name{
+    color:#d4b8ff;
+    text-shadow:0 0 12px rgba(185,140,255,.85), 0 0 24px rgba(185,140,255,.5);
+  }
+  .opt.color-infinite .opt-name{color:#e0ceff}
+  .opt.color-infinite .opt-desc{color:#a98cd4}
   .opt.danger.active{
     background:linear-gradient(180deg,rgba(255,61,129,.20),rgba(255,61,129,.08));
     border-color:#ff3d81;
@@ -758,6 +792,11 @@
     background:rgba(255,159,67,.07);
     text-shadow:0 0 10px rgba(255,159,67,.4);
   }
+  .lb-config-name.inf{
+    color:#b98cff;border-color:rgba(185,140,255,.4);
+    background:rgba(185,140,255,.09);
+    text-shadow:0 0 10px rgba(185,140,255,.55);
+  }
   .lb-cats{display:flex;gap:6px}
   .lb-cat{
     flex:1;padding:6px 8px;font-size:clamp(8.5px,1.3vh,10.5px);
@@ -811,6 +850,7 @@
     font-size:clamp(9.5px,1.45vh,11.5px);
   }
   .lb-row.wins .lb-val{color:#8affc1}
+  .lb-row.tiles .lb-val{color:#b98cff}
   .lb-empty{
     text-align:center;padding:clamp(14px,2.4vh,28px) 8px;
     font-size:clamp(9px,1.4vh,11px);letter-spacing:.1em;
@@ -848,6 +888,8 @@
   }
   .lb-ov-group-title.insta{color:#ff9f43;text-shadow:0 0 10px rgba(255,159,67,.45)}
   .lb-ov-group-title.insta::before{background:#ff9f43;box-shadow:0 0 10px #ff9f43}
+  .lb-ov-group-title.inf{color:#b98cff;text-shadow:0 0 12px rgba(185,140,255,.55)}
+  .lb-ov-group-title.inf::before{background:#b98cff;box-shadow:0 0 10px #b98cff}
   .lb-ov-grid{
     display:grid;
     grid-template-columns:repeat(auto-fill, minmax(190px, 1fr));
@@ -870,6 +912,7 @@
   .lb-ov-card-title .sz.green{ color:#5dff9e; text-shadow:0 0 8px rgba(93,255,158,.4); }
   .lb-ov-card-title .sz.yellow{ color:#ffd166; text-shadow:0 0 8px rgba(255,209,102,.4); }
   .lb-ov-card-title .sz.red{ color:#ff6b8a; text-shadow:0 0 8px rgba(255,107,138,.4); }
+  .lb-ov-card-title .sz.infinite{ color:#b98cff; text-shadow:0 0 10px rgba(185,140,255,.6); }
   .lb-ov-row{
     display:flex;gap:6px;align-items:center;
     font-size:clamp(9px,1.35vh,11px);
@@ -1079,7 +1122,6 @@
 
 const STUN_MS = 10000;
 const PREFIX  = 'mineduel-v5-';
-const LINK_PREFIX = 'mineduel-link-';
 const HEARTBEAT_MS      = 2000;
 const HEARTBEAT_WARN    = 10000;
 const HEARTBEAT_TIMEOUT = 20000;
@@ -1091,11 +1133,14 @@ const ZOOM_RATE = 2.4;
 
 const OPPONENT_RENDER_MS = 33;
 
-const SOLVER_MAX_ATTEMPTS = 500;
+/* Infinite mode: reveal radius for the death animation and map review. */
+const INFINITE_REVEAL_RADIUS = 10;
+/* Infinite mode: how far out the user can zoom. */
+const INFINITE_MIN_ZOOM = 0.6;
 
 const TILES_PER_BOMB = {
   square: 4,
-  hex:    5
+  hex:    4
 };
 
 function bombsFor(rows, cols, style){
@@ -1119,8 +1164,13 @@ const STYLES = {
 const SIZES = {
   small:  { id:'small',  name:'Small',  scale:1.0 },
   medium: { id:'medium', name:'Medium', scale:1.4 },
-  large:  { id:'large',  name:'Large',  scale:1.8 }
+  large:  { id:'large',  name:'Large',  scale:1.8 },
+  infinite: { id:'infinite', name:'Infinite', infinite: true }
 };
+
+const INFINITE_COLS = 200;
+const INFINITE_ROWS_SQ = 200;
+const INFINITE_ROWS_HEX = 180;
 
 const PEER_OPTS = {
   debug: 0,
@@ -1141,7 +1191,16 @@ const PEER_OPTS = {
   }
 };
 
+function isInfiniteSize(sizeId){ return sizeId === 'infinite'; }
+
 function dimsFor(config){
+  if (isInfiniteSize(config.size)){
+    const cols = INFINITE_COLS;
+    const rows = config.style === 'hex' ? INFINITE_ROWS_HEX : INFINITE_ROWS_SQ;
+    const per = TILES_PER_BOMB[config.style] || 4;
+    const mines = Math.max(1, Math.floor((cols * rows) / per));
+    return { cols, rows, mines, infinite: true };
+  }
   const s = STYLES[config.style] || STYLES.square;
   const sz = SIZES[config.size] || SIZES.small;
   let cols, rows;
@@ -1154,9 +1213,12 @@ function dimsFor(config){
 }
 
 function sizeDesc(sizeId, mode, styleId){
+  const s = SIZES[sizeId];
+  if (s && s.infinite){
+    return '∞ tiles';
+  }
   const d = dimsFor({ style: styleId, mode, size: sizeId });
-  const per = TILES_PER_BOMB[styleId] || 4;
-  return d.cols + ' × ' + d.rows + ' · ' + d.mines + ' mines (1/' + per + ')';
+  return d.cols + ' × ' + d.rows + ' · ' + d.mines + ' mines';
 }
 
 const MODES = {
@@ -1377,7 +1439,8 @@ const SFX = {
   },
   lose(){ beep(200, 0.35, 'sawtooth', 0.06); },
   countdown(n){ beep(520 + (3 - Math.min(n, 5)) * 110, 0.14, 'square', 0.04); },
-  go(){ beep(1200, 0.22, 'square', 0.05); }
+  go(){ beep(1200, 0.22, 'square', 0.05); },
+  zoom(){ beep(840, 0.04, 'sine', 0.018); }
 };
 
 /* ══════════════════════════════════════════════════════════════
@@ -1399,7 +1462,8 @@ function placeholderBoard(style, rows, cols){
     neighbors: neighborsFor(style),
     mineCount: 0,
     safeCount: rows * cols,
-    start: null, starts: [], pending: true
+    start: null, starts: [], pending: true,
+    infinite: false
   };
 }
 
@@ -1436,24 +1500,31 @@ function genBoardDeferred(seed, style, cols, rows, mineCount, clickR, clickC, st
     const j = Math.floor(rnd() * (i + 1));
     const t = pool[i]; pool[i] = pool[j]; pool[j] = t;
   }
-  const mines = new Set();
   const n = Math.min(mineCount, pool.length);
-  for (let i = 0; i < n; i++) mines.add(pool[i][0] + ',' + pool[i][1]);
+  const mineGrid = new Uint8Array(rows * cols);
+  const mines = new Set();
+  for (let i = 0; i < n; i++){
+    const r = pool[i][0], c = pool[i][1];
+    mines.add(r + ',' + c);
+    mineGrid[r * cols + c] = 1;
+  }
   const adj = Array.from({length: rows}, () => new Array(cols).fill(0));
-  for (let r = 0; r < rows; r++)
+  for (let r = 0; r < rows; r++){
     for (let c = 0; c < cols; c++){
-      if (mines.has(r + ',' + c)) { adj[r][c] = -1; continue; }
+      if (mineGrid[r * cols + c]){ adj[r][c] = -1; continue; }
       let k = 0;
       for (const [nr, nc] of neighbors(r, c, rows, cols))
-        if (mines.has(nr + ',' + nc)) k++;
+        if (mineGrid[nr * cols + nc]) k++;
       adj[r][c] = k;
     }
+  }
   return {
     style, cols, rows, mines, adj, neighbors,
     mineCount: mines.size,
     safeCount: rows * cols - mines.size,
     start: starts[0],
-    starts
+    starts,
+    infinite: false
   };
 }
 
@@ -1775,21 +1846,11 @@ function solveBoard(board, opening){
   return { count: count, state: state };
 }
 
-/* ── Territory-aware solver ──────────────────────────────────────
-   Simulates two players expanding from their own start tiles.  A
-   tile may only be revealed or flagged by a player who already owns
-   that tile or owns a tile adjacent to it (mirroring the in-game
-   `canTouchTerritory` rule).  Revealing a zero tile floods and
-   claims the connected zero-region, exactly like the live game.
-   Returns `null` when the simulation would expose a mine, otherwise
-   `{ count, state }` where `count` is the number of safe tiles that
-   can be cleared using pure logic — no guessing required.
-   ─────────────────────────────────────────────────────────────── */
 function solveBoardTerritory(board, starts){
   const rows = board.rows, cols = board.cols;
   const N = rows * cols;
-  const state = new Uint8Array(N);      /* 0 hidden · 1 revealed · 2 flagged */
-  const owner = new Int8Array(N);       /* 0 none · 1 player1 · 2 player2     */
+  const state = new Uint8Array(N);
+  const owner = new Int8Array(N);
   const adjFlat = new Int16Array(N);
   const nbrs = new Array(N);
 
@@ -1856,7 +1917,6 @@ function solveBoardTerritory(board, starts){
   for (let iter = 0; iter < MAX_ITER; iter++){
     let changed = false;
 
-    /* ── rule 1: plain counting ─────────────────────────────── */
     for (let i = 0; i < N; i++){
       if (state[i] !== 1) continue;
       const a = adjFlat[i];
@@ -1893,7 +1953,6 @@ function solveBoardTerritory(board, starts){
     }
     if (changed) continue;
 
-    /* ── rule 2: subset elimination ─────────────────────────── */
     const consHidden = [], consRem = [];
     for (let i = 0; i < N; i++){
       if (state[i] !== 1) continue;
@@ -1977,7 +2036,6 @@ function solveBoardTerritory(board, starts){
       if (subChanged) continue;
     }
 
-    /* ── rule 3: exhaustive enumeration of small components ─── */
     const allCons = [];
     const hiddenSet = new Set();
     for (let i = 0; i < N; i++){
@@ -2083,43 +2141,62 @@ function solveBoardTerritory(board, starts){
   return { count: count, state: state };
 }
 
-/* ─────────────────────────────────────────────────────────────
-   Board generation.
+/* Verify the player has something to do at the start: clip the
+   board to a (2R+1)×(2R+1) window around the start tile, run the
+   exact solver on it, and require it to clear a decent fraction of
+   the window. If not, the caller regenerates with a new seed. */
+function infiniteStartIsPlayable(board, startR, startC, R){
+  if (R === undefined) R = 10;
+  const r0 = Math.max(0, startR - R);
+  const r1 = Math.min(board.rows - 1, startR + R);
+  const c0 = Math.max(0, startC - R);
+  const c1 = Math.min(board.cols - 1, startC + R);
+  const nrows = r1 - r0 + 1;
+  const ncols = c1 - c0 + 1;
 
-   The generator's ONLY job is to hand back a board that the
-   solver can clear from the very first state — i.e. with zero
-   guessing.  To do that we don't try to force the requested mine
-   count; we walk the density down until the solver succeeds.
-   The final fallback is a guaranteed-solvable sparse board, so
-   the player never starts a match with nothing to do and never
-   hits a dead end that no amount of logic can break through.
+  const nb = {
+    style: board.style,
+    cols: ncols, rows: nrows,
+    mines: new Set(),
+    adj: [],
+    neighbors: board.neighbors,
+    mineCount: 0, safeCount: 0,
+    infinite: false
+  };
+  for (let i = 0; i < nrows; i++) nb.adj.push(new Array(ncols).fill(0));
 
-   Two further guarantees are enforced here:
-
-     · The starting safe-zone is always the click + its 1-ring,
-       so the first click is guaranteed to open up (adjacent
-       count of 0 → flood fill).
-
-     · For territory we additionally require that BOTH players'
-       start regions actually open up (their flood fill is
-       non-trivial), because otherwise one side would be stuck
-       staring at a single numbered tile with no way to expand.
-   ───────────────────────────────────────────────────────────── */
-function startingRevealIsUseful(board, starts){
-  /* Reject boards where a player's opening 0-region is just the
-     start tile alone.  In practice this cannot happen with the
-     1-ring safe zone, but the check is cheap and documents the
-     invariant. */
-  for (let i = 0; i < starts.length; i++){
-    const s = starts[i];
-    if (!s) continue;
-    if (board.adj[s.r] && board.adj[s.r][s.c] === 0) return true;
+  for (let r = r0; r <= r1; r++){
+    for (let c = c0; c <= c1; c++){
+      const nr = r - r0, nc = c - c0;
+      if (board.mines.has(r + ',' + c)){
+        nb.mines.add(nr + ',' + nc);
+        nb.adj[nr][nc] = -1;
+        nb.mineCount++;
+      } else {
+        nb.adj[nr][nc] = board.adj[r][c];
+      }
+    }
   }
-  return true;
+  nb.safeCount = nrows * ncols - nb.mineCount;
+
+  const sr = startR - r0;
+  const sc = startC - c0;
+  const res = solveBoard(nb, [[sr, sc]]);
+  if (!res) return false;
+  /* Require at least 40 % of the safe tiles in the window to be
+     logically deducible — a comfortable margin that guarantees the
+     player always has something to do. */
+  return res.count >= Math.max(8, Math.floor(nb.safeCount * 0.4));
 }
 
 function generateSolvableBoard(seed, style, cols, rows, mineCount,
-                               clickR, clickC, starts, opening, territory){
+                               clickR, clickC, starts, opening, territory, infinite){
+  if (infinite){
+    const b = genBoardDeferred(seed, style, cols, rows, mineCount, clickR, clickC, starts);
+    b.infinite = true;
+    return { board: b, seed, score: b.safeCount };
+  }
+
   const solve = b => {
     if (!territory){
       const r = solveBoard(b, opening);
@@ -2129,42 +2206,21 @@ function generateSolvableBoard(seed, style, cols, rows, mineCount,
     return r || { count: 0 };
   };
 
+  const startedAt = Date.now();
+  const BUDGET_MS = territory ? 2500 : 3500;
+  const STEPS = [1.0, 0.98, 0.96, 0.94, 0.92, 0.90];
+  const perStep = territory ? 150 : 300;
+  const minMines = Math.max(3, Math.floor(mineCount * 0.90));
+
   let attempt = 0;
   let best = null, bestSeed = seed, bestScore = -1;
 
-  const startedAt = Date.now();
-  /* Soft budget: stop starting new *dense* levels, but never
-     abandon the search outright — the sparse levels below are
-     reached regardless. */
-  const SOFT_BUDGET = territory ? 5500 : 7500;
-  const HARD_BUDGET = territory ? 14000 : 18000;
-  const overSoft = () => (Date.now() - startedAt) > SOFT_BUDGET;
-  const overHard = () => (Date.now() - startedAt) > HARD_BUDGET;
-
-  /* Step the mine count down much further than before so we always
-     reach a fully solvable board.  Floor at 12 % of the requested
-     count (minimum 3) — dense boards simply become sparser rather
-     than unplayable. */
-  const floorMines = Math.max(3, Math.floor(mineCount * 0.12));
-  const levels = [];
-  let m = mineCount;
-  while (m > floorMines){
-    levels.push(m);
-    m = Math.max(floorMines, Math.floor(m * 0.78));
-    if (m === floorMines) break;
-  }
-  if (levels[levels.length - 1] !== floorMines) levels.push(floorMines);
-
-  const perLevel = 26;
-
-  for (let li = 0; li < levels.length; li++){
-    if (overSoft() && li > 0) break;
-    const mines = levels[li];
-    for (let k = 0; k < perLevel; k++){
+  for (let si = 0; si < STEPS.length; si++){
+    const mines = Math.max(minMines, Math.floor(mineCount * STEPS[si]));
+    for (let k = 0; k < perStep; k++){
       attempt++;
       const s = (seed + Math.imul(attempt, 0x9E3779B9)) >>> 0;
       const b = genBoardDeferred(s, style, cols, rows, mines, clickR, clickC, starts);
-      if (!startingRevealIsUseful(b, starts)) continue;
       const res = solve(b);
       if (res.count > bestScore){
         bestScore = res.count;
@@ -2174,55 +2230,23 @@ function generateSolvableBoard(seed, style, cols, rows, mineCount,
       if (res.count >= b.safeCount){
         return { board: b, seed: s, score: res.count };
       }
-      if (overHard()) break;
     }
-    if (overHard()) break;
+    if ((Date.now() - startedAt) > BUDGET_MS) break;
   }
 
-  /* Sparse fallback — guaranteed to run, keeps halving the mine
-     count until a fully solvable board is found. */
-  let sparse = Math.max(1, Math.floor(mineCount * 0.06));
-  for (let k = 0; k < 600; k++){
-    attempt++;
-    const s = (seed + Math.imul(attempt, 0xC2B2AE35)) >>> 0;
-    const b = genBoardDeferred(s, style, cols, rows, sparse, clickR, clickC, starts);
-    if (!startingRevealIsUseful(b, starts)) continue;
-    const res = solve(b);
-    if (res.count > bestScore){
-      bestScore = res.count;
-      best = b;
-      bestSeed = s;
-    }
-    if (res.count >= b.safeCount){
-      return { board: b, seed: s, score: res.count };
-    }
-    if (k === 199 && sparse > 1) sparse = Math.max(1, Math.floor(sparse / 2));
-    if (k === 399 && sparse > 1) sparse = Math.max(1, Math.floor(sparse / 2));
-  }
-
-  /* Absolute last resort: 1-mine board.  Always solvable via the
-     opening flood-fill. */
-  if (!best || bestScore < best.safeCount){
+  if (!best){
     const s = (seed + 0xDEADBEEF) >>> 0;
-    const b = genBoardDeferred(s, style, cols, rows, 1, clickR, clickC, starts);
-    const res = solve(b);
-    if (res.count >= b.safeCount){
-      return { board: b, seed: s, score: res.count };
-    }
-    if (!best){
-      best = b;
-      bestSeed = s;
-      bestScore = res.count;
-    }
+    best = genBoardDeferred(s, style, cols, rows,
+                            Math.max(1, Math.floor(mineCount * 0.5)),
+                            clickR, clickC, starts);
+    bestSeed = s;
   }
-
   return { board: best, seed: bestSeed, score: bestScore };
 }
 
 function buildBoardWorkerSource(){
   return [
     "'use strict';",
-    'var SOLVER_MAX_ATTEMPTS = ' + SOLVER_MAX_ATTEMPTS + ';',
     mulberry32.toString(),
     'var HEX_DIRS = ' + JSON.stringify(HEX_DIRS) + ';',
     hexNeighbors.toString(),
@@ -2233,13 +2257,12 @@ function buildBoardWorkerSource(){
     enumerateSolutions.toString(),
     solveBoard.toString(),
     solveBoardTerritory.toString(),
-    startingRevealIsUseful.toString(),
     generateSolvableBoard.toString(),
     'self.onmessage = function(ev){',
     '  var d = ev.data || {};',
     '  try {',
     '    var res = generateSolvableBoard(d.seed >>> 0, d.style, d.cols, d.rows, d.mineCount,',
-    '                                    d.clickR, d.clickC, d.starts, d.opening, !!d.territory);',
+    '                                    d.clickR, d.clickC, d.starts, d.opening, !!d.territory, !!d.infinite);',
     '    self.postMessage({',
     '      id: d.id, ok: true,',
     '      mines: Array.from(res.board.mines),',
@@ -2294,14 +2317,15 @@ function generateBoardSync(params){
   const res = generateSolvableBoard(
     params.seed, params.style, params.cols, params.rows, params.mineCount,
     params.clickR, params.clickC, params.starts, params.opening,
-    !!params.territory
+    !!params.territory, !!params.infinite
   );
   return {
     ok: true,
     mines: Array.from(res.board.mines),
     seed: res.seed,
     score: res.score,
-    safeCount: res.board.safeCount
+    safeCount: res.board.safeCount,
+    infinite: !!params.infinite
   };
 }
 
@@ -2321,7 +2345,8 @@ function generateBoardAsync(params){
         cols: params.cols, rows: params.rows, mineCount: params.mineCount,
         clickR: params.clickR, clickC: params.clickC,
         starts: params.starts, opening: params.opening,
-        territory: !!params.territory
+        territory: !!params.territory,
+        infinite: !!params.infinite
       });
     } catch(e){
       boardWorkerPending.delete(id);
@@ -2334,6 +2359,7 @@ function applyGeneratedBoard(res, clickR, clickC){
   const d = dimsFor(G.config);
   const layout = placeholderBoard(G.config.style, d.rows, d.cols);
   rebuildBoardFromMines(layout, res.mines, G.config.style);
+  layout.infinite = !!res.infinite || isInfiniteSize(G.config.size);
   const wasAlias = (G.theirBoardLayout === G.board);
   G.board = layout;
   if (wasAlias) G.theirBoardLayout = layout;
@@ -2355,6 +2381,7 @@ function kickPregen(){
   cancelPregen();
   if (!G.boardPending) return;
   if (G.config.mode === 'territory') return;
+  if (isInfiniteSize(G.config.size)) return;
   const d = dimsFor(G.config);
   const r = d.rows >> 1, c = d.cols >> 1;
   pregenTarget = { r: r, c: c };
@@ -2365,7 +2392,8 @@ function kickPregen(){
     clickR: r, clickC: c,
     starts: [{ r: r, c: c }],
     opening: [[r, c]],
-    territory: false
+    territory: false,
+    infinite: false
   });
 }
 
@@ -2377,6 +2405,7 @@ function ensureBoardReadyAsync(clickR, clickC){
 
   const d = dimsFor(G.config);
   const mode = G.config.mode;
+  const isInf = isInfiniteSize(G.config.size);
   let starts = [{ r: (d.rows >> 1), c: (d.cols >> 1) }];
   if (mode === 'territory') starts = territoryStarts(d.rows, d.cols);
   const opening = (clickR === undefined || clickC === undefined)
@@ -2395,7 +2424,8 @@ function ensureBoardReadyAsync(clickR, clickC){
       cols: d.cols, rows: d.rows, mineCount: d.mines,
       clickR: clickR, clickC: clickC,
       starts: starts, opening: opening,
-      territory: mode === 'territory'
+      territory: mode === 'territory',
+      infinite: isInf
     });
   }
   cancelPregen();
@@ -2413,7 +2443,8 @@ function ensureBoardReadyAsync(clickR, clickC){
       cols: d.cols, rows: d.rows, mineCount: d.mines,
       clickR: clickR, clickC: clickC,
       starts: starts, opening: opening,
-      territory: mode === 'territory'
+      territory: mode === 'territory',
+      infinite: isInf
     }), clickR, clickC);
   });
   return genInFlight;
@@ -2752,6 +2783,8 @@ function getHintMoves(board, snap){
 }
 
 function computeHintForBoard(board, snap, owner, unlocked, excludeR, excludeC){
+  /* Hints on huge boards are expensive and not useful. */
+  if (board.rows * board.cols > 5000) return null;
   const hints = getHintMoves(board, snap);
   if (!hints) return null;
   if (snap && snap.owner && owner){
@@ -2899,7 +2932,7 @@ const LB_CONFIG_KEYS = (() => {
   const out = [];
   for (const mode of ['solo','coop','duel','territory']){
     for (const style of ['square','hex']){
-      for (const size of ['small','medium','large']){
+      for (const size of ['small','medium','large','infinite']){
         out.push(mode + '_' + style + '_' + size);
         if (mode === 'duel' || mode === 'territory'){
           out.push(mode + '_insta_' + style + '_' + size);
@@ -2923,6 +2956,7 @@ function lbKey(mode, style, size, insta){
 }
 
 function currentLbCategory(){
+  if (isInfiniteSize(G.config.size)) return 'tiles';
   if (G.config.mode === 'duel') return 'wins';
   if (G.config.mode === 'territory') return 'wins';
   return LB_STATE.category || 'time';
@@ -2989,13 +3023,22 @@ function formatWins(n){
   n = n || 0;
   return n + (n === 1 ? ' win' : ' wins');
 }
+function formatTiles(n){
+  n = Math.max(0, Math.round(n || 0));
+  return n + (n === 1 ? ' tile' : ' tiles');
+}
 
 async function fetchLeaderboard(mode, style, size, cat, insta){
   const key = lbKey(mode, style, size, insta);
   const col = db.collection('leaderboards').doc(key).collection('entries');
-  const q = (cat === 'time')
-    ? col.orderBy('bestTime', 'asc').limit(10)
-    : col.orderBy('wins', 'desc').limit(10);
+  let q;
+  if (cat === 'tiles'){
+    q = col.orderBy('bestTiles', 'desc').limit(10);
+  } else if (cat === 'time'){
+    q = col.orderBy('bestTime', 'asc').limit(10);
+  } else {
+    q = col.orderBy('wins', 'desc').limit(10);
+  }
   const snap = await q.get();
   const out = [];
   snap.forEach(d => out.push(Object.assign({ id: d.id }, d.data())));
@@ -3048,7 +3091,7 @@ async function isNameRegisteredOnServer(){
   }
 }
 
-async function recordWin(mode, style, size, insta, timeMs, countAsWin, partner){
+async function recordWin(mode, style, size, insta, timeMs, countAsWin, partner, tiles){
   if (!db || !auth) return;
   if (isGuest) return;
 
@@ -3068,8 +3111,10 @@ async function recordWin(mode, style, size, insta, timeMs, countAsWin, partner){
   const key = lbKey(mode, style, size, insta);
   const isDuel = (mode === 'duel');
   const isTerr = (mode === 'territory');
+  const isInf = isInfiniteSize(size);
   const isTeamMode = (mode === 'coop' || mode === 'territory');
   const timeVal = Math.max(1, Math.round(timeMs || 0));
+  const tilesVal = Math.max(0, Math.round(tiles || 0));
   const addWin = (countAsWin === undefined) ? true : !!countAsWin;
 
   const useTeam = isTeamMode &&
@@ -3079,30 +3124,47 @@ async function recordWin(mode, style, size, insta, timeMs, countAsWin, partner){
   try {
     const ref = db.collection('leaderboards').doc(key).collection('entries').doc(nameKey);
     const snap = await ref.get();
-    const writesTime = !isDuel && !isTerr && !useTeam;
 
-    if (!snap.exists){
-      const doc = {
-        name,
-        wins: addWin ? 1 : 0,
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      };
-      if (writesTime) doc.bestTime = timeVal;
-      await ref.set(doc);
-    } else {
-      const data = snap.data() || {};
-      const upd = {
-        name,
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      };
-      if (addWin) upd.wins = (data.wins || 0) + 1;
-      if (writesTime){
-        const prev = data.bestTime;
-        if (!prev || timeVal < prev) upd.bestTime = timeVal;
-      } else if ((isTerr || (isTeamMode && data.bestTime !== undefined)) && data.bestTime !== undefined){
-        upd.bestTime = firebase.firestore.FieldValue.delete();
+    if (isInf){
+      if (!snap.exists){
+        await ref.set({
+          name,
+          bestTiles: tilesVal,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      } else {
+        const data = snap.data() || {};
+        const upd = {
+          name,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+        const prev = data.bestTiles || 0;
+        if (tilesVal > prev) upd.bestTiles = tilesVal;
+        await ref.update(upd);
       }
-      await ref.update(upd);
+    } else {
+      const writesTime = !isDuel && !isTerr && !useTeam;
+      if (!snap.exists){
+        const doc = {
+          name,
+          wins: addWin ? 1 : 0,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+        if (writesTime) doc.bestTime = timeVal;
+        await ref.set(doc);
+      } else {
+        const data = snap.data() || {};
+        const upd = {
+          name,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+        if (addWin) upd.wins = (data.wins || 0) + 1;
+        if (writesTime){
+          const prev = data.bestTime;
+          if (!prev || timeVal < prev) upd.bestTime = timeVal;
+        }
+        await ref.update(upd);
+      }
     }
   } catch(e){
     console.warn('[fb] record win failed:', e && (e.code || e.message || e));
@@ -3120,31 +3182,51 @@ async function recordWin(mode, style, size, insta, timeMs, countAsWin, partner){
       const ref = db.collection('leaderboards').doc(key).collection('entries').doc(pairId);
       const snap = await ref.get();
 
-      if (!snap.exists){
-        await ref.set({
-          names: names,
-          nameKeys: pairKeys,
-          bestTime: timeVal,
-          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
+      if (isInf){
+        if (!snap.exists){
+          await ref.set({
+            names, nameKeys: pairKeys,
+            bestTiles: tilesVal,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+        } else {
+          const data = snap.data() || {};
+          const upd = {
+            names, nameKeys: pairKeys,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          };
+          const prev = data.bestTiles || 0;
+          if (tilesVal > prev) upd.bestTiles = tilesVal;
+          await ref.update(upd);
+        }
       } else {
-        const data = snap.data() || {};
-        const upd = {
-          names: names,
-          nameKeys: pairKeys,
-          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        };
-        const prev = data.bestTime;
-        if (!prev || timeVal < prev) upd.bestTime = timeVal;
-        await ref.update(upd);
+        if (!snap.exists){
+          await ref.set({
+            names: names,
+            nameKeys: pairKeys,
+            bestTime: timeVal,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+        } else {
+          const data = snap.data() || {};
+          const upd = {
+            names: names,
+            nameKeys: pairKeys,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          };
+          const prev = data.bestTime;
+          if (!prev || timeVal < prev) upd.bestTime = timeVal;
+          await ref.update(upd);
+        }
       }
     } catch(e){
-      console.warn('[fb] record team time failed:', e && (e.code || e.message || e));
+      console.warn('[fb] record team score failed:', e && (e.code || e.message || e));
     }
   }
 
   lbCache.delete(key + '_wins');
   lbCache.delete(key + '_time');
+  lbCache.delete(key + '_tiles');
 }
 
 async function ensurePlayerName(){
@@ -3240,6 +3322,7 @@ async function migrateLeaderboardEntry(oldKey, newKey, newName){
     };
     if (typeof oldData.wins === 'number') doc.wins = oldData.wins;
     if (typeof oldData.bestTime === 'number') doc.bestTime = oldData.bestTime;
+    if (typeof oldData.bestTiles === 'number') doc.bestTiles = oldData.bestTiles;
     if (oldData.partnerName) doc.partnerName = oldData.partnerName;
 
     if (newSnap && newSnap.exists){
@@ -3249,6 +3332,10 @@ async function migrateLeaderboardEntry(oldKey, newKey, newName){
         .filter(t => typeof t === 'number' && t > 0);
       if (times.length) doc.bestTime = Math.min.apply(null, times);
       else delete doc.bestTime;
+      const tilesArr = [nd.bestTiles, oldData.bestTiles]
+        .filter(t => typeof t === 'number' && t > 0);
+      if (tilesArr.length) doc.bestTiles = Math.max.apply(null, tilesArr);
+      else delete doc.bestTiles;
       if (!doc.partnerName && nd.partnerName) doc.partnerName = nd.partnerName;
     }
 
@@ -3346,6 +3433,9 @@ async function migrateTeamEntries(oldKey, newKey, newName){
       if (typeof data.bestTime === 'number' && data.bestTime > 0){
         doc.bestTime = data.bestTime;
       }
+      if (typeof data.bestTiles === 'number' && data.bestTiles > 0){
+        doc.bestTiles = data.bestTiles;
+      }
       if (typeof data.wins === 'number') doc.wins = data.wins;
 
       if (newSnap && newSnap.exists){
@@ -3357,6 +3447,10 @@ async function migrateTeamEntries(oldKey, newKey, newName){
           .filter(t => typeof t === 'number' && t > 0);
         if (times.length) doc.bestTime = Math.min.apply(null, times);
         else delete doc.bestTime;
+        const tilesArr = [nd.bestTiles, data.bestTiles]
+          .filter(t => typeof t === 'number' && t > 0);
+        if (tilesArr.length) doc.bestTiles = Math.max.apply(null, tilesArr);
+        else delete doc.bestTiles;
       }
 
       try {
@@ -3676,8 +3770,12 @@ function renderLeaderboardRows(mode, cat){
       }
     }
 
-    const val = (cat === 'time') ? formatTime(e.bestTime) : formatWins(e.wins);
-    return '<div class="lb-row' + (isMe ? ' me' : '') + (cat === 'wins' ? ' wins' : '') + '">' +
+    let val, cls = '';
+    if (cat === 'tiles'){ val = formatTiles(e.bestTiles); cls = ' tiles'; }
+    else if (cat === 'time'){ val = formatTime(e.bestTime); }
+    else { val = formatWins(e.wins); cls = ' wins'; }
+
+    return '<div class="lb-row' + (isMe ? ' me' : '') + cls + '">' +
       '<span class="lb-rank">' + (i + 1) + '</span>' +
       '<span class="lb-name">' + escapeHtml(nm) + '</span>' +
       '<span class="lb-val">' + val + '</span>' +
@@ -3688,7 +3786,8 @@ function renderLeaderboardRows(mode, cat){
 function renderLeaderboardHTML(){
   const mode = G.config.mode;
   const insta = !!G.config.insta;
-  const showTime = (mode !== 'duel' && mode !== 'territory');
+  const isInf = isInfiniteSize(G.config.size);
+  const showTime = !isInf && (mode !== 'duel' && mode !== 'territory');
   const cat = currentLbCategory();
   const modeName = (MODES[mode] || MODES.solo).name;
   const styleName = (STYLES[G.config.style] || STYLES.square).name;
@@ -3696,7 +3795,9 @@ function renderLeaderboardHTML(){
   const guest = isGuest || !getPlayerName();
 
   let catsHtml;
-  if (showTime){
+  if (isInf){
+    catsHtml = '<button class="lb-cat active" data-lbcat="tiles" disabled>🧭 TILES</button>';
+  } else if (showTime){
     catsHtml =
       '<button class="lb-cat' + (cat === 'time' ? ' active' : '') + '" data-lbcat="time">⏱ TIME</button>' +
       '<button class="lb-cat' + (cat === 'wins' ? ' active' : '') + '" data-lbcat="wins">🏆 WINS</button>';
@@ -3708,15 +3809,22 @@ function renderLeaderboardHTML(){
     ? '<button class="lb-unlock-btn" id="lbUnlockBtn">✨ Choose name to unlock</button>'
     : '';
 
+  let cfgNameCls = '';
+  if (insta) cfgNameCls = ' insta';
+  else if (isInf) cfgNameCls = ' inf';
+
   const cfgName = escapeHtml(modeName) + (insta ? ' <span style="color:#ff9f43">· INSTANT</span>' : '') +
-                  ' · ' + escapeHtml(styleName) + ' · ' + escapeHtml(sizeName);
+                  ' · ' + escapeHtml(styleName) + ' · ' +
+                  (isInf
+                    ? '<span style="color:#b98cff;font-weight:900">INFINITE</span>'
+                    : escapeHtml(sizeName));
 
   return (
     unlockBtn +
     '<div class="lb-head">' +
       '<span class="lb-title">🏆 LEADERBOARD</span>' +
     '</div>' +
-    '<div class="lb-config-name' + (insta ? ' insta' : '') + '">' + cfgName + '</div>' +
+    '<div class="lb-config-name' + cfgNameCls + '">' + cfgName + '</div>' +
     '<div class="lb-cats">' + catsHtml + '</div>' +
     '<div class="lb-list">' + renderLeaderboardRows(mode, cat) + '</div>'
   );
@@ -3801,14 +3909,18 @@ const OV_GROUPS = [
   { mode:'duel',      insta:false, label:'DUEL' },
   { mode:'duel',      insta:true,  label:'DUEL · INSTANT' },
   { mode:'territory', insta:false, label:'TERRITORIAL' },
-  { mode:'territory', insta:true,  label:'TERRITORIAL · INSTANT' }
+  { mode:'territory', insta:true,  label:'TERRITORIAL · INSTANT' },
+  { mode:'solo',      insta:false, label:'SOLO · INFINITE', sizeFilter:'infinite' },
+  { mode:'coop',      insta:false, label:'CO-OP · INFINITE', sizeFilter:'infinite' }
 ];
 
 async function fetchTopForConfig(g, style, size, cat, limit){
   const key = lbKey(g.mode, style, size, g.insta);
   const col = db.collection('leaderboards').doc(key).collection('entries');
   let q;
-  if (cat === 'time'){
+  if (cat === 'tiles'){
+    q = col.orderBy('bestTiles', 'desc').limit(limit);
+  } else if (cat === 'time'){
     if (g.mode === 'duel' || g.mode === 'territory') return [];
     q = col.orderBy('bestTime', 'asc').limit(limit);
   } else {
@@ -3824,8 +3936,11 @@ async function fetchOverviewData(cat){
   const all = [];
   for (const g of OV_GROUPS){
     if (cat === 'time' && (g.mode === 'duel' || g.mode === 'territory')) continue;
+    if (cat === 'tiles' && !g.sizeFilter) continue;
+    if (cat !== 'tiles' && g.sizeFilter) continue;
+    const sizes = g.sizeFilter ? [g.sizeFilter] : ['small','medium','large'];
     for (const style of ['square','hex']){
-      for (const size of ['small','medium','large']){
+      for (const size of sizes){
         all.push({ g, style, size });
       }
     }
@@ -3860,8 +3975,12 @@ function renderOverviewData(cat, data){
 
   grouped.forEach((items, label) => {
     const isInsta = label.indexOf('INSTA') !== -1;
+    const isInf = label.indexOf('INFINITE') !== -1;
+    let cls = '';
+    if (isInsta) cls = ' insta';
+    else if (isInf) cls = ' inf';
     html += '<div class="lb-ov-group">';
-    html += '<div class="lb-ov-group-title' + (isInsta ? ' insta' : '') + '">' + escapeHtml(label) + '</div>';
+    html += '<div class="lb-ov-group-title' + cls + '">' + escapeHtml(label) + '</div>';
     html += '<div class="lb-ov-grid">';
 
     for (const item of items){
@@ -3870,7 +3989,8 @@ function renderOverviewData(cat, data){
       const styleCls = (item.style === 'hex') ? ' hex' : '';
       const sizeCls = (item.size === 'small') ? ' green'
                     : (item.size === 'medium') ? ' yellow'
-                    : (item.size === 'large') ? ' red' : '';
+                    : (item.size === 'large') ? ' red'
+                    : (item.size === 'infinite') ? ' infinite' : '';
       html += '<div class="lb-ov-card">';
       html += '<div class="lb-ov-card-title">' +
                 '<span class="sty' + styleCls + '">' + escapeHtml(styleName) + '</span>' +
@@ -3888,7 +4008,10 @@ function renderOverviewData(cat, data){
           } else {
             nm = e.name || 'Anon';
           }
-          const val = cat === 'time' ? formatTime(e.bestTime) : formatWins(e.wins);
+          let val;
+          if (cat === 'tiles') val = formatTiles(e.bestTiles);
+          else if (cat === 'time') val = formatTime(e.bestTime);
+          else val = formatWins(e.wins);
           const isMe = !isGuest && myKey && (
             e.id === myKey ||
             (Array.isArray(e.nameKeys) && e.nameKeys.indexOf(myKey) !== -1)
@@ -3915,10 +4038,11 @@ function openLeaderboardOverview(){
     '<div class="ovbox menu-pop">' +
       '<div class="big">📊</div>' +
       '<h2>ALL <span>LEADERBOARDS</span></h2>' +
-      '<p>Combined view of every game mode · top 3 per board.<br>Territorial & Duel only track wins.</p>' +
+      '<p>Combined view of every game mode · top 3 per board.<br>Territorial & Duel only track wins. Infinite tracks tiles.</p>' +
       '<div class="lb-ov-cats">' +
         '<button class="lb-cat active" data-ovcat="wins">🏆 WINS</button>' +
         '<button class="lb-cat" data-ovcat="time">⏱ TIME</button>' +
+        '<button class="lb-cat" data-ovcat="tiles">🧭 TILES</button>' +
       '</div>' +
       '<div class="lb-overview-body" id="lbOvBody">' +
         '<div class="lb-empty"><span class="spin"></span>Loading…</div>' +
@@ -4015,7 +4139,9 @@ const G = {
   rematchMe: false, rematchThem: false, rematchLock: false,
   lossHintMe: null,
   lossHintThem: null,
-  pendingPreSnap: null
+  pendingPreSnap: null,
+  viewAnim: null,
+  myStartR: 0, myStartC: 0
 };
 
 let rememberedInsta = false;
@@ -4175,6 +4301,7 @@ class BoardView {
     this.baseScale = 1;
     this.zoom = 1; this.panX = 0; this.panY = 0;
     this.maxZoom = 5;
+    this.minZoom = 1;
     this.pw = 1; this.ph = 1;
     this.particles = [];
     this.shake = 0;
@@ -4195,6 +4322,7 @@ class BoardView {
   setConfig(config, keepView){
     this.config = config;
     this.metrics = this.computeMetrics(config);
+    this.minZoom = this.metrics.infinite ? INFINITE_MIN_ZOOM : 1;
     if (!keepView){ this.zoom = 1; this.panX = 0; this.panY = 0; }
     this.resize();
     this.observeParentSize();
@@ -4203,24 +4331,25 @@ class BoardView {
     const small = Math.min(window.innerWidth, window.innerHeight) < 720;
     const isDuel = config.mode === 'duel';
     const isTerr = config.mode === 'territory';
+    const isInf  = isInfiniteSize(config.size);
 
     if (config.style === 'hex'){
-      let size = isDuel ? 22 : (isTerr ? 20 : 30);
-      if (small) size = isDuel ? 15 : (isTerr ? 14 : 22);
-      const pad  = isDuel ? 16 : (isTerr ? 16 : 24);
+      let size = isDuel ? 22 : (isTerr ? 20 : (isInf ? 26 : 30));
+      if (small) size = isDuel ? 15 : (isTerr ? 14 : (isInf ? 20 : 22));
+      const pad  = isDuel ? 16 : (isTerr ? 16 : (isInf ? 20 : 24));
       const HW = SQ3 * size;
       return {
-        style: 'hex', size, pad, HW,
+        style: 'hex', size, pad, HW, infinite: isInf,
         boardW: Math.round(HW * (config.cols + 0.5) + pad * 2),
         boardH: Math.round(size * 1.5 * (config.rows - 1) + size * 2 + pad * 2)
       };
     }
-    let cell = isDuel ? 42 : (isTerr ? 32 : 54);
-    if (small) cell = isDuel ? 28 : (isTerr ? 22 : 36);
-    const gap  = isDuel ? 4 : (isTerr ? 3 : 6);
-    const pad  = isDuel ? 16 : (isTerr ? 16 : 22);
+    let cell = isDuel ? 42 : (isTerr ? 32 : (isInf ? 42 : 54));
+    if (small) cell = isDuel ? 28 : (isTerr ? 22 : (isInf ? 32 : 36));
+    const gap  = isDuel ? 4 : (isTerr ? 3 : (isInf ? 4 : 6));
+    const pad  = isDuel ? 16 : (isTerr ? 16 : (isInf ? 20 : 22));
     return {
-      style: 'square', cell, gap, pad,
+      style: 'square', cell, gap, pad, infinite: isInf,
       boardW: pad * 2 + cell * config.cols + gap * (config.cols - 1),
       boardH: pad * 2 + cell * config.rows + gap * (config.rows - 1)
     };
@@ -4239,11 +4368,103 @@ class BoardView {
     if (this.canvas.height !== bh) this.canvas.height = bh;
     this.canvas.style.width  = pw + 'px';
     this.canvas.style.height = ph + 'px';
-    this.baseScale = Math.min(pw / m.boardW, ph / m.boardH);
+    if (m.infinite){
+      if (m.style === 'hex'){
+        this.baseScale = Math.min(pw, ph) / (16 * (m.HW));
+      } else {
+        this.baseScale = Math.min(pw, ph) / (16 * (m.cell + m.gap));
+      }
+    } else {
+      this.baseScale = Math.min(pw / m.boardW, ph / m.boardH);
+    }
     this.clampPan();
+  }
+  /* Compute the world-space bounding box of all currently revealed
+     tiles, expanded by 25 tile-widths in every direction. The camera
+     will be clamped so its viewport never leaves this box. */
+  revealedWorldBounds(){
+    if (!G.myBoard || !this.metrics) return null;
+    const bs = G.myBoard;
+    const m = this.metrics;
+    const rows = bs.rows, cols = bs.cols;
+    let minX = Infinity, maxX = -Infinity;
+    let minY = Infinity, maxY = -Infinity;
+    let found = false;
+
+    if (m.style === 'hex'){
+      const { size, HW, pad } = m;
+      const halfW = HW * 0.5;
+      const halfH = size;
+      for (let r = 0; r < rows; r++){
+        const rowY = pad + size + size * 1.5 * r;
+        const rowXBase = pad + HW * 0.5 + ((r & 1) ? HW * 0.5 : 0);
+        for (let c = 0; c < cols; c++){
+          if (!bs.revealed[r][c]) continue;
+          found = true;
+          const x = rowXBase + HW * c;
+          if (x - halfW < minX) minX = x - halfW;
+          if (x + halfW > maxX) maxX = x + halfW;
+          if (rowY - halfH < minY) minY = rowY - halfH;
+          if (rowY + halfH > maxY) maxY = rowY + halfH;
+        }
+      }
+    } else {
+      const { cell, gap, pad } = m;
+      const step = cell + gap;
+      for (let r = 0; r < rows; r++){
+        const rowY = pad + r * step;
+        for (let c = 0; c < cols; c++){
+          if (!bs.revealed[r][c]) continue;
+          found = true;
+          const x = pad + c * step;
+          if (x < minX) minX = x;
+          if (x + cell > maxX) maxX = x + cell;
+          if (rowY < minY) minY = rowY;
+          if (rowY + cell > maxY) maxY = rowY + cell;
+        }
+      }
+    }
+    if (!found) return null;
+
+    const EXPAND = 25;
+    let expX, expY;
+    if (m.style === 'hex'){
+      expX = EXPAND * m.HW;
+      expY = EXPAND * m.size * 1.5;
+    } else {
+      const step = m.cell + m.gap;
+      expX = EXPAND * step;
+      expY = EXPAND * step;
+    }
+    return {
+      left:   minX - expX,
+      right:  maxX + expX,
+      top:    minY - expY,
+      bottom: maxY + expY
+    };
   }
   clampPan(){
     const m = this.metrics; if (!m) return;
+    if (m.infinite){
+      /* Infinite mode: the viewport may only extend 25 tiles past
+         the closest revealed tile. */
+      const b = this.revealedWorldBounds();
+      if (!b) return;
+      const scale = this.baseScale * this.zoom;
+      const minPanX = this.pw - b.right * scale;
+      const maxPanX = -b.left * scale;
+      if (minPanX > maxPanX) this.panX = (minPanX + maxPanX) / 2;
+      else this.panX = clamp(this.panX, minPanX, maxPanX);
+
+      const minPanY = this.ph - b.bottom * scale;
+      const maxPanY = -b.top * scale;
+      if (minPanY > maxPanY) this.panY = (minPanY + maxPanY) / 2;
+      else this.panY = clamp(this.panY, minPanY, maxPanY);
+
+      if (!isFinite(this.panX)) this.panX = 0;
+      if (!isFinite(this.panY)) this.panY = 0;
+      return;
+    }
     const z = this.zoom;
     const bw = this.baseScale * z * m.boardW;
     const bh = this.baseScale * z * m.boardH;
@@ -4254,10 +4475,23 @@ class BoardView {
     if (!isFinite(this.panX)) this.panX = (this.pw - bw) / 2;
     if (!isFinite(this.panY)) this.panY = (this.ph - bh) / 2;
   }
-  resetView(){ this.zoom = 1; this.clampPan(); }
+  centerOn(worldX, worldY){
+    const scale = this.baseScale * this.zoom;
+    this.panX = this.pw / 2 - worldX * scale;
+    this.panY = this.ph / 2 - worldY * scale;
+  }
+  resetView(){
+    this.zoom = 1;
+    if (this.metrics && this.metrics.infinite && G.me){
+      const p = hexOrSqCenter(this, G.me.cursor.r, G.me.cursor.c);
+      this.centerOn(p.x, p.y);
+    } else {
+      this.clampPan();
+    }
+  }
   zoomAround(cx, cy, newZoom){
     if (!this.metrics) return;
-    newZoom = clamp(newZoom, 1, this.maxZoom);
+    newZoom = clamp(newZoom, this.minZoom, this.maxZoom);
     if (Math.abs(newZoom - this.zoom) < 0.0005) return;
     const scale = this.baseScale * this.zoom;
     const bx = (cx - this.panX) / scale;
@@ -4265,11 +4499,13 @@ class BoardView {
     this.zoom = newZoom;
     this.panX = cx - bx * this.baseScale * this.zoom;
     this.panY = cy - by * this.baseScale * this.zoom;
-    if (this.zoom <= 1.0001){ this.zoom = 1; }
+    if (this.zoom <= this.minZoom + 0.0001) this.zoom = this.minZoom;
     this.clampPan();
   }
   panBy(dx_css, dy_css){
-    if (this.zoom <= 1.0001) return;
+    if (!this.metrics) return;
+    if (this.zoom <= this.minZoom + 0.0001 && !this.metrics.infinite) return;
+    if (G.viewAnim) G.viewAnim.active = false;
     this.panX += dx_css;
     this.panY += dy_css;
     this.clampPan();
@@ -4362,6 +4598,33 @@ class BoardView {
     return c;
   }
 
+  visibleSquareRange(cell, gap, pad, rows, cols){
+    const scale = this.baseScale * this.zoom;
+    const step = cell + gap;
+    const worldLeft = -this.panX / scale;
+    const worldTop = -this.panY / scale;
+    const worldRight = (this.pw - this.panX) / scale;
+    const worldBottom = (this.ph - this.panY) / scale;
+    const c0 = Math.max(0, Math.floor((worldLeft - pad) / step) - 1);
+    const c1 = Math.min(cols - 1, Math.ceil((worldRight - pad) / step) + 1);
+    const r0 = Math.max(0, Math.floor((worldTop - pad) / step) - 1);
+    const r1 = Math.min(rows - 1, Math.ceil((worldBottom - pad) / step) + 1);
+    return { r0, r1, c0, c1 };
+  }
+  visibleHexRange(size, HW, pad, rows, cols){
+    const scale = this.baseScale * this.zoom;
+    const worldLeft = -this.panX / scale;
+    const worldTop = -this.panY / scale;
+    const worldRight = (this.pw - this.panX) / scale;
+    const worldBottom = (this.ph - this.panY) / scale;
+    const rowStep = size * 1.5;
+    const r0 = Math.max(0, Math.floor((worldTop - pad - size) / rowStep) - 1);
+    const r1 = Math.min(rows - 1, Math.ceil((worldBottom - pad) / rowStep) + 1);
+    const c0 = Math.max(0, Math.floor((worldLeft - pad - HW * 1.5) / HW) - 1);
+    const c1 = Math.min(cols - 1, Math.ceil((worldRight - pad) / HW) + 1);
+    return { r0, r1, c0, c1 };
+  }
+
   render(now, state){
     const ctx = this.ctx;
     const dt = Math.min(now - this.lastT, 50);
@@ -4424,24 +4687,6 @@ class BoardView {
   }
   triggerShake(){ this.shake = 1; }
 
-  _drawHintOutline(x, y, w, h, r, color, lineWidth, blur){
-    const ctx = this.ctx;
-    ctx.save();
-    ctx.strokeStyle = color;
-    ctx.lineWidth = lineWidth;
-    ctx.shadowColor = color;
-    ctx.shadowBlur = blur;
-    if (this.metrics.style === 'hex'){
-      const cx = x + w/2, cy = y + h/2;
-      this.hexPath(cx, cy, Math.min(w, h) / 2);
-      ctx.stroke();
-    } else {
-      this.roundRect(ctx, x, y, w, h, r);
-      ctx.stroke();
-    }
-    ctx.restore();
-  }
-
   renderSquare(now, state){
     const ctx = this.ctx;
     const m = this.metrics;
@@ -4456,8 +4701,11 @@ class BoardView {
     const nowMs = now;
     const hints = state.hints;
 
-    for (let r = 0; r < rows; r++){
-      for (let c = 0; c < cols; c++){
+    const range = this.visibleSquareRange(cell, gap, pad, rows, cols);
+    const r0 = range.r0, r1 = range.r1, c0 = range.c0, c1 = range.c1;
+
+    for (let r = r0; r <= r1; r++){
+      for (let c = c0; c <= c1; c++){
         const x = pad + c * (cell + gap);
         const y = pad + r * (cell + gap);
         const rev = boardState.revealed[r][c];
@@ -4506,14 +4754,11 @@ class BoardView {
           }
           ctx.restore();
         } else {
-          ctx.fillStyle = '#111a2c';
+          const hiddenBase = (useOwner && own) ? '#070b14' : '#111a2c';
+          ctx.fillStyle = hiddenBase;
           this.roundRect(ctx, x, y, cell, cell, radius);
           ctx.fill();
 
-          /* NOTE: the owner tint on a *hidden* tile must never depend on
-             whether the tile really hides a mine, otherwise a placed
-             flag would visually leak its correctness.  Every owned
-             hidden tile gets exactly the same tint. */
           if (own){
             ctx.fillStyle = this.ownerTint[own];
             this.roundRect(ctx, x, y, cell, cell, radius);
@@ -4561,7 +4806,7 @@ class BoardView {
         hints.supports.forEach(function(key){
           const parts = key.split(',');
           const hr = +parts[0], hc = +parts[1];
-          if (hr < 0 || hr >= rows || hc < 0 || hc >= cols) return;
+          if (hr < r0 || hr > r1 || hc < c0 || hc > c1) return;
           const hx = pad + hc * (cell + gap);
           const hy = pad + hr * (cell + gap);
           ctx.save();
@@ -4585,7 +4830,7 @@ class BoardView {
         hints.reveal.forEach(function(key){
           const parts = key.split(',');
           const hr = +parts[0], hc = +parts[1];
-          if (hr < 0 || hr >= rows || hc < 0 || hc >= cols) return;
+          if (hr < r0 || hr > r1 || hc < c0 || hc > c1) return;
           const hx = pad + hc * (cell + gap);
           const hy = pad + hr * (cell + gap);
           ctx.save();
@@ -4609,7 +4854,7 @@ class BoardView {
         hints.flag.forEach(function(key){
           const parts = key.split(',');
           const hr = +parts[0], hc = +parts[1];
-          if (hr < 0 || hr >= rows || hc < 0 || hc >= cols) return;
+          if (hr < r0 || hr > r1 || hc < c0 || hc > c1) return;
           const hx = pad + hc * (cell + gap);
           const hy = pad + hr * (cell + gap);
           ctx.save();
@@ -4633,7 +4878,7 @@ class BoardView {
         hints.wrong.forEach(function(key){
           const parts = key.split(',');
           const hr = +parts[0], hc = +parts[1];
-          if (hr < 0 || hr >= rows || hc < 0 || hc >= cols) return;
+          if (hr < r0 || hr > r1 || hc < c0 || hc > c1) return;
           const hx = pad + hc * (cell + gap);
           const hy = pad + hr * (cell + gap);
           ctx.save();
@@ -4655,6 +4900,7 @@ class BoardView {
 
     if (state.highlights){
       for (const h of state.highlights){
+        if (h.r < r0 || h.r > r1 || h.c < c0 || h.c > c1) continue;
         const x = pad + h.c * (cell + gap);
         const y = pad + h.r * (cell + gap);
         const pulse = 0.5 + 0.5 * Math.sin(nowMs / 170);
@@ -4668,6 +4914,7 @@ class BoardView {
     }
 
     for (const cur of cursors){
+      if (cur.r < r0 || cur.r > r1 || cur.c < c0 || cur.c > c1) continue;
       const x = pad + cur.c * (cell + gap);
       const y = pad + cur.r * (cell + gap);
       ctx.save();
@@ -4692,8 +4939,11 @@ class BoardView {
     const nowMs = now;
     const hints = state.hints;
 
-    for (let r = 0; r < rows; r++){
-      for (let c = 0; c < cols; c++){
+    const range = this.visibleHexRange(size, m.HW, m.pad, rows, cols);
+    const r0 = range.r0, r1 = range.r1, c0 = range.c0, c1 = range.c1;
+
+    for (let r = r0; r <= r1; r++){
+      for (let c = c0; c <= c1; c++){
         const p = this.hexCenter(r, c);
         const x = p.x, y = p.y;
         const rev = boardState.revealed[r][c];
@@ -4745,9 +4995,8 @@ class BoardView {
             ctx.stroke();
             ctx.restore();
           } else {
-            ctx.fillStyle = '#111a2c'; ctx.fill();
-            /* Same rule as the square renderer: the tint must not depend
-               on the real mine layout, or flag correctness leaks. */
+            const hiddenBase = (useOwner && own) ? '#070b14' : '#111a2c';
+            ctx.fillStyle = hiddenBase; ctx.fill();
             if (own){ ctx.fillStyle = this.ownerTint[own]; ctx.fill(); }
             const pulse = 0.22 + 0.11 * Math.sin(nowMs / 800 + (r * 0.7 + c * 0.45));
             ctx.strokeStyle = own ? this.ownerEdge[own]
@@ -4786,7 +5035,7 @@ class BoardView {
         hints.supports.forEach(function(key){
           const parts = key.split(',');
           const hr = +parts[0], hc = +parts[1];
-          if (hr < 0 || hr >= rows || hc < 0 || hc >= cols) return;
+          if (hr < r0 || hr > r1 || hc < c0 || hc > c1) return;
           const hp = this.hexCenter(hr, hc);
           ctx.save();
           ctx.strokeStyle = 'rgba(255,209,102,' + (0.55 + 0.4 * pulse).toFixed(3) + ')';
@@ -4803,7 +5052,7 @@ class BoardView {
         hints.reveal.forEach(function(key){
           const parts = key.split(',');
           const hr = +parts[0], hc = +parts[1];
-          if (hr < 0 || hr >= rows || hc < 0 || hc >= cols) return;
+          if (hr < r0 || hr > r1 || hc < c0 || hc > c1) return;
           const hp = this.hexCenter(hr, hc);
           ctx.save();
           ctx.strokeStyle = 'rgba(93,255,158,' + (0.65 + 0.35 * pulse).toFixed(3) + ')';
@@ -4820,7 +5069,7 @@ class BoardView {
         hints.flag.forEach(function(key){
           const parts = key.split(',');
           const hr = +parts[0], hc = +parts[1];
-          if (hr < 0 || hr >= rows || hc < 0 || hc >= cols) return;
+          if (hr < r0 || hr > r1 || hc < c0 || hc > c1) return;
           const hp = this.hexCenter(hr, hc);
           ctx.save();
           ctx.strokeStyle = 'rgba(255,77,109,' + (0.65 + 0.35 * pulse).toFixed(3) + ')';
@@ -4837,7 +5086,7 @@ class BoardView {
         hints.wrong.forEach(function(key){
           const parts = key.split(',');
           const hr = +parts[0], hc = +parts[1];
-          if (hr < 0 || hr >= rows || hc < 0 || hc >= cols) return;
+          if (hr < r0 || hr > r1 || hc < c0 || hc > c1) return;
           const hp = this.hexCenter(hr, hc);
           ctx.save();
           ctx.strokeStyle = 'rgba(255,77,109,' + (0.75 + 0.25 * pulse).toFixed(3) + ')';
@@ -4858,6 +5107,7 @@ class BoardView {
 
     if (state.highlights){
       for (const h of state.highlights){
+        if (h.r < r0 || h.r > r1 || h.c < c0 || h.c > c1) continue;
         const p = this.hexCenter(h.r, h.c);
         const pulse = 0.5 + 0.5 * Math.sin(nowMs / 170);
         ctx.save();
@@ -4869,6 +5119,7 @@ class BoardView {
       }
     }
     for (const cur of cursors){
+      if (cur.r < r0 || cur.r > r1 || cur.c < c0 || cur.c > c1) continue;
       const p = this.hexCenter(cur.r, cur.c);
       ctx.save();
       ctx.strokeStyle = cur.color;
@@ -4901,13 +5152,6 @@ class BoardView {
   }
 }
 
-/* ── Owner colour palette ───────────────────────────────────────
-   The two territory colours are fixed: the local player is ALWAYS
-   cyan (#4dd8ff) and the opponent is ALWAYS pink (#ff3d81), no
-   matter which player is owner 1 or owner 2 internally.  Every
-   BoardView that draws a territory board must use `myPalette()`
-   so the colours never flip between the live match and the map
-   review. */
 const PALETTE_CYAN = {
   tint:     'rgba(77,216,255,.17)',
   tintMine: 'rgba(77,216,255,.30)',
@@ -4928,6 +5172,7 @@ function myPalette(){
 
 function hexOrSqCenter(view, r, c){
   const m = view.metrics;
+  if (!m) return { x: 0, y: 0 };
   if (m.style === 'hex') return view.hexCenter(r, c);
   const { cell, gap, pad } = m;
   return { x: pad + c * (cell + gap) + cell/2, y: pad + r * (cell + gap) + cell/2 };
@@ -4991,8 +5236,9 @@ function makePanel(cls, name, color){
       '<span class="pkeys"></span>' +
     '</div>' +
     '<div class="pstats">' +
-      '<div class="pstat"><span class="plabel">MINES</span><span class="pval" data-mines>0</span></div>' +
+      '<div class="pstat" data-minesstat><span class="plabel">MINES</span><span class="pval" data-mines>0</span></div>' +
       '<div class="pstat"><span class="plabel">TIME</span><span class="pval" data-time>0.0</span></div>' +
+      '<button type="button" class="pstat-action" data-returnstart style="display:none" title="Return to start">RETURN</button>' +
       '<div class="pstat"><span class="plabel">REVEALED</span><span class="pval" data-revealed>0</span></div>' +
       '<div class="pstat" data-hitsstat><span class="plabel">HITS</span><span class="pval" data-hits>0</span></div>' +
     '</div>' +
@@ -5076,7 +5322,7 @@ function updatePanelNames(){
 
 function viewConfig(){
   const d = dimsFor(G.config);
-  return { mode: G.config.mode, style: G.config.style, cols: d.cols, rows: d.rows };
+  return { mode: G.config.mode, style: G.config.style, cols: d.cols, rows: d.rows, size: G.config.size };
 }
 
 function buildArena(){
@@ -5084,6 +5330,7 @@ function buildArena(){
   G.viewMe = null; G.viewThem = null; G.panelMe = null; G.panelThem = null;
   const mode = G.config.mode;
   const insta = !!G.config.insta;
+  const isInf = isInfiniteSize(G.config.size);
   const showHits = usesStunPenalty();
   arena.classList.toggle('solo', mode === 'solo');
   arena.classList.toggle('territory', mode === 'territory');
@@ -5113,6 +5360,30 @@ function buildArena(){
   if (insta) panelA._els.keys.classList.add('insta');
   if (isCoop) panelA._els.keys.textContent = 'SHARED · ' + panelKeysText();
   else        panelA._els.keys.textContent = panelKeysText();
+
+  if (isInf){
+    /* Hide the mines stat & progress bar in infinite mode. */
+    const minesBox = panelA.querySelector('[data-minesstat]');
+    if (minesBox) minesBox.style.display = 'none';
+    const pbar = panelA.querySelector('.pbar');
+    if (pbar) pbar.style.display = 'none';
+    /* Show the return-to-start button. */
+    const retBtn = panelA.querySelector('[data-returnstart]');
+    if (retBtn){
+      retBtn.style.display = 'flex';
+      retBtn.addEventListener('click', e => {
+        e.preventDefault();
+        e.stopPropagation();
+        returnToStart();
+      });
+      retBtn.addEventListener('pointerdown', e => e.stopPropagation());
+    }
+    /* Center the camera on the player's starting position. */
+    if (G.me){
+      const p = hexOrSqCenter(G.viewMe, G.me.cursor.r, G.me.cursor.c);
+      G.viewMe.centerOn(p.x, p.y);
+    }
+  }
 
   if (mode === 'duel'){
     const panelB = makePanel('them', 'OPPONENT', '#ff3d81');
@@ -5145,8 +5416,6 @@ function buildTerritoryArena(){
   arena.appendChild(panel);
   G.viewMe = new BoardView(panel.querySelector('canvas'));
   G.viewMe.setConfig(viewConfig());
-  /* Always colour the local player cyan and the opponent pink,
-     regardless of whether we are owner 1 or owner 2 internally. */
   G.viewMe.setOwnerPalette(myPalette());
   bindCanvasInput(G.viewMe, true, true);
   wireZoomBadge(panel, G.viewMe);
@@ -5178,7 +5447,7 @@ function wireZoomBadge(panel, view){
   let rafId = null;
   const tick = () => {
     rafId = requestAnimationFrame(tick);
-    if (view.zoom > 1.001){
+    if (Math.abs(view.zoom - 1) > 0.001){
       badge.classList.add('on');
       badge.textContent = '⤢ ' + view.zoom.toFixed(1) + '× · reset';
     } else {
@@ -5196,6 +5465,23 @@ function wireZoomBadge(panel, view){
 
 function interactive(){
   return G.state === 'playing' && G.me && !G.me.done;
+}
+
+function returnToStart(){
+  if (!G.viewMe || !G.board || !G.me) return;
+  const v = G.viewMe;
+  const p = hexOrSqCenter(v, G.myStartR, G.myStartC);
+  const scale = v.baseScale * v.zoom;
+  G.viewAnim = {
+    active: true,
+    startTime: performance.now(),
+    duration: 550,
+    startPanX: v.panX,
+    startPanY: v.panY,
+    targetPanX: v.pw / 2 - p.x * scale,
+    targetPanY: v.ph / 2 - p.y * scale
+  };
+  SFX.zoom();
 }
 
 function bindCanvasInput(view, gameplay, allowZoom){
@@ -5220,8 +5506,9 @@ function bindCanvasInput(view, gameplay, allowZoom){
     if (e.deltaMode === 1) delta *= 16;
     else if (e.deltaMode === 2) delta *= 400;
     const factor = Math.exp(-delta * 0.0018);
-    const newZoom = clamp(view.zoom * factor, 1, view.maxZoom);
+    const newZoom = clamp(view.zoom * factor, view.minZoom, view.maxZoom);
     if (Math.abs(newZoom - view.zoom) < 0.001) return;
+    if (G.viewAnim) G.viewAnim.active = false;
     const { x, y } = clientToLocal(e.clientX, e.clientY);
     view.zoomAround(x, y, newZoom);
   }, { passive: false });
@@ -5306,13 +5593,13 @@ function bindCanvasInput(view, gameplay, allowZoom){
       const cx = (pts[0].x + pts[1].x) / 2;
       const cy = (pts[0].y + pts[1].y) / 2;
       const l = clientToLocal(cx, cy);
-      const newZoom = clamp(pinch.zoom0 * (d / Math.max(pinch.d0, 1)), 1, view.maxZoom);
+      const newZoom = clamp(pinch.zoom0 * (d / Math.max(pinch.d0, 1)), view.minZoom, view.maxZoom);
       const w0x = (pinch.midL0X - pinch.pan0X) / pinch.zoom0;
       const w0y = (pinch.midL0Y - pinch.pan0Y) / pinch.zoom0;
       view.zoom = newZoom;
       view.panX = l.x - w0x * newZoom;
       view.panY = l.y - w0y * newZoom;
-      if (view.zoom <= 1.0001) view.zoom = 1;
+      if (view.zoom <= view.minZoom + 0.0001) view.zoom = view.minZoom;
       view.clampPan();
       return;
     }
@@ -5322,7 +5609,7 @@ function bindCanvasInput(view, gameplay, allowZoom){
       if (!touchGesture.moved && Math.hypot(dxTotal, dyTotal) > 8){
         touchGesture.moved = true;
         if (touchGesture.timer) clearTimeout(touchGesture.timer);
-        if (view.zoom > 1.001){
+        if (view.zoom > view.minZoom + 0.001 || view.metrics.infinite){
           touchGesture.panning = true;
           touchGesture.lastX = e.clientX;
           touchGesture.lastY = e.clientY;
@@ -5374,6 +5661,9 @@ function clearHeldKeys(){
   heldZoom.in = false;
   heldZoom.out = false;
 }
+function isManualPanning(){
+  return heldPan.KeyW || heldPan.KeyA || heldPan.KeyS || heldPan.KeyD;
+}
 
 let hotkeyCapture = null;
 
@@ -5404,6 +5694,7 @@ window.addEventListener('keydown', e => {
     const hasReview = G.reviewViews && G.reviewViews.length > 0;
     if (hasReview || (G.viewMe && G.state !== 'lobby')){
       heldPan[code] = true;
+      cursorActiveUntil = 0;
       e.preventDefault();
     }
     return;
@@ -5420,6 +5711,7 @@ window.addEventListener('keydown', e => {
   else if (code === HOTKEYS.flag){ if (!e.repeat) localFlag(); }
   else if (code === 'KeyE' || code === 'KeyQ'){ if (!e.repeat) localChord(); }
   else if (code === 'Digit0'){ if (G.viewMe) G.viewMe.resetView(); }
+  else if (code === 'KeyR'){ returnToStart(); }
   else handled = false;
   if (handled) e.preventDefault();
 }, { passive:false });
@@ -5450,7 +5742,8 @@ function updatePanFromKeys(dtMs){
   if (!dx && !dy) return;
   const dt = dtMs / 1000;
   for (const v of targets){
-    if (v && v.metrics && v.zoom > 1.0001){
+    if (!v || !v.metrics) continue;
+    if (v.zoom > v.minZoom + 0.0001 || v.metrics.infinite){
       v.panBy(dx * PAN_SPEED_CSS * dt, dy * PAN_SPEED_CSS * dt);
     }
   }
@@ -5466,7 +5759,7 @@ function updateZoomFromKeys(dtMs){
   if (heldZoom.out) factor *= Math.exp(-ZOOM_RATE * dt);
   for (const v of targets){
     if (!v || !v.metrics) continue;
-    const nz = clamp(v.zoom * factor, 1, v.maxZoom);
+    const nz = clamp(v.zoom * factor, v.minZoom, v.maxZoom);
     if (Math.abs(nz - v.zoom) < 0.0002) continue;
     v.zoomAround(v.pw / 2, v.ph / 2, nz);
   }
@@ -5591,8 +5884,13 @@ function applyChord(boardState, board, r, c, owner){
 
 function revealAllMines(boardState, board, originR, originC){
   const now = performance.now();
-  for (let r = 0; r < board.rows; r++){
-    for (let c = 0; c < board.cols; c++){
+  const R = board.infinite ? INFINITE_REVEAL_RADIUS : Infinity;
+  const r0 = Math.max(0, originR - R);
+  const r1 = Math.min(board.rows - 1, originR + R);
+  const c0 = Math.max(0, originC - R);
+  const c1 = Math.min(board.cols - 1, originC + R);
+  for (let r = r0; r <= r1; r++){
+    for (let c = c0; c <= c1; c++){
       if (!board.mines.has(r + ',' + c)) continue;
       if (boardState.revealed[r][c] || boardState.flagged[r][c]) continue;
       const d = Math.hypot(r - originR, c - originC);
@@ -5630,14 +5928,6 @@ function countRevealedBy(boardState, owner){
   for (let r = 0; r < boardState.rows; r++)
     for (let c = 0; c < boardState.cols; c++)
       if (boardState.owner[r][c] === owner && boardState.revealed[r][c]) n++;
-  return n;
-}
-function countRevealedTiles(boardState){
-  if (!boardState) return 0;
-  let n = 0;
-  for (let r = 0; r < boardState.rows; r++)
-    for (let c = 0; c < boardState.cols; c++)
-      if (boardState.revealed[r][c]) n++;
   return n;
 }
 
@@ -5700,18 +5990,24 @@ function hasAvailableMove(boardState, board, owner){
   return false;
 }
 
-function findSafeSwapTarget(board, boardState, r, c){
+function findSafeSwapTargetExcluding(board, boardState, r, c, excludeSet){
   const { rows, cols } = board;
-  const candidates = [];
-  for (let dr = -4; dr <= 4; dr++){
-    for (let dc = -4; dc <= 4; dc++){
-      if (!dr && !dc) continue;
-      const nr = r + dr, nc = c + dc;
-      if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
-      if (board.mines.has(nr + ',' + nc)) continue;
-      if (boardState && boardState.revealed[nr][nc]) continue;
-      candidates.push({ r: nr, c: nc });
+  let candidates = [];
+  const radii = [4, 3, 2, 1];
+  for (const R of radii){
+    candidates = [];
+    for (let dr = -R; dr <= R; dr++){
+      for (let dc = -R; dc <= R; dc++){
+        if (!dr && !dc) continue;
+        const nr = r + dr, nc = c + dc;
+        if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
+        if (board.mines.has(nr + ',' + nc)) continue;
+        if (excludeSet && excludeSet.has(nr + ',' + nc)) continue;
+        if (boardState && boardState.revealed[nr][nc]) continue;
+        candidates.push({ r: nr, c: nc });
+      }
     }
+    if (candidates.length) break;
   }
   if (!candidates.length) return null;
   return candidates[Math.floor(Math.random() * candidates.length)];
@@ -5719,14 +6015,48 @@ function findSafeSwapTarget(board, boardState, r, c){
 function ensureFirstDigSafe(board, boardState, playerState, r, c, syncNetwork){
   if (!playerState || playerState.digged) return false;
   playerState.digged = true;
-  if (!board.mines.has(r + ',' + c)) return false;
-  const swap = findSafeSwapTarget(board, boardState, r, c);
-  if (!swap) return false;
-  board.mines.delete(r + ',' + c);
-  board.mines.add(swap.r + ',' + swap.c);
+
+  /* Collect every mine in the 3×3 window around the click (including
+     the clicked tile itself), remove them ALL, then place them back
+     at safe tiles that are OUTSIDE that window.  The old approach
+     swapped one mine at a time and could swap a neighbour's mine
+     right back onto the clicked tile, leaving the click as a mine
+     and the first reveal stuck at one tile. */
+  const cleared = [];
+  if (board.mines.has(r + ',' + c)) cleared.push([r, c]);
+  for (const [nr, nc] of board.neighbors(r, c, board.rows, board.cols)){
+    if (board.mines.has(nr + ',' + nc)) cleared.push([nr, nc]);
+  }
+  if (!cleared.length) return false;
+
+  /* Never re-mine inside the click's 1-ring. */
+  const excl = new Set();
+  excl.add(r + ',' + c);
+  for (const [nr, nc] of board.neighbors(r, c, board.rows, board.cols)){
+    excl.add(nr + ',' + nc);
+  }
+
+  for (const [mr, mc] of cleared){
+    board.mines.delete(mr + ',' + mc);
+  }
+
+  const swaps = [];
+  for (const [mr, mc] of cleared){
+    const swap = findSafeSwapTargetExcluding(board, boardState, mr, mc, excl);
+    if (swap){
+      board.mines.add(swap.r + ',' + swap.c);
+      excl.add(swap.r + ',' + swap.c);
+      swaps.push({ fr: mr, fc: mc, sr: swap.r, sc: swap.c });
+    }
+  }
+
   recomputeAdjacency(board);
-  if (syncNetwork) send({ t:'swapmine', r, c, sr: swap.r, sc: swap.c });
-  return true;
+  if (syncNetwork){
+    for (const sw of swaps){
+      send({ t:'swapmine', r: sw.fr, c: sw.fc, sr: sw.sr, sc: sw.sc });
+    }
+  }
+  return swaps.length > 0;
 }
 
 function canAct(){
@@ -5742,6 +6072,7 @@ function sendCursor(){
   lastCursorSent = now;
   send({ t:'cur', r: G.me.cursor.r, c: G.me.cursor.c });
 }
+let cursorActiveUntil = 0;
 function moveCursor(dr, dc){
   if (G.state !== 'playing' || !G.me || G.me.done) return;
   if (isFrozen()) return;
@@ -5750,11 +6081,11 @@ function moveCursor(dr, dc){
   const nc = clamp(G.me.cursor.c + dc, 0, cols - 1);
   if (nr === G.me.cursor.r && nc === G.me.cursor.c) return;
   G.me.cursor = { r: nr, c: nc };
+  cursorActiveUntil = performance.now() + 1200;
   sendCursor();
 }
 function localDigAt(r, c){ if (!canAct()) return; G.me.cursor = { r, c }; localDig(); }
 function localFlagAt(r, c){ if (!canAct()) return; G.me.cursor = { r, c }; localFlag(); }
-function localChordAt(r, c){ if (!canAct()) return; G.me.cursor = { r, c }; localChord(); }
 
 let digBusy = false;
 
@@ -5796,6 +6127,7 @@ async function localDig(){
 function doLocalDig(r, c){
   const mode = G.config.mode;
   const insta = !!G.config.insta;
+  const isInf = isInfiniteSize(G.config.size);
 
   if (mode === 'coop' || mode === 'territory'){
     if (G.role === 'host') hostApplyDig(r, c, G.myOwner);
@@ -5849,12 +6181,12 @@ function doLocalDig(r, c){
   if (!res) return;
   if (res.type === 'mine'){
     G.me.hits++;
-    G.lossHintMe = computeHintForBoard(G.board, preSnap, null, false, r, c);
+    if (!isInf) G.lossHintMe = computeHintForBoard(G.board, preSnap, null, false, r, c);
     handleLoss(r, c, G.viewMe, bs, G.board);
     return;
   }
   afterRevealFeedback(res);
-  if (checkWin(bs, G.board)){
+  if (!isInf && checkWin(bs, G.board)){
     G.me.done = true;
     endGame('win', '✨', 'CLEARED!', 'You swept every safe tile.', performance.now() - G.startTime);
   }
@@ -5876,6 +6208,7 @@ function handleLoss(r, c, view, bs, board){
     view.boom(p.x, p.y, '#ffd166', 18, 150);
   }
   SFX.mine(); vibrate(180);
+  /* Reveal mines centred on the actual bomb position, not the cursor. */
   revealAllMines(bs, board, r, c);
   const elapsed = performance.now() - G.startTime;
   setTimeout(() => {
@@ -5898,6 +6231,7 @@ function handleCoopLoss(r, c, broadcast, iTriggered){
     view.boom(p.x, p.y, '#ffd166', 18, 150);
   }
   if (iTriggered){ SFX.mine(); vibrate(180); } else { SFX.oppStun(); }
+  /* Reveal centred on bomb position, not cursor. */
   revealAllMines(bs, G.board, r, c);
   if (broadcast){
     send({ t:'delta', lose:true, r, c, by: iTriggered ? G.myOwner : G.theirOwner });
@@ -6007,8 +6341,9 @@ function handleTerritoryBoom(r, c, owner){
   send(deltaMsg);
 }
 function afterSharedReveal(){
+  const isInf = isInfiniteSize(G.config.size);
   if (G.config.mode === 'coop'){
-    if (checkWin(G.myBoard, G.board)){
+    if (!isInf && checkWin(G.myBoard, G.board)){
       send({ t:'win' });
       endGame('win', '🎉', 'FIELD CLEARED!', 'Together you swept every safe tile.', performance.now() - G.startTime);
     }
@@ -6179,6 +6514,7 @@ function localChord(){
   const r = G.me.cursor.r, c = G.me.cursor.c;
   const mode = G.config.mode;
   const insta = !!G.config.insta;
+  const isInf = isInfiniteSize(G.config.size);
 
   if (mode === 'coop' || mode === 'territory'){
     if (mode === 'territory' && !canTouchTerritory(G.myBoard, G.board, r, c, G.myOwner)) return;
@@ -6233,12 +6569,12 @@ function localChord(){
   if (!res) return;
   if (res.type === 'mine'){
     G.me.hits++;
-    G.lossHintMe = computeHintForBoard(G.board, preSnap, null, false, res.tiles[0][0], res.tiles[0][1]);
+    if (!isInf) G.lossHintMe = computeHintForBoard(G.board, preSnap, null, false, res.tiles[0][0], res.tiles[0][1]);
     handleLoss(res.tiles[0][0], res.tiles[0][1], G.viewMe, bs, G.board);
     return;
   }
   afterRevealFeedback(res);
-  if (checkWin(bs, G.board)){
+  if (!isInf && checkWin(bs, G.board)){
     G.me.done = true;
     endGame('win', '✨', 'CLEARED!', 'You swept every safe tile.', performance.now() - G.startTime);
   }
@@ -6463,12 +6799,14 @@ function sendBoardToGuest(){
   if (G.config.mode !== 'coop') return;
   if (!G.board || G.boardPending) return;
   const op = G.boardOpening;
+  const isInf = isInfiniteSize(G.config.size);
   send({
     t: 'board',
     seed: G.boardSeed,
-    mines: Array.from(G.board.mines),
+    mines: isInf ? null : Array.from(G.board.mines),
     clickR: op ? op.r : (G.board.rows >> 1),
-    clickC: op ? op.c : (G.board.cols >> 1)
+    clickC: op ? op.c : (G.board.cols >> 1),
+    infinite: isInf
   });
 }
 
@@ -6591,15 +6929,19 @@ function handleMessage(msg){
       if (G.config.mode !== 'coop') break;
       if (!G.boardPending) break;
       const d = dimsFor(G.config);
+      const isInf = !!msg.infinite || isInfiniteSize(G.config.size);
       const wasAlias = (G.theirBoardLayout === G.board);
       const nb = placeholderBoard(G.config.style, d.rows, d.cols);
+      nb.infinite = isInf;
 
       if (Array.isArray(msg.mines) && msg.mines.length){
         rebuildBoardFromMines(nb, msg.mines, G.config.style);
       } else {
+        const cr = (msg.clickR !== undefined) ? msg.clickR : (d.rows >> 1);
+        const cc = (msg.clickC !== undefined) ? msg.clickC : (d.cols >> 1);
         const fb = genBoardDeferred(msg.seed, G.config.style, d.cols, d.rows, d.mines,
-                                    msg.clickR, msg.clickC,
-                                    [{ r: (d.rows >> 1), c: (d.cols >> 1) }]);
+                                    cr, cc,
+                                    [{ r: cr, c: cc }]);
         nb.mines = fb.mines;
         recomputeAdjacency(nb);
         nb.mineCount = nb.mines.size;
@@ -7120,8 +7462,14 @@ function menuHTML(err){
       '<div class="opt-name">' + s.name + '</div>' +
     '</button>';
   }).join('');
-  const sizeColor = { small:'color-green', medium:'color-yellow', large:'color-red' };
-  const sizeBtns = Object.keys(SIZES).map(k => {
+
+  const supportsInfinite = (cfg.mode === 'solo' || cfg.mode === 'coop');
+  const sizeColor = { small:'color-green', medium:'color-yellow', large:'color-red', infinite:'color-infinite' };
+  const sizeKeys = Object.keys(SIZES).filter(k => {
+    if (SIZES[k].infinite && !supportsInfinite) return false;
+    return true;
+  });
+  const sizeBtns = sizeKeys.map(k => {
     const s = SIZES[k];
     const colorCls = ' ' + (sizeColor[s.id] || '');
     return '<button class="opt' + (cfg.size === s.id ? ' active' : '') + colorCls + '" data-size="' + s.id + '">' +
@@ -7251,6 +7599,14 @@ function howToHTML(){
         '<b style="color:#4dd8ff">DIG</b> a tile to reveal it.<br>' +
         '<b style="color:#ff3d81">FLAG</b> a tile when you think it\'s a bomb.<br>' +
         'Clear every safe tile to win.' +
+      '</div>' +
+    '</div>' +
+    '<div class="config-section" style="border-left-color:rgba(185,140,255,.75);background:rgba(185,140,255,.035)">' +
+      '<div class="config-label" style="color:#d4b8ff">INFINITE MODE</div>' +
+      '<div class="ht-text">' +
+        'An endless minefield. <b style="color:#b98cff">Survive as long as you can</b> — ' +
+        'the leaderboard tracks <b style="color:#b98cff">how many tiles you revealed</b> before triggering a mine.<br><br>' +
+        '<b style="color:#b98cff">Return to start</b> — tap the ⌖ button (or press R) to smoothly pan the camera back to where you spawned.' +
       '</div>' +
     '</div>' +
     '<div class="ovbtns">' +
@@ -7389,6 +7745,7 @@ function renderMenu(err){
       G.config.mode = b.dataset.mode;
       if (G.config.mode === 'duel' || G.config.mode === 'territory'){
         G.config.insta = rememberedInsta;
+        if (isInfiniteSize(G.config.size)) G.config.size = 'large';
       } else {
         G.config.insta = false;
       }
@@ -7482,6 +7839,8 @@ function idleOverlay(){
   G.lossHintMe = null;
   G.lossHintThem = null;
   G.pendingPreSnap = null;
+  G.viewAnim = null;
+  G.myStartR = 0; G.myStartC = 0;
   lastUnlockCheck = 0;
   clearHeldKeys();
   hotkeyCapture = null;
@@ -7724,6 +8083,7 @@ function startMatch(seed, role, seedGuest){
   G.lossHintMe = null;
   G.lossHintThem = null;
   G.pendingPreSnap = null;
+  G.viewAnim = null;
   lastUnlockCheck = 0;
   clearHeldKeys();
   hotkeyCapture = null;
@@ -7736,6 +8096,7 @@ function startMatch(seed, role, seedGuest){
 
   const d = dimsFor(G.config);
   const mode = G.config.mode;
+  const isInf = isInfiniteSize(G.config.size);
   let starts = [{ r: (d.rows >> 1), c: (d.cols >> 1) }];
   if (mode === 'territory') starts = territoryStarts(d.rows, d.cols);
 
@@ -7743,7 +8104,7 @@ function startMatch(seed, role, seedGuest){
     const opening = starts.map(s => [s.r, s.c]);
     const res = generateSolvableBoard(
       G.mySeed, G.config.style, d.cols, d.rows, d.mines,
-      undefined, undefined, starts, opening, true
+      undefined, undefined, starts, opening, true, false
     );
     G.board = res.board;
     G.boardSeed = res.seed;
@@ -7751,6 +8112,32 @@ function startMatch(seed, role, seedGuest){
     G.terrBoardReady = (role === 'host');
     if (role === 'host'){
       send({ t:'terr_board', mines: Array.from(G.board.mines) });
+    }
+  } else if (isInf){
+    const cr = d.rows >> 1, cc = d.cols >> 1;
+    let res = null;
+    let attempts = 0;
+    let s = G.mySeed;
+    /* Regenerate until the start area passes the ±10 tile
+       solvability check (or give up after a reasonable number of
+       tries and accept the last one). */
+    while (attempts < 25){
+      res = generateSolvableBoard(
+        s, G.config.style, d.cols, d.rows, d.mines,
+        cr, cc, starts, [[cr, cc]], false, true
+      );
+      if (infiniteStartIsPlayable(res.board, cr, cc, 10)) break;
+      attempts++;
+      s = (G.mySeed + Math.imul(attempts, 0x9E3779B9)) >>> 0;
+    }
+    G.board = res.board;
+    G.board.infinite = true;
+    G.boardSeed = res.seed;
+    G.boardPending = false;
+    G.boardOpening = { r: cr, c: cc };
+    G.terrBoardReady = true;
+    if (role === 'host'){
+      sendBoardToGuest();
     }
   } else {
     G.board = placeholderBoard(G.config.style, d.rows, d.cols);
@@ -7769,6 +8156,9 @@ function startMatch(seed, role, seedGuest){
 
   G.me = makePlayerState(myStart);
   G.them = (role === 'solo') ? null : makePlayerState(theirStart);
+
+  G.myStartR = myStart.r;
+  G.myStartC = myStart.c;
 
   buildArena();
   buildControls();
@@ -7804,9 +8194,11 @@ function countdown(done){
   const modeName  = (MODES[cfg.mode]  || {}).name || cfg.mode;
   const styleName = (STYLES[cfg.style]|| {}).name || cfg.style;
   const sizeName  = (SIZES[cfg.size]  || {}).name || cfg.size;
+  const isInf = isInfiniteSize(cfg.size);
 
   const styleCls = (cfg.style === 'hex') ? 'hex' : '';
-  const sizeCls = (cfg.size === 'small') ? 'green'
+  const sizeCls = isInf ? 'infinite'
+                 : (cfg.size === 'small') ? 'green'
                  : (cfg.size === 'medium') ? 'yellow'
                  : (cfg.size === 'large') ? 'red' : '';
 
@@ -7908,16 +8300,83 @@ function buildEndReviewState(baseState, board, deathTile){
   return s;
 }
 
+/* Clip a large (infinite) board + state to a small region around
+   a center point.  Returns {board, state, offsetR, offsetC}. */
+function clipInfiniteReview(board, state, centerR, centerC, radius){
+  const r0 = Math.max(0, centerR - radius);
+  const r1 = Math.min(board.rows - 1, centerR + radius);
+  const c0 = Math.max(0, centerC - radius);
+  const c1 = Math.min(board.cols - 1, centerC + radius);
+  const nrows = r1 - r0 + 1;
+  const ncols = c1 - c0 + 1;
+
+  const nb = {
+    style: board.style,
+    cols: ncols, rows: nrows,
+    mines: new Set(),
+    adj: [],
+    neighbors: board.neighbors,
+    mineCount: 0, safeCount: 0,
+    infinite: false,
+    starts: [], start: null
+  };
+  for (let i = 0; i < nrows; i++) nb.adj.push(new Array(ncols).fill(0));
+
+  for (let r = r0; r <= r1; r++){
+    for (let c = c0; c <= c1; c++){
+      const nr = r - r0, nc = c - c0;
+      if (board.mines.has(r + ',' + c)){
+        nb.mines.add(nr + ',' + nc);
+        nb.adj[nr][nc] = -1;
+        nb.mineCount++;
+      } else {
+        nb.adj[nr][nc] = board.adj[r][c];
+      }
+    }
+  }
+  nb.safeCount = nrows * ncols - nb.mineCount;
+
+  const nbs = makeBoardState(nrows, ncols);
+  for (let r = r0; r <= r1; r++){
+    for (let c = c0; c <= c1; c++){
+      const nr = r - r0, nc = c - c0;
+      nbs.revealed[nr][nc] = state.revealed[r][c];
+      nbs.flagged[nr][nc]  = state.flagged[r][c];
+      nbs.owner[nr][nc]    = state.owner[r][c];
+      nbs.fakeFlag[nr][nc] = state.fakeFlag[r][c];
+      nbs.revealAt[nr][nc] = state.revealAt[r][c];
+      nbs.flagAt[nr][nc]   = state.flagAt[r][c];
+      if (state.revealed[r][c]) nbs.count++;
+      if (state.flagged[r][c])  nbs.flagCount++;
+      if (state.revealed[r][c] && !board.mines.has(r + ',' + c)) nbs.safeRevealed++;
+    }
+  }
+
+  return { board: nb, state: nbs, offsetR: r0, offsetC: c0 };
+}
+
 let reviewRafId = null;
 function showMapReview(){
   if (!G.board || !G.myBoard) return;
   const isDuel = (G.config.mode === 'duel') && !!G.theirBoard;
   const isTerr = (G.config.mode === 'territory');
-  const myLayout = G.board;
+  const isInf  = isInfiniteSize(G.config.size);
+
+  let myLayout = G.board;
+  let myBaseState = G.myBoard;
+  let myDeath = G.deathTile;
+
+  if (isInf && G.deathTile){
+    const clip = clipInfiniteReview(G.board, G.myBoard, G.deathTile.r, G.deathTile.c, INFINITE_REVEAL_RADIUS);
+    myLayout = clip.board;
+    myBaseState = clip.state;
+    myDeath = { r: G.deathTile.r - clip.offsetR, c: G.deathTile.c - clip.offsetC };
+  }
+
   const theirLayout = (G.config.mode === 'duel') ? (G.theirBoardLayout || G.board) : G.board;
 
-  const meEnd  = buildEndReviewState(G.myBoard, myLayout, G.deathTile);
-  const meFull = buildFullRevealState(G.myBoard, myLayout);
+  const meEnd  = buildEndReviewState(myBaseState, myLayout, myDeath);
+  const meFull = buildFullRevealState(myBaseState, myLayout);
   let themEnd = null, themFull = null;
   if (isDuel){
     themEnd  = buildEndReviewState(G.theirBoard, theirLayout, G.theirDeathTile);
@@ -7945,8 +8404,8 @@ function showMapReview(){
     return s;
   };
 
-  const meSolution       = G.deathTile ? hideCell(meEnd, G.deathTile.r, G.deathTile.c) : meEnd;
-  const meSolutionFull   = G.deathTile ? hideCell(meFull, G.deathTile.r, G.deathTile.c) : meFull;
+  const meSolution       = myDeath ? hideCell(meEnd, myDeath.r, myDeath.c) : meEnd;
+  const meSolutionFull   = myDeath ? hideCell(meFull, myDeath.r, myDeath.c) : meFull;
   const themSolution     = (isDuel && G.theirDeathTile)
     ? hideCell(themEnd,  G.theirDeathTile.r, G.theirDeathTile.c) : themEnd;
   const themSolutionFull = (isDuel && G.theirDeathTile)
@@ -7969,16 +8428,11 @@ function showMapReview(){
     }
   }
 
-  const hasHints = !!(G.lossHintMe || G.lossHintThem);
+  const hasHints = !isInf && !!(G.lossHintMe || G.lossHintThem);
   const hintBtnHtml = hasHints
     ? '<button id="btnShowHints">💡 SHOW SOLUTION</button>'
     : '';
 
-  /* Duel shows two boards side by side, so each one gets its own
-     "YOU" / "OPPONENT" label.  Territory only ever shows a single
-     combined board with both territories on it, so the old "YOU"
-     label that used to sit at the top has been removed — the
-     colours alone identify the players. */
   const cells =
     '<div class="review-cell">' +
       '<canvas data-review="me"></canvas>' +
@@ -7993,7 +8447,7 @@ function showMapReview(){
 
   modal.innerHTML =
     '<div class="ovbox mapreview">' +
-      '<h2>MAP <span>REVIEW</span></h2>' +
+      '<h2>MAP <span>REVIEW</span>' + (isInf ? ' · <span style="color:#b98cff">±' + INFINITE_REVEAL_RADIUS + '</span>' : '') + '</h2>' +
       '<div class="mapreview-canvas' + (isDuel ? ' two' : '') + '">' + cells + '</div>' +
       '<div class="mapreview-foot">' +
         hintBtnHtml +
@@ -8003,13 +8457,14 @@ function showMapReview(){
     '</div>';
   modal.classList.remove('hidden');
 
-  const vc = viewConfig();
+  /* Use standard metrics for the clipped review board. */
+  const vc = isInf
+    ? { mode: G.config.mode, style: G.config.style, cols: myLayout.cols, rows: myLayout.rows, size: 'small' }
+    : viewConfig();
   const views = [];
   modal.querySelectorAll('canvas[data-review]').forEach(c => {
     const v = new BoardView(c);
     v.setConfig(vc);
-    /* Keep the same colour identity as the live match: the local
-       player is always cyan, the opponent always pink. */
     if (isTerr) v.setOwnerPalette(myPalette());
     bindCanvasInput(v, false, true);
     views.push(v);
@@ -8018,8 +8473,8 @@ function showMapReview(){
 
   let showingFull = false;
   let showingHints = false;
-  const highlights = G.deathTile
-    ? [{ r: G.deathTile.r, c: G.deathTile.c, color: '#ffe066' }]
+  const highlights = myDeath
+    ? [{ r: myDeath.r, c: myDeath.c, color: '#ffe066' }]
     : [];
 
   const draw = (now) => {
@@ -8139,17 +8594,21 @@ function endGame(result, icon, title, sub, elapsed, cards, opts){
   clearHeldKeys();
 
   opts = opts || {};
+  const isInf = isInfiniteSize(G.config && G.config.size);
 
   G.rematchMe = false;
   G.rematchThem = false;
   G.rematchLock = false;
 
-  if (!opts.skipRecord && result === 'win' && G.config && elapsed > 0){
+  const shouldRecord = !opts.skipRecord && G.config && elapsed > 0 &&
+                       (result === 'win' || isInf);
+  if (shouldRecord){
     const mode = G.config.mode;
     const isTeam = (mode === 'coop' || mode === 'territory');
     const partner = (isTeam && G.theirName && G.theirNameKey)
       ? { name: G.theirName, key: G.theirNameKey }
       : null;
+    const tiles = G.myBoard ? G.myBoard.safeRevealed : 0;
     try {
       recordWin(
         mode,
@@ -8158,7 +8617,8 @@ function endGame(result, icon, title, sub, elapsed, cards, opts){
         !!G.config.insta,
         Math.max(1, Math.round(elapsed)),
         true,
-        partner
+        partner,
+        tiles
       ).catch(()=>{});
     } catch(e){}
   }
@@ -8174,11 +8634,14 @@ function endGame(result, icon, title, sub, elapsed, cards, opts){
 
   let cardsHtml = cards;
   if (!cardsHtml){
-    const stunMode = usesStunPenalty();
     cardsHtml =
       '<div class="statcard"><div class="slabel">TIME</div><div class="sval">' + formatClock(elapsed) + '</div></div>';
 
-    if (stunMode){
+    if (isInf){
+      const tiles = G.myBoard ? G.myBoard.safeRevealed : 0;
+      cardsHtml +=
+        '<div class="statcard inf"><div class="slabel">TILES REVEALED</div><div class="sval">' + tiles + '</div></div>';
+    } else if (usesStunPenalty()){
       cardsHtml +=
         '<div class="statcard"><div class="slabel">YOUR HITS</div><div class="sval">' + (G.me ? G.me.hits : 0) + '</div></div>';
       if (G.them){
@@ -8192,11 +8655,13 @@ function endGame(result, icon, title, sub, elapsed, cards, opts){
       }
     }
 
-    const pct = mapRevealStats();
-    if (pct){
-      cardsHtml +=
-        '<div class="statcard win"><div class="slabel">YOU REVEALED</div><div class="sval">' + pct.mine.toFixed(0) + '%</div></div>' +
-        '<div class="statcard lose"><div class="slabel">THEY REVEALED</div><div class="sval">' + pct.theirs.toFixed(0) + '%</div></div>';
+    if (!isInf){
+      const pct = mapRevealStats();
+      if (pct){
+        cardsHtml +=
+          '<div class="statcard win"><div class="slabel">YOU REVEALED</div><div class="sval">' + pct.mine.toFixed(0) + '%</div></div>' +
+          '<div class="statcard lose"><div class="slabel">THEY REVEALED</div><div class="sval">' + pct.theirs.toFixed(0) + '%</div></div>';
+      }
     }
   }
 
@@ -8204,8 +8669,11 @@ function endGame(result, icon, title, sub, elapsed, cards, opts){
     (G.role === 'solo' || G.role === 'host' || G.role === 'guest');
   const canReview  = !!G.board && !!G.myBoard;
 
-  const instaBadge = G.config.insta
+  const instaBadge = (G.config && G.config.insta)
     ? '<div style="margin-top:10px;font-size:11px;letter-spacing:.24em;font-weight:900;color:#ff9f43;text-shadow:0 0 12px rgba(255,159,67,.5)">INSTANT DIE MATCH</div>'
+    : '';
+  const infBadge = isInf
+    ? '<div style="margin-top:10px;font-size:11px;letter-spacing:.24em;font-weight:900;color:#b98cff;text-shadow:0 0 14px rgba(185,140,255,.65)">INFINITE MODE</div>'
     : '';
 
   showOverlay(
@@ -8213,7 +8681,7 @@ function endGame(result, icon, title, sub, elapsed, cards, opts){
       '<div class="big">' + icon + '</div>' +
       '<h2>' + title + '</h2>' +
       '<p>' + sub + '</p>' +
-      instaBadge +
+      instaBadge + infBadge +
       '<div class="statrow">' + cardsHtml + '</div>' +
       '<div class="ovbtns">' +
         (canRematch ? '<button class="primary" id="btnAgain">REMATCH</button>' : '') +
@@ -8248,6 +8716,44 @@ let lastTheirBoardRender = 0;
 
 function renderAll(now){
   if (!G.viewMe || !G.myBoard || !G.board || !G.me) return;
+
+  /* Smooth pan-back-to-start animation. */
+  if (G.viewAnim && G.viewAnim.active){
+    const t = (now - G.viewAnim.startTime) / G.viewAnim.duration;
+    if (t >= 1){
+      G.viewMe.panX = G.viewAnim.targetPanX;
+      G.viewMe.panY = G.viewAnim.targetPanY;
+      G.viewAnim.active = false;
+    } else {
+      const e = easeOutCubic(clamp(t, 0, 1));
+      G.viewMe.panX = G.viewAnim.startPanX + (G.viewAnim.targetPanX - G.viewAnim.startPanX) * e;
+      G.viewMe.panY = G.viewAnim.startPanY + (G.viewAnim.targetPanY - G.viewAnim.startPanY) * e;
+    }
+  } else if (performance.now() < cursorActiveUntil && !isManualPanning() &&
+             isInfiniteSize(G.config.size) && G.viewMe.metrics && G.viewMe.metrics.infinite){
+    /* Gentle edge-based follow: only nudge the camera when the cursor
+       was just moved by the arrow keys and is drifting near the edge
+       of the view.  Skipped whenever WASD is held, and skipped after
+       a short idle delay, so the player can freely pan with WASD to
+       revisit any region of the map without the camera snapping back. */
+    const p = hexOrSqCenter(G.viewMe, G.me.cursor.r, G.me.cursor.c);
+    const scale = G.viewMe.baseScale * G.viewMe.zoom;
+    const sx = p.x * scale + G.viewMe.panX;
+    const sy = p.y * scale + G.viewMe.panY;
+    const marginX = Math.min(60, G.viewMe.pw * 0.15);
+    const marginY = Math.min(60, G.viewMe.ph * 0.15);
+    let dx = 0, dy = 0;
+    if (sx < marginX) dx = marginX - sx;
+    else if (sx > G.viewMe.pw - marginX) dx = (G.viewMe.pw - marginX) - sx;
+    if (sy < marginY) dy = marginY - sy;
+    else if (sy > G.viewMe.ph - marginY) dy = (G.viewMe.ph - marginY) - sy;
+    if (dx || dy){
+      G.viewMe.panX += dx * 0.18;
+      G.viewMe.panY += dy * 0.18;
+      G.viewMe.clampPan();
+    }
+  }
+
   const myColor = '#4dd8ff';
   const cursors = [{ r: G.me.cursor.r, c: G.me.cursor.c, color: myColor }];
   G.viewMe.render(now, { board: G.board, boardState: G.myBoard, cursors });
@@ -8273,6 +8779,7 @@ function updateHUD(now){
   if (!G.board || !G.myBoard || !G.me) return;
   const mode = G.config.mode;
   const bs = G.myBoard;
+  const isInf = isInfiniteSize(G.config.size);
   const elapsed = (G.state === 'playing' || G.state === 'over')
     ? Math.max(0, now - G.startTime) : 0;
 
@@ -8289,11 +8796,13 @@ function updateHUD(now){
       if (els.myBar)    els.myBar.style.width    = (mine / total * 100).toFixed(1) + '%';
       if (els.theirBar) els.theirBar.style.width = (theirs / total * 100).toFixed(1) + '%';
     } else {
-      setText(els.mines, Math.max(0, G.board.mineCount - bs.flagCount));
+      if (!isInf) setText(els.mines, Math.max(0, G.board.mineCount - bs.flagCount));
       setText(els.time, formatClock(elapsed));
       setText(els.hits, G.me.hits);
       setText(els.revealed, myRevealedCount());
-      if (els.bar) els.bar.style.width = (bs.safeRevealed / Math.max(1, G.board.safeCount) * 100).toFixed(1) + '%';
+      if (els.bar && !isInf){
+        els.bar.style.width = (bs.safeRevealed / Math.max(1, G.board.safeCount) * 100).toFixed(1) + '%';
+      }
     }
     if (els.stun){
       const rem = G.me.stunUntil - now;

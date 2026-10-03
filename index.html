@@ -858,16 +858,20 @@
   }
 
   .lb-ov-cats{
-    display:flex;gap:8px;justify-content:center;margin:0 0 clamp(8px,1.4vh,16px);
+    display:flex;gap:8px;justify-content:center;margin:0 0 clamp(10px,1.6vh,18px);
   }
   .lb-ov-cats .lb-cat{
     flex:0 1 150px;padding:8px 14px;
     font-size:clamp(10px,1.5vh,12px);
     border-radius:10px;
   }
+
+  /* ── All-leaderboards overview (clean table-like cards) ── */
   .lb-overview-body{
-    display:flex;flex-direction:column;gap:clamp(10px,1.6vh,18px);
-    max-height:min(74vh, 720px);
+    display:flex;
+    flex-direction:column;
+    gap:clamp(14px,2.2vh,26px);
+    max-height:min(72vh, 700px);
     overflow-y:auto;
     -webkit-overflow-scrolling:touch;
     scrollbar-width:thin;
@@ -876,73 +880,134 @@
   }
   .lb-ov-group{min-width:0}
   .lb-ov-group-title{
-    font-size:clamp(9.5px,1.5vh,12px);
-    letter-spacing:.28em;font-weight:900;
-    color:#ffd166;margin-bottom:clamp(5px,.9vh,10px);
-    display:flex;align-items:center;gap:8px;
-    text-shadow:0 0 10px rgba(255,209,102,.35);
+    display:flex;
+    align-items:center;
+    gap:10px;
+    font-size:clamp(9.5px,1.45vh,11.5px);
+    letter-spacing:.3em;
+    font-weight:900;
+    color:#ffd166;
+    margin-bottom:clamp(7px,1.1vh,11px);
+    padding-left:2px;
   }
   .lb-ov-group-title::before{
-    content:'';width:6px;height:6px;border-radius:50%;
-    background:#ffd166;box-shadow:0 0 10px #ffd166;flex:none;
+    content:'';
+    width:5px;height:5px;border-radius:50%;
+    background:currentColor;
+    box-shadow:0 0 9px currentColor;
+    flex:none;
   }
-  .lb-ov-group-title.insta{color:#ff9f43;text-shadow:0 0 10px rgba(255,159,67,.45)}
-  .lb-ov-group-title.insta::before{background:#ff9f43;box-shadow:0 0 10px #ff9f43}
-  .lb-ov-group-title.inf{color:#b98cff;text-shadow:0 0 12px rgba(185,140,255,.55)}
-  .lb-ov-group-title.inf::before{background:#b98cff;box-shadow:0 0 10px #b98cff}
+  .lb-ov-group-title::after{
+    content:'';
+    flex:1;height:1px;
+    background:linear-gradient(90deg, currentColor, transparent);
+    opacity:.3;
+  }
+  .lb-ov-group-title.insta{color:#ff9f43}
+  .lb-ov-group-title.inf{color:#b98cff}
+
   .lb-ov-grid{
     display:grid;
-    grid-template-columns:repeat(auto-fill, minmax(190px, 1fr));
-    gap:clamp(6px,1vh,10px);
+    grid-template-columns:repeat(auto-fill, minmax(208px, 1fr));
+    gap:clamp(7px,1.05vh,11px);
   }
   .lb-ov-card{
-    background:rgba(255,255,255,.024);
+    display:flex;
+    flex-direction:column;
+    gap:3px;
+    background:rgba(255,255,255,.022);
     border:1px solid rgba(255,255,255,.07);
-    border-radius:10px;
-    padding:clamp(7px,1.1vh,11px) clamp(8px,1.2vw,12px);
+    border-radius:12px;
+    padding:clamp(8px,1.15vh,12px) clamp(9px,1.2vw,13px);
     min-width:0;
   }
   .lb-ov-card-title{
-    font-size:clamp(8px,1.25vh,10px);
-    letter-spacing:.18em;font-weight:900;
-    color:#7fb0e0;margin-bottom:5px;
-    text-transform:uppercase;
+    display:flex;
+    align-items:center;
+    gap:6px;
+    font-size:clamp(8px,1.2vh,9.5px);
+    letter-spacing:.18em;
+    font-weight:900;
+    color:#7fb0e0;
+    padding-bottom:6px;
+    margin-bottom:3px;
+    border-bottom:1px solid rgba(255,255,255,.06);
+    white-space:nowrap;
   }
-  .lb-ov-card-title .sty.hex{ color:#b98cff; text-shadow:0 0 8px rgba(185,140,255,.4); }
-  .lb-ov-card-title .sz.green{ color:#5dff9e; text-shadow:0 0 8px rgba(93,255,158,.4); }
-  .lb-ov-card-title .sz.yellow{ color:#ffd166; text-shadow:0 0 8px rgba(255,209,102,.4); }
-  .lb-ov-card-title .sz.red{ color:#ff6b8a; text-shadow:0 0 8px rgba(255,107,138,.4); }
-  .lb-ov-card-title .sz.infinite{ color:#b98cff; text-shadow:0 0 10px rgba(185,140,255,.6); }
+  .lb-ov-card-title .sep{color:#3d4d63}
+  .lb-ov-card-title .sty{color:#8fb6e0}
+  .lb-ov-card-title .sty.hex{color:#b98cff}
+  .lb-ov-card-title .sz{color:#8fb6e0}
+  .lb-ov-card-title .sz.green{color:#5dff9e}
+  .lb-ov-card-title .sz.yellow{color:#ffd166}
+  .lb-ov-card-title .sz.red{color:#ff6b8a}
+  .lb-ov-card-title .sz.infinite{color:#b98cff}
+
   .lb-ov-row{
-    display:flex;gap:6px;align-items:center;
-    font-size:clamp(9px,1.35vh,11px);
-    padding:1.5px 0;
+    display:grid;
+    grid-template-columns:18px minmax(0,1fr) auto;
+    align-items:center;
+    gap:8px;
+    font-size:clamp(9px,1.32vh,11px);
+    padding:2px 5px;
+    border-radius:6px;
     min-width:0;
   }
   .lb-ov-row.me{
-    background:rgba(77,216,255,.09);
-    border-radius:5px;
-    padding-left:4px;padding-right:4px;
+    background:rgba(77,216,255,.10);
+    box-shadow:inset 0 0 0 1px rgba(77,216,255,.22);
   }
   .lb-ov-rank{
-    width:14px;flex:none;text-align:center;
+    text-align:center;flex:none;
     font-family:'Courier New',monospace;font-weight:900;
-    color:#6b7a94;
+    color:#4a5f7d;
+    font-size:clamp(9px,1.28vh,10.5px);
   }
-  .lb-ov-row:nth-child(1) .lb-ov-rank{color:#ffd166}
-  .lb-ov-row:nth-child(2) .lb-ov-rank{color:#cfd8e6}
-  .lb-ov-row:nth-child(3) .lb-ov-rank{color:#d89a6a}
+  .lb-ov-row.r1 .lb-ov-rank{color:#ffd166}
+  .lb-ov-row.r2 .lb-ov-rank{color:#cfd8e6}
+  .lb-ov-row.r3 .lb-ov-rank{color:#d89a6a}
   .lb-ov-name{
-    flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+    min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
     font-weight:800;color:#cfe4ff;
   }
   .lb-ov-val{
-    flex:none;font-family:'Courier New',monospace;font-weight:900;
+    flex:none;
+    font-family:'Courier New',monospace;font-weight:900;
     color:#8affc1;font-variant-numeric:tabular-nums;
+    font-size:clamp(9px,1.28vh,10.5px);
   }
   .lb-ov-empty{
-    font-size:clamp(8.5px,1.25vh,10px);
-    color:#4a5f7d;font-style:italic;font-weight:700;
+    font-size:clamp(8.5px,1.22vh,10px);
+    color:#43536b;
+    font-weight:700;
+    letter-spacing:.08em;
+    padding:6px 4px 3px;
+    text-align:center;
+  }
+  .lb-ov-divider{
+  height:1px;
+  margin:clamp(10px,1.6vh,18px) 4px;
+  background:linear-gradient(90deg,
+    transparent,
+    rgba(185,140,255,.4) 15%,
+    rgba(185,140,255,.65) 50%,
+    rgba(185,140,255,.4) 85%,
+    transparent);
+  border-radius:1px;
+  position:relative;
+  }
+  .lb-ov-divider::after{
+    content:'HEX';
+    position:absolute;
+    right:0;
+    top:-7px;
+    font-size:8px;
+    letter-spacing:.28em;
+    font-weight:900;
+    color:rgba(185,140,255,.8);
+    background:rgba(11,17,29,.97);
+    padding:0 8px;
+    text-shadow:0 0 10px rgba(185,140,255,.6);
   }
 
   .hk-row{
@@ -3971,6 +4036,56 @@ function renderOverviewData(cat, data){
   }
 
   const myKey = getPlayerNameKey();
+  const rankCls = ['', ' r1', ' r2', ' r3'];
+
+  function renderCard(item){
+    const styleName = (STYLES[item.style] || {}).name || item.style;
+    const sizeName  = (SIZES[item.size] || {}).name || item.size;
+    const styleCls  = (item.style === 'hex') ? ' hex' : '';
+    const sizeCls   = (item.size === 'small') ? ' green'
+                    : (item.size === 'medium') ? ' yellow'
+                    : (item.size === 'large') ? ' red'
+                    : (item.size === 'infinite') ? ' infinite' : '';
+
+    let html = '<div class="lb-ov-card">';
+    html += '<div class="lb-ov-card-title">' +
+              '<span class="sty' + styleCls + '">' + escapeHtml(styleName) + '</span>' +
+              '<span class="sep">·</span>' +
+              '<span class="sz' + sizeCls + '">' + escapeHtml(sizeName) + '</span>' +
+            '</div>';
+
+    if (!item.entries.length){
+      html += '<div class="lb-ov-empty">— no scores yet —</div>';
+    } else {
+      item.entries.forEach((e, i) => {
+        let nm;
+        if (Array.isArray(e.nameKeys) && e.nameKeys.length){
+          const names = (Array.isArray(e.names) && e.names.length) ? e.names : e.nameKeys;
+          nm = names.join(' & ');
+        } else {
+          nm = e.name || 'Anon';
+        }
+        let val;
+        if (cat === 'tiles') val = formatTiles(e.bestTiles);
+        else if (cat === 'time') val = formatTime(e.bestTime);
+        else val = formatWins(e.wins);
+
+        const isMe = !isGuest && myKey && (
+          e.id === myKey ||
+          (Array.isArray(e.nameKeys) && e.nameKeys.indexOf(myKey) !== -1)
+        );
+
+        html += '<div class="lb-ov-row' + (rankCls[i + 1] || '') + (isMe ? ' me' : '') + '">' +
+          '<span class="lb-ov-rank">' + (i + 1) + '</span>' +
+          '<span class="lb-ov-name">' + escapeHtml(nm) + '</span>' +
+          '<span class="lb-ov-val">' + val + '</span>' +
+        '</div>';
+      });
+    }
+    html += '</div>';
+    return html;
+  }
+
   let html = '';
 
   grouped.forEach((items, label) => {
@@ -3979,53 +4094,26 @@ function renderOverviewData(cat, data){
     let cls = '';
     if (isInsta) cls = ' insta';
     else if (isInf) cls = ' inf';
+
+    const squareItems = items.filter(it => it.style === 'square');
+    const hexItems = items.filter(it => it.style === 'hex');
+
     html += '<div class="lb-ov-group">';
     html += '<div class="lb-ov-group-title' + cls + '">' + escapeHtml(label) + '</div>';
-    html += '<div class="lb-ov-grid">';
 
-    for (const item of items){
-      const styleName = (STYLES[item.style] || {}).name || item.style;
-      const sizeName = (SIZES[item.size] || {}).name || item.size;
-      const styleCls = (item.style === 'hex') ? ' hex' : '';
-      const sizeCls = (item.size === 'small') ? ' green'
-                    : (item.size === 'medium') ? ' yellow'
-                    : (item.size === 'large') ? ' red'
-                    : (item.size === 'infinite') ? ' infinite' : '';
-      html += '<div class="lb-ov-card">';
-      html += '<div class="lb-ov-card-title">' +
-                '<span class="sty' + styleCls + '">' + escapeHtml(styleName) + '</span>' +
-                ' · ' +
-                '<span class="sz' + sizeCls + '">' + escapeHtml(sizeName) + '</span>' +
-              '</div>';
-      if (!item.entries.length){
-        html += '<div class="lb-ov-empty">No scores</div>';
-      } else {
-        item.entries.forEach((e, i) => {
-          let nm;
-          if (Array.isArray(e.nameKeys) && e.nameKeys.length){
-            const names = (Array.isArray(e.names) && e.names.length) ? e.names : e.nameKeys;
-            nm = names.join(' & ');
-          } else {
-            nm = e.name || 'Anon';
-          }
-          let val;
-          if (cat === 'tiles') val = formatTiles(e.bestTiles);
-          else if (cat === 'time') val = formatTime(e.bestTime);
-          else val = formatWins(e.wins);
-          const isMe = !isGuest && myKey && (
-            e.id === myKey ||
-            (Array.isArray(e.nameKeys) && e.nameKeys.indexOf(myKey) !== -1)
-          );
-          html += '<div class="lb-ov-row' + (isMe ? ' me' : '') + '">' +
-            '<span class="lb-ov-rank">' + (i + 1) + '</span>' +
-            '<span class="lb-ov-name">' + escapeHtml(nm) + '</span>' +
-            '<span class="lb-ov-val">' + val + '</span>' +
-          '</div>';
-        });
-      }
+    if (squareItems.length){
+      html += '<div class="lb-ov-grid">';
+      for (const item of squareItems) html += renderCard(item);
       html += '</div>';
     }
-    html += '</div></div>';
+
+    if (hexItems.length){
+      html += '<div class="lb-ov-grid" style="margin-top:clamp(7px,1.05vh,11px)">';
+      for (const item of hexItems) html += renderCard(item);
+      html += '</div>';
+    }
+
+    html += '</div>';
   });
 
   body.innerHTML = html;
@@ -4038,7 +4126,7 @@ function openLeaderboardOverview(){
     '<div class="ovbox menu-pop">' +
       '<div class="big">📊</div>' +
       '<h2>ALL <span>LEADERBOARDS</span></h2>' +
-      '<p>Combined view of every game mode · top 3 per board.<br>Territorial & Duel only track wins. Infinite tracks tiles.</p>' +
+      '<p>Every mode at a glance · top 3 per board.<br>Duel &amp; Territorial track wins · Infinite tracks tiles.</p>' +
       '<div class="lb-ov-cats">' +
         '<button class="lb-cat active" data-ovcat="wins">🏆 WINS</button>' +
         '<button class="lb-cat" data-ovcat="time">⏱ TIME</button>' +
@@ -5808,10 +5896,9 @@ function buildTouchpad(){
 function applyReveal(boardState, board, r, c, owner){
   owner = owner || 0;
   if (boardState.revealed[r][c]) return null;
-  if (boardState.flagged[r][c]){
-    boardState.flagged[r][c] = false;
-    boardState.flagCount = Math.max(0, boardState.flagCount - 1);
-  }
+  /* Flagged tiles are protected: only the flag action may remove a
+     flag, so digging never silently clears one. */
+  if (boardState.flagged[r][c]) return null;
   if (boardState.fakeFlag) boardState.fakeFlag[r][c] = false;
   if (board.mines.has(r + ',' + c)){
     boardState.revealed[r][c] = true;
@@ -5828,10 +5915,8 @@ function applyReveal(boardState, board, r, c, owner){
     const item = queue.shift();
     const cr = item[0], cc = item[1], d = item[2];
     if (boardState.revealed[cr][cc]) continue;
-    if (boardState.flagged[cr][cc]){
-      boardState.flagged[cr][cc] = false;
-      boardState.flagCount = Math.max(0, boardState.flagCount - 1);
-    }
+    /* Leave flagged tiles (and their surroundings) untouched. */
+    if (boardState.flagged[cr][cc]) continue;
     if (boardState.fakeFlag) boardState.fakeFlag[cr][cc] = false;
     boardState.revealed[cr][cc] = true;
     if (owner && boardState.owner) boardState.owner[cr][cc] = owner;
@@ -6096,7 +6181,9 @@ async function localDig(){
   const r = G.me.cursor.r, c = G.me.cursor.c;
   const mode = G.config.mode;
 
-  if (G.myBoard.flagged[r][c]){ localFlag(); return; }
+  /* A flagged tile can only be cleared with the flag action
+     (right-click / long-press) — left-clicking it does nothing. */
+  if (G.myBoard.flagged[r][c]) return;
   if (mode === 'territory' && !canTouchTerritory(G.myBoard, G.board, r, c, G.myOwner)) return;
 
   if (G.boardPending){
@@ -6128,6 +6215,9 @@ function doLocalDig(r, c){
   const mode = G.config.mode;
   const insta = !!G.config.insta;
   const isInf = isInfiniteSize(G.config.size);
+
+  /* Never dig a flagged tile — flags must be removed explicitly. */
+  if (G.myBoard && G.myBoard.flagged[r][c]) return;
 
   if (mode === 'coop' || mode === 'territory'){
     if (G.role === 'host') hostApplyDig(r, c, G.myOwner);
@@ -6633,12 +6723,12 @@ function hostApplyDig(r, c, owner){
   const bs = G.myBoard;
   const isMyDig = (owner === G.myOwner);
   const who = isMyDig ? G.me : G.them;
+
+  /* Flags are removed only via the flag action — a dig request on a
+     flagged tile is ignored. */
+  if (bs.flagged[r][c]) return;
+
   if (who && ensureFirstDigSafe(G.board, bs, who, r, c, true)){}
-  if (bs.flagged[r][c]){
-    if (G.config.mode === 'territory') hostApplyTerritoryFlag(r, c, owner);
-    else hostApplyFlag(r, c);
-    return;
-  }
   const preSnap = snapshotBoardState(bs);
   const res = applyReveal(bs, G.board, r, c, owner);
   if (!res) return;
@@ -7596,8 +7686,9 @@ function howToHTML(){
     '<div class="config-section">' +
       '<div class="config-label">THE CONTROLS</div>' +
       '<div class="ht-text">' +
-        '<b style="color:#4dd8ff">DIG</b> a tile to reveal it.<br>' +
-        '<b style="color:#ff3d81">FLAG</b> a tile when you think it\'s a bomb.<br>' +
+        '<b style="color:#4dd8ff">LEFT-CLICK / TAP</b> a tile to dig it.<br>' +
+        '<b style="color:#ff3d81">RIGHT-CLICK / LONG-PRESS</b> to place <i>and</i> remove a flag.<br>' +
+        '<span style="color:#8b9ab4">Left-clicking a flagged tile does nothing — flags are only cleared by the flag action.</span><br>' +
         'Clear every safe tile to win.' +
       '</div>' +
     '</div>' +

@@ -35,7 +35,6 @@
   }
   .hidden{display:none !important}
 
-  /* ── Hover tooltip for infinite-mode leaderboard entries ── */
   #lbTip{
     position:fixed;z-index:120;pointer-events:none;
     padding:7px 13px;border-radius:10px;
@@ -882,7 +881,6 @@
     border-radius:10px;
   }
 
-  /* ── All-leaderboards overview (bigger, cleaner table-like cards) ── */
   .lb-overview-body{
     display:flex;
     flex-direction:column;
@@ -919,8 +917,6 @@
   .lb-ov-group-title::after{
     background:linear-gradient(90deg, currentColor, transparent);
   }
-  /* Nudges the label right by half its trailing letter-spacing so the
-     *visible* text sits exactly in the middle of the two lines. */
   .lb-ov-group-name{
     margin-left:.3em;
     text-align:center;
@@ -1229,6 +1225,14 @@ const INFINITE_MIN_ZOOM = 0.6;
    endless boards are noticeably less bomb-heavy and runs last longer. */
 const INFINITE_MINE_MULT = 0.9;
 
+/* Infinite mode: how close the camera may get (in tiles) to the
+   current board edge before the board auto-grows by GROW_TILES
+   tiles in that direction. */
+const INFINITE_EDGE_MARGIN = 5;
+/* How many tiles to add per side when the board grows.  Must be
+   even for hex (row parity is used for the odd-row x-offset). */
+const INFINITE_GROW_TILES = 50;
+
 const TILES_PER_BOMB = {
   square: 4,
   hex:    4
@@ -1289,7 +1293,6 @@ function dimsFor(config){
     const cols = INFINITE_COLS;
     const rows = config.style === 'hex' ? INFINITE_ROWS_HEX : INFINITE_ROWS_SQ;
     const per = TILES_PER_BOMB[config.style] || 4;
-    /* Infinite maps use a reduced density (see INFINITE_MINE_MULT). */
     const mines = Math.max(1, Math.round((cols * rows) / per * INFINITE_MINE_MULT));
     return { cols, rows, mines, infinite: true };
   }
@@ -1399,6 +1402,21 @@ function mulberry32(a){
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
+
+/* Deterministic per-tile hash in [0, 1).  Used to place mines in
+   regions that get added to the board after the initial generation
+   (see applyBoardGrowth).  Both host and guest compute the same
+   value for the same (seed, r, c), so growing keeps them in sync. */
+function hashRand(seed, r, c){
+  let h = (seed >>> 0);
+  h = (h + 0x9E3779B9) >>> 0;
+  h = Math.imul(h ^ (r >>> 0), 0x85EBCA6B) >>> 0;
+  h = (h ^ (h >>> 13)) >>> 0;
+  h = Math.imul(h ^ (c >>> 0), 0xC2B2AE35) >>> 0;
+  h = (h ^ (h >>> 16)) >>> 0;
+  return h / 4294967296;
+}
+
 function makeCode(){
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let s = '';
@@ -1555,7 +1573,8 @@ function placeholderBoard(style, rows, cols){
     mineCount: 0,
     safeCount: rows * cols,
     start: null, starts: [], pending: true,
-    infinite: false
+    infinite: false,
+    seed: 0
   };
 }
 
@@ -1616,7 +1635,8 @@ function genBoardDeferred(seed, style, cols, rows, mineCount, clickR, clickC, st
     safeCount: rows * cols - mines.size,
     start: starts[0],
     starts,
-    infinite: false
+    infinite: false,
+    seed: seed >>> 0
   };
 }
 
@@ -2233,10 +2253,6 @@ function solveBoardTerritory(board, starts){
   return { count: count, state: state };
 }
 
-/* Verify the player has something to do at the start: clip the
-   board to a (2R+1)×(2R+1) window around the start tile, run the
-   exact solver on it, and require it to clear a decent fraction of
-   the window. If not, the caller regenerates with a new seed. */
 function infiniteStartIsPlayable(board, startR, startC, R){
   if (R === undefined) R = 10;
   const r0 = Math.max(0, startR - R);
@@ -2275,9 +2291,6 @@ function infiniteStartIsPlayable(board, startR, startC, R){
   const sc = startC - c0;
   const res = solveBoard(nb, [[sr, sc]]);
   if (!res) return false;
-  /* Require at least 40 % of the safe tiles in the window to be
-     logically deducible — a comfortable margin that guarantees the
-     player always has something to do. */
   return res.count >= Math.max(8, Math.floor(nb.safeCount * 0.4));
 }
 
@@ -2340,6 +2353,7 @@ function buildBoardWorkerSource(){
   return [
     "'use strict';",
     mulberry32.toString(),
+    hashRand.toString(),
     'var HEX_DIRS = ' + JSON.stringify(HEX_DIRS) + ';',
     hexNeighbors.toString(),
     sqNeighbors.toString(),
@@ -2452,6 +2466,7 @@ function applyGeneratedBoard(res, clickR, clickC){
   const layout = placeholderBoard(G.config.style, d.rows, d.cols);
   rebuildBoardFromMines(layout, res.mines, G.config.style);
   layout.infinite = !!res.infinite || isInfiniteSize(G.config.size);
+  layout.seed = res.seed >>> 0;
   const wasAlias = (G.theirBoardLayout === G.board);
   G.board = layout;
   if (wasAlias) G.theirBoardLayout = layout;
@@ -2561,6 +2576,249 @@ function rebuildBoardFromMines(layout, mineArr, style){
   layout.mineCount = layout.mines.size;
   layout.safeCount = layout.rows * layout.cols - layout.mineCount;
   layout.pending = false;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   INFINITE BOARD GROWTH
+   ══════════════════════════════════════════════════════════════ */
+
+/* Returns the tile rectangle currently visible in the given view,
+   in board-local tile coordinates.  May extend past 0 / rows / cols. */
+function computeVisibleTiles(view){
+  const m = view.metrics;
+  if (!m) return null;
+  const scale = view.baseScale * view.zoom;
+  if (!isFinite(scale) || scale <= 0) return null;
+  const worldLeft   = -view.panX / scale;
+  const worldTop    = -view.panY / scale;
+  const worldRight  = (view.pw - view.panX) / scale;
+  const worldBottom = (view.ph - view.panY) / scale;
+
+  if (m.style === 'hex'){
+    const { size, pad, HW } = m;
+    const rowStep = size * 1.5;
+    const r0 = Math.floor((worldTop - pad - size) / rowStep) - 1;
+    const r1 = Math.ceil((worldBottom - pad) / rowStep) + 1;
+    const c0 = Math.floor((worldLeft - pad - HW * 1.5) / HW) - 1;
+    const c1 = Math.ceil((worldRight - pad) / HW) + 1;
+    return { r0, r1, c0, c1 };
+  }
+  const { cell, gap, pad } = m;
+  const step = cell + gap;
+  const r0 = Math.floor((worldTop - pad) / step) - 1;
+  const r1 = Math.ceil((worldBottom - pad) / step) + 1;
+  const c0 = Math.floor((worldLeft - pad) / step) - 1;
+  const c1 = Math.ceil((worldRight - pad) / step) + 1;
+  return { r0, r1, c0, c1 };
+}
+
+/* Shift a board-state's 2D arrays and dimensions to make room for
+   `top`/`bottom`/`left`/`right` new rows/columns.  All previous
+   content is preserved at its new (shifted) coordinates. */
+function growBoardStateArrays(bs, top, bottom, left, right){
+  if (!bs) return;
+  const oldRows = bs.rows, oldCols = bs.cols;
+  const newRows = oldRows + top + bottom;
+  const newCols = oldCols + left + right;
+
+  function shift2D(arr, fill){
+    const out = [];
+    for (let r = 0; r < newRows; r++) out.push(new Array(newCols).fill(fill));
+    for (let r = 0; r < oldRows; r++){
+      const srcRow = arr[r];
+      const dstRow = out[r + top];
+      for (let c = 0; c < oldCols; c++) dstRow[c + left] = srcRow[c];
+    }
+    return out;
+  }
+
+  bs.revealed = shift2D(bs.revealed, false);
+  bs.flagged  = shift2D(bs.flagged, false);
+  bs.owner    = shift2D(bs.owner, 0);
+  bs.fakeFlag = shift2D(bs.fakeFlag, false);
+  bs.revealAt = shift2D(bs.revealAt, 0);
+  bs.flagAt   = shift2D(bs.flagAt, 0);
+  bs.rows = newRows;
+  bs.cols = newCols;
+}
+
+/* Shift all tile coordinates inside a hint object by (top, left). */
+function shiftHint(hint, top, left){
+  if (!hint) return;
+  if (top === 0 && left === 0) return;
+  const shiftArr = a => { for (const h of a){ h.r += top; h.c += left; } };
+  if (hint.reveal) shiftArr(hint.reveal);
+  if (hint.flag)   shiftArr(hint.flag);
+  if (hint.wrong)  shiftArr(hint.wrong);
+  if (hint.supports){
+    const out = new Set();
+    hint.supports.forEach(k => {
+      const idx = k.indexOf(',');
+      if (idx < 0) return;
+      const r = parseInt(k.slice(0, idx), 10) + top;
+      const c = parseInt(k.slice(idx + 1), 10) + left;
+      out.add(r + ',' + c);
+    });
+    hint.supports = out;
+  }
+}
+
+/* Grow the infinite board by `top`/`bottom`/`left`/`right` tiles on
+   each side.  Everything that references a tile (board + board-state
+   arrays, mine keys, cursor, start position, hints, camera pan) is
+   shifted so nothing changes visually.  New tiles are mine-seeded
+   with `hashRand(seed, r, c)`, which is deterministic across clients
+   so a co-op partner computing the same growth ends up with the
+   same field. */
+function applyBoardGrowth(top, bottom, left, right){
+  const board = G.board;
+  const bs = G.myBoard;
+  if (!board || !bs) return;
+
+  const oldRows = board.rows, oldCols = board.cols;
+  const newRows = oldRows + top + bottom;
+  const newCols = oldCols + left + right;
+
+  /* 1. Shift existing mine keys. */
+  const newMines = new Set();
+  board.mines.forEach(key => {
+    const idx = key.indexOf(',');
+    if (idx < 0) return;
+    const r = parseInt(key.slice(0, idx), 10) + top;
+    const c = parseInt(key.slice(idx + 1), 10) + left;
+    newMines.add(r + ',' + c);
+  });
+
+  /* 2. Seed mines for the newly added border tiles. */
+  const seed = (board.seed !== undefined) ? (board.seed >>> 0) : (G.boardSeed >>> 0);
+  const density = INFINITE_MINE_MULT / (TILES_PER_BOMB[board.style] || 4);
+  for (let r = 0; r < newRows; r++){
+    const rowIsOld = (r >= top && r < top + oldRows);
+    for (let c = 0; c < newCols; c++){
+      const colIsOld = (c >= left && c < left + oldCols);
+      if (rowIsOld && colIsOld) continue; /* preserved tile */
+      if (hashRand(seed, r, c) < density) newMines.add(r + ',' + c);
+    }
+  }
+  board.mines = newMines;
+
+  /* 3. Reallocate and shift the adjacency grid. */
+  const newAdj = [];
+  for (let r = 0; r < newRows; r++) newAdj.push(new Array(newCols).fill(0));
+  for (let r = 0; r < oldRows; r++){
+    const srcRow = board.adj[r];
+    const dstRow = newAdj[r + top];
+    for (let c = 0; c < oldCols; c++) dstRow[c + left] = srcRow[c];
+  }
+  board.adj = newAdj;
+  board.rows = newRows;
+  board.cols = newCols;
+
+  /* 4. Recompute adjacency across the whole (now-larger) board. */
+  recomputeAdjacency(board);
+  board.mineCount = board.mines.size;
+  board.safeCount = newRows * newCols - board.mineCount;
+
+  /* 5. Grow the two board-state arrays. */
+  growBoardStateArrays(bs, top, bottom, left, right);
+  if (G.theirBoard && G.theirBoard !== bs){
+    growBoardStateArrays(G.theirBoard, top, bottom, left, right);
+  }
+
+  /* 6. Shift all cursor / position / hint references. */
+  if (G.me){
+    G.me.cursor.r += top;
+    G.me.cursor.c += left;
+  }
+  if (G.them){
+    G.them.cursor.r += top;
+    G.them.cursor.c += left;
+  }
+  G.myStartR += top;
+  G.myStartC += left;
+  if (G.deathTile){
+    G.deathTile.r += top; G.deathTile.c += left;
+  }
+  if (G.theirDeathTile){
+    G.theirDeathTile.r += top; G.theirDeathTile.c += left;
+  }
+  if (G.boardOpening){
+    G.boardOpening.r += top; G.boardOpening.c += left;
+  }
+  if (G.pendingDig){
+    G.pendingDig.r += top; G.pendingDig.c += left;
+  }
+  shiftHint(G.lossHintMe, top, left);
+  shiftHint(G.lossHintThem, top, left);
+
+  /* 7. Compensate the camera pan so the viewport doesn't jump.
+        Tile (r, c) moved to (r+top, c+left) in world pixels; we need
+        pan -= deltaWorld * scale to keep the same screen position. */
+  const view = G.viewMe;
+  if (view && view.metrics){
+    const m = view.metrics;
+    const scale = view.baseScale * view.zoom;
+    let dwx, dwy;
+    if (m.style === 'hex'){
+      dwx = left * m.HW;
+      dwy = top  * m.size * 1.5;
+    } else {
+      const step = m.cell + m.gap;
+      dwx = left * step;
+      dwy = top  * step;
+    }
+    view.panX -= dwx * scale;
+    view.panY -= dwy * scale;
+  }
+  if (G.viewAnim) G.viewAnim.active = false;
+
+  /* 8. In co-op, the shared board was regenerated - the guest should
+        receive the update so both stay in sync.  (In solo mode this
+        is a no-op.) */
+  if (G.config.mode === 'coop' && G.role === 'host' && G.conn && G.conn.open){
+    try {
+      send({
+        t: 'grow',
+        top: top, bottom: bottom, left: left, right: right
+      });
+    } catch(e){}
+  }
+}
+
+/* Detect whether the camera is nearing the board edge and grow the
+   board if so.  Called from the render loop when in infinite mode. */
+let lastGrowthCheck = 0;
+function growInfiniteBoardIfNeeded(now){
+  if (!isInfiniteSize(G.config.size)) return;
+  if (G.state !== 'playing') return;
+  if (!G.viewMe || !G.board || !G.myBoard || !G.me) return;
+  if (now - lastGrowthCheck < 250) return;
+  lastGrowthCheck = now;
+
+  const view = G.viewMe;
+  const visible = computeVisibleTiles(view);
+  if (!visible) return;
+
+  const board = G.board;
+  const M = INFINITE_EDGE_MARGIN;
+  const G_ = INFINITE_GROW_TILES;
+
+  let top = 0, bottom = 0, left = 0, right = 0;
+  if (visible.r0 < M) top = G_;
+  if (visible.r1 > board.rows - 1 - M) bottom = G_;
+  if (visible.c0 < M) left = G_;
+  if (visible.c1 > board.cols - 1 - M) right = G_;
+
+  /* For hex, growing by an odd number of rows at the top would flip
+     the row-parity used for the odd-row x offset, causing a visible
+     one-half-hex horizontal jump.  Round to even. */
+  if (board.style === 'hex'){
+    if (top & 1) top++;
+    if (bottom & 1) bottom++;
+  }
+
+  if (!top && !bottom && !left && !right) return;
+  applyBoardGrowth(top, bottom, left, right);
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -2875,7 +3133,6 @@ function getHintMoves(board, snap){
 }
 
 function computeHintForBoard(board, snap, owner, unlocked, excludeR, excludeC){
-  /* Hints on huge boards are expensive and not useful. */
   if (board.rows * board.cols > 5000) return null;
   const hints = getHintMoves(board, snap);
   if (!hints) return null;
@@ -3120,10 +3377,6 @@ function formatTiles(n){
   return n + (n === 1 ? ' tile' : ' tiles');
 }
 
-/* ── Time tooltip for infinite-map entries ─────────────────────
-   Every infinite-size board (TILES category) records the run time
-   alongside the tile count.  Hovering an entry with the mouse now
-   shows how long that run actually lasted. */
 function tilesTimeText(e){
   if (typeof e.bestTime === 'number' && e.bestTime > 0) return formatTime(e.bestTime);
   return 'not recorded';
@@ -3134,7 +3387,6 @@ function tilesTitle(e){
   return ' data-tip="⏱ Time used: ' + safe + '"';
 }
 
-/* Floating tooltip shared by every leaderboard list. */
 (function initLbTooltip(){
   let tip = null;
   let current = null;
@@ -4280,9 +4532,6 @@ function openLeaderboardOverview(){
   };
 
   let cat = 'wins';
-  /* Each load gets a sequence number; stale responses are discarded.
-     This prevents a slow response for one category from overwriting
-     the results of a category the user picked afterwards. */
   let ovSeq = 0;
 
   const load = async () => {
@@ -4368,7 +4617,8 @@ const G = {
   lossHintThem: null,
   pendingPreSnap: null,
   viewAnim: null,
-  myStartR: 0, myStartC: 0
+  myStartR: 0, myStartC: 0,
+  cameraUnlocked: false
 };
 
 let rememberedInsta = false;
@@ -4606,9 +4856,6 @@ class BoardView {
     }
     this.clampPan();
   }
-  /* Compute the world-space bounding box of all currently revealed
-     tiles, expanded by 25 tile-widths in every direction. The camera
-     will be clamped so its viewport never leaves this box. */
   revealedWorldBounds(){
     if (!G.myBoard || !this.metrics) return null;
     const bs = G.myBoard;
@@ -4673,8 +4920,6 @@ class BoardView {
   clampPan(){
     const m = this.metrics; if (!m) return;
     if (m.infinite){
-      /* Infinite mode: the viewport may only extend 25 tiles past
-         the closest revealed tile. */
       const b = this.revealedWorldBounds();
       if (!b) return;
       const scale = this.baseScale * this.zoom;
@@ -5589,12 +5834,10 @@ function buildArena(){
   else        panelA._els.keys.textContent = panelKeysText();
 
   if (isInf){
-    /* Hide the mines stat & progress bar in infinite mode. */
     const minesBox = panelA.querySelector('[data-minesstat]');
     if (minesBox) minesBox.style.display = 'none';
     const pbar = panelA.querySelector('.pbar');
     if (pbar) pbar.style.display = 'none';
-    /* Show the return-to-start button. */
     const retBtn = panelA.querySelector('[data-returnstart]');
     if (retBtn){
       retBtn.style.display = 'flex';
@@ -5605,7 +5848,6 @@ function buildArena(){
       });
       retBtn.addEventListener('pointerdown', e => e.stopPropagation());
     }
-    /* Center the camera on the player's starting position. */
     if (G.me){
       const p = hexOrSqCenter(G.viewMe, G.me.cursor.r, G.me.cursor.c);
       G.viewMe.centerOn(p.x, p.y);
@@ -6035,8 +6277,6 @@ function buildTouchpad(){
 function applyReveal(boardState, board, r, c, owner){
   owner = owner || 0;
   if (boardState.revealed[r][c]) return null;
-  /* Flagged tiles are protected: only the flag action may remove a
-     flag, so digging never silently clears one. */
   if (boardState.flagged[r][c]) return null;
   if (boardState.fakeFlag) boardState.fakeFlag[r][c] = false;
   if (board.mines.has(r + ',' + c)){
@@ -6054,7 +6294,6 @@ function applyReveal(boardState, board, r, c, owner){
     const item = queue.shift();
     const cr = item[0], cc = item[1], d = item[2];
     if (boardState.revealed[cr][cc]) continue;
-    /* Leave flagged tiles (and their surroundings) untouched. */
     if (boardState.flagged[cr][cc]) continue;
     if (boardState.fakeFlag) boardState.fakeFlag[cr][cc] = false;
     boardState.revealed[cr][cc] = true;
@@ -6240,12 +6479,6 @@ function ensureFirstDigSafe(board, boardState, playerState, r, c, syncNetwork){
   if (!playerState || playerState.digged) return false;
   playerState.digged = true;
 
-  /* Collect every mine in the 3×3 window around the click (including
-     the clicked tile itself), remove them ALL, then place them back
-     at safe tiles that are OUTSIDE that window.  The old approach
-     swapped one mine at a time and could swap a neighbour's mine
-     right back onto the clicked tile, leaving the click as a mine
-     and the first reveal stuck at one tile. */
   const cleared = [];
   if (board.mines.has(r + ',' + c)) cleared.push([r, c]);
   for (const [nr, nc] of board.neighbors(r, c, board.rows, board.cols)){
@@ -6253,7 +6486,6 @@ function ensureFirstDigSafe(board, boardState, playerState, r, c, syncNetwork){
   }
   if (!cleared.length) return false;
 
-  /* Never re-mine inside the click's 1-ring. */
   const excl = new Set();
   excl.add(r + ',' + c);
   for (const [nr, nc] of board.neighbors(r, c, board.rows, board.cols)){
@@ -6317,11 +6549,12 @@ async function localDig(){
   if (!canAct()) return;
   if (digBusy) return;
 
+  /* Any action unlocks the camera. */
+  G.cameraUnlocked = true;
+
   const r = G.me.cursor.r, c = G.me.cursor.c;
   const mode = G.config.mode;
 
-  /* A flagged tile can only be cleared with the flag action
-     (right-click / long-press) — left-clicking it does nothing. */
   if (G.myBoard.flagged[r][c]) return;
   if (mode === 'territory' && !canTouchTerritory(G.myBoard, G.board, r, c, G.myOwner)) return;
 
@@ -6355,7 +6588,8 @@ function doLocalDig(r, c){
   const insta = !!G.config.insta;
   const isInf = isInfiniteSize(G.config.size);
 
-  /* Never dig a flagged tile — flags must be removed explicitly. */
+  G.cameraUnlocked = true;
+
   if (G.myBoard && G.myBoard.flagged[r][c]) return;
 
   if (mode === 'coop' || mode === 'territory'){
@@ -6437,7 +6671,6 @@ function handleLoss(r, c, view, bs, board){
     view.boom(p.x, p.y, '#ffd166', 18, 150);
   }
   SFX.mine(); vibrate(180);
-  /* Reveal mines centred on the actual bomb position, not the cursor. */
   revealAllMines(bs, board, r, c);
   const elapsed = performance.now() - G.startTime;
   setTimeout(() => {
@@ -6460,7 +6693,6 @@ function handleCoopLoss(r, c, broadcast, iTriggered){
     view.boom(p.x, p.y, '#ffd166', 18, 150);
   }
   if (iTriggered){ SFX.mine(); vibrate(180); } else { SFX.oppStun(); }
-  /* Reveal centred on bomb position, not cursor. */
   revealAllMines(bs, G.board, r, c);
   if (broadcast){
     send({ t:'delta', lose:true, r, c, by: iTriggered ? G.myOwner : G.theirOwner });
@@ -6642,6 +6874,7 @@ function endTerritoryScreen(land1, land2, real1, real2){
 
 function localFlag(){
   if (!canAct()) return;
+  G.cameraUnlocked = true;
   const r = G.me.cursor.r, c = G.me.cursor.c;
   const bs = G.myBoard;
   if (bs.revealed[r][c]) return;
@@ -6740,6 +6973,7 @@ function localFlag(){
 
 function localChord(){
   if (!canAct()) return;
+  G.cameraUnlocked = true;
   const r = G.me.cursor.r, c = G.me.cursor.c;
   const mode = G.config.mode;
   const insta = !!G.config.insta;
@@ -6863,8 +7097,6 @@ function hostApplyDig(r, c, owner){
   const isMyDig = (owner === G.myOwner);
   const who = isMyDig ? G.me : G.them;
 
-  /* Flags are removed only via the flag action — a dig request on a
-     flagged tile is ignored. */
   if (bs.flagged[r][c]) return;
 
   if (who && ensureFirstDigSafe(G.board, bs, who, r, c, true)){}
@@ -7154,6 +7386,17 @@ function handleMessage(msg){
       rebuildBoardFromMines(G.theirBoardLayout, msg.mines || [], G.config.style);
       break;
 
+    case 'grow': {
+      /* Remote-initiated board growth (co-op infinite).  Applied on
+         the receiving side so both partners stay in sync even if
+         their cameras are at different positions. */
+      if (!G.board || !G.myBoard) break;
+      if (!isInfiniteSize(G.config.size)) break;
+      if (!msg.top && !msg.bottom && !msg.left && !msg.right) break;
+      applyBoardGrowth(msg.top || 0, msg.bottom || 0, msg.left || 0, msg.right || 0);
+      break;
+    }
+
     case 'board': {
       if (G.config.mode !== 'coop') break;
       if (!G.boardPending) break;
@@ -7172,6 +7415,7 @@ function handleMessage(msg){
                                     cr, cc,
                                     [{ r: cr, c: cc }]);
         nb.mines = fb.mines;
+        nb.seed = fb.seed;
         recomputeAdjacency(nb);
         nb.mineCount = nb.mines.size;
         nb.safeCount = nb.rows * nb.cols - nb.mineCount;
@@ -7839,6 +8083,8 @@ function howToHTML(){
         '<b style="color:#b98cff">Survive as long as you can</b> — the leaderboard tracks ' +
         '<b style="color:#b98cff">how many tiles you revealed</b> before triggering a mine ' +
         '(hover an entry with the mouse to see how long the run took).<br><br>' +
+        '<b style="color:#b98cff">The board grows with you</b> — as the camera nears the edge, ' +
+        'fresh rows and columns are added automatically, so there is no hard limit to explore.<br>' +
         '<b style="color:#b98cff">Return to start</b> — tap the ⌖ button (or press R) to smoothly pan the camera back to where you spawned.<br>' +
         '<b style="color:#b98cff">Map review</b> — after a run, use <b style="color:#b98cff">FULL MAP</b> to see your entire uncovered area, and press it again to zoom back to the ±' +
         INFINITE_REVEAL_RADIUS + ' tile view.' +
@@ -8076,7 +8322,9 @@ function idleOverlay(){
   G.pendingPreSnap = null;
   G.viewAnim = null;
   G.myStartR = 0; G.myStartC = 0;
+  G.cameraUnlocked = false;
   lastUnlockCheck = 0;
+  lastGrowthCheck = 0;
   clearHeldKeys();
   hotkeyCapture = null;
   menuView = 'main';
@@ -8319,7 +8567,9 @@ function startMatch(seed, role, seedGuest){
   G.lossHintThem = null;
   G.pendingPreSnap = null;
   G.viewAnim = null;
+  G.cameraUnlocked = false;
   lastUnlockCheck = 0;
+  lastGrowthCheck = 0;
   clearHeldKeys();
   hotkeyCapture = null;
 
@@ -8342,6 +8592,7 @@ function startMatch(seed, role, seedGuest){
       undefined, undefined, starts, opening, true, false
     );
     G.board = res.board;
+    G.board.seed = res.seed >>> 0;
     G.boardSeed = res.seed;
     G.boardPending = false;
     G.terrBoardReady = (role === 'host');
@@ -8353,9 +8604,6 @@ function startMatch(seed, role, seedGuest){
     let res = null;
     let attempts = 0;
     let s = G.mySeed;
-    /* Regenerate until the start area passes the ±10 tile
-       solvability check (or give up after a reasonable number of
-       tries and accept the last one). */
     while (attempts < 25){
       res = generateSolvableBoard(
         s, G.config.style, d.cols, d.rows, d.mines,
@@ -8367,6 +8615,7 @@ function startMatch(seed, role, seedGuest){
     }
     G.board = res.board;
     G.board.infinite = true;
+    G.board.seed = res.seed >>> 0;
     G.boardSeed = res.seed;
     G.boardPending = false;
     G.boardOpening = { r: cr, c: cc };
@@ -8407,6 +8656,7 @@ function startMatch(seed, role, seedGuest){
     G.state = 'playing';
     G.startTime = performance.now();
     lastCursorSent = 0;
+    lastGrowthCheck = 0;
     if (role === 'solo') setStatus('SOLO', 'live');
     else setStatus('LIVE', 'live');
     SFX.go();
@@ -8535,7 +8785,6 @@ function buildEndReviewState(baseState, board, deathTile){
   return s;
 }
 
-/* Copy a board-state and hide one cell (used for the "solution" view). */
 function hideCellInState(state, r, c){
   if (!state || r === undefined || c === undefined) return state;
   const s = makeBoardState(state.rows, state.cols);
@@ -8557,8 +8806,6 @@ function hideCellInState(state, r, c){
   return s;
 }
 
-/* Clip a large (infinite) board + state to the given tile rectangle.
-   Returns {board, state, offsetR, offsetC}. */
 function clipInfiniteRegion(board, state, r0, r1, c0, c1){
   r0 = Math.max(0, r0); r1 = Math.min(board.rows - 1, r1);
   c0 = Math.max(0, c0); c1 = Math.min(board.cols - 1, c1);
@@ -8610,14 +8857,12 @@ function clipInfiniteRegion(board, state, r0, r1, c0, c1){
   return { board: nb, state: nbs, offsetR: r0, offsetC: c0 };
 }
 
-/* Clip around a center point with a radius (the ±N view). */
 function clipInfiniteReview(board, state, centerR, centerC, radius){
   return clipInfiniteRegion(board, state,
     centerR - radius, centerR + radius,
     centerC - radius, centerC + radius);
 }
 
-/* Bounding box of every revealed / flagged tile. */
 function revealedBoundsOf(state){
   let r0 = Infinity, r1 = -Infinity, c0 = Infinity, c1 = -Infinity;
   for (let r = 0; r < state.rows; r++){
@@ -8642,7 +8887,6 @@ function showMapReview(){
 
   const theirLayout = (G.config.mode === 'duel') ? (G.theirBoardLayout || G.board) : G.board;
 
-  /* ── Left (my) board: the ±N tile view ── */
   let smallWorld;
   if (isInf){
     const bounds = revealedBoundsOf(G.myBoard);
@@ -8665,7 +8909,6 @@ function showMapReview(){
     smallWorld = { layout: G.board, state: G.myBoard, death: G.deathTile };
   }
 
-  /* ── Left (my) board: the whole uncovered region ── */
   let fullWorld = smallWorld;
   let hasFullWorld = false;
   if (isInf){
@@ -9056,6 +9299,21 @@ let lastTheirBoardRender = 0;
 function renderAll(now){
   if (!G.viewMe || !G.myBoard || !G.board || !G.me) return;
 
+  /* ── Infinite mode: grow the board when the camera nears an edge ── */
+  growInfiniteBoardIfNeeded(now);
+
+  /* ── Camera lock before first dig ──
+     Until the player has performed their first dig / flag, the view
+     is pinned to the start tile.  Zoom is still allowed; the pan is
+     simply re-derived each frame so it always centres the start. */
+  if (!G.cameraUnlocked && G.viewMe.metrics && G.state === 'playing'){
+    const p = hexOrSqCenter(G.viewMe, G.myStartR, G.myStartC);
+    const scale = G.viewMe.baseScale * G.viewMe.zoom;
+    G.viewMe.panX = G.viewMe.pw / 2 - p.x * scale;
+    G.viewMe.panY = G.viewMe.ph / 2 - p.y * scale;
+    G.viewAnim = null;
+  }
+
   /* Smooth pan-back-to-start animation. */
   if (G.viewAnim && G.viewAnim.active){
     const t = (now - G.viewAnim.startTime) / G.viewAnim.duration;
@@ -9070,11 +9328,6 @@ function renderAll(now){
     }
   } else if (performance.now() < cursorActiveUntil && !isManualPanning() &&
              isInfiniteSize(G.config.size) && G.viewMe.metrics && G.viewMe.metrics.infinite){
-    /* Gentle edge-based follow: only nudge the camera when the cursor
-       was just moved by the arrow keys and is drifting near the edge
-       of the view.  Skipped whenever WASD is held, and skipped after
-       a short idle delay, so the player can freely pan with WASD to
-       revisit any region of the map without the camera snapping back. */
     const p = hexOrSqCenter(G.viewMe, G.me.cursor.r, G.me.cursor.c);
     const scale = G.viewMe.baseScale * G.viewMe.zoom;
     const sx = p.x * scale + G.viewMe.panX;

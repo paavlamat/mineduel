@@ -866,71 +866,77 @@
     border-radius:10px;
   }
 
-  /* ── All-leaderboards overview (clean table-like cards) ── */
+  /* ── All-leaderboards overview (bigger, cleaner table-like cards) ── */
   .lb-overview-body{
     display:flex;
     flex-direction:column;
-    gap:clamp(14px,2.2vh,26px);
-    max-height:min(72vh, 700px);
+    gap:clamp(16px,2.6vh,30px);
+    max-height:min(76vh, 780px);
     overflow-y:auto;
     -webkit-overflow-scrolling:touch;
     scrollbar-width:thin;
     text-align:left;
-    padding-right:4px;
+    padding-right:6px;
   }
   .lb-ov-group{min-width:0}
   .lb-ov-group-title{
     display:flex;
     align-items:center;
-    gap:10px;
-    font-size:clamp(9.5px,1.45vh,11.5px);
+    justify-content:center;
+    gap:12px;
+    font-size:clamp(15px,2.4vh,19px);
     letter-spacing:.3em;
     font-weight:900;
     color:#ffd166;
-    margin-bottom:clamp(7px,1.1vh,11px);
-    padding-left:2px;
+    margin-bottom:clamp(9px,1.4vh,14px);
   }
-  .lb-ov-group-title::before{
-    content:'';
-    width:5px;height:5px;border-radius:50%;
-    background:currentColor;
-    box-shadow:0 0 9px currentColor;
-    flex:none;
-  }
+  .lb-ov-group-title::before,
   .lb-ov-group-title::after{
     content:'';
-    flex:1;height:1px;
+    flex:1 1 0;
+    height:1px;
+    opacity:.35;
+  }
+  .lb-ov-group-title::before{
+    background:linear-gradient(90deg, transparent, currentColor);
+  }
+  .lb-ov-group-title::after{
     background:linear-gradient(90deg, currentColor, transparent);
-    opacity:.3;
+  }
+  /* Nudges the label right by half its trailing letter-spacing so the
+     *visible* text sits exactly in the middle of the two lines. */
+  .lb-ov-group-name{
+    margin-left:.3em;
+    text-align:center;
   }
   .lb-ov-group-title.insta{color:#ff9f43}
   .lb-ov-group-title.inf{color:#b98cff}
 
   .lb-ov-grid{
     display:grid;
-    grid-template-columns:repeat(auto-fill, minmax(208px, 1fr));
-    gap:clamp(7px,1.05vh,11px);
+    grid-template-columns:repeat(auto-fill, minmax(288px, 1fr));
+    gap:clamp(10px,1.5vh,16px);
   }
   .lb-ov-card{
     display:flex;
     flex-direction:column;
-    gap:3px;
+    gap:5px;
     background:rgba(255,255,255,.022);
     border:1px solid rgba(255,255,255,.07);
-    border-radius:12px;
-    padding:clamp(8px,1.15vh,12px) clamp(9px,1.2vw,13px);
+    border-radius:14px;
+    padding:clamp(12px,1.7vh,18px) clamp(13px,1.5vw,19px);
     min-width:0;
   }
   .lb-ov-card-title{
     display:flex;
     align-items:center;
-    gap:6px;
-    font-size:clamp(8px,1.2vh,9.5px);
+    gap:8px;
+    font-size:clamp(11px,1.65vh,13.5px);
     letter-spacing:.18em;
     font-weight:900;
     color:#7fb0e0;
-    padding-bottom:6px;
-    margin-bottom:3px;
+    padding-bottom:8px;
+    margin-bottom:5px;
     border-bottom:1px solid rgba(255,255,255,.06);
     white-space:nowrap;
   }
@@ -945,12 +951,12 @@
 
   .lb-ov-row{
     display:grid;
-    grid-template-columns:18px minmax(0,1fr) auto;
+    grid-template-columns:28px minmax(0,1fr) auto;
     align-items:center;
-    gap:8px;
-    font-size:clamp(9px,1.32vh,11px);
-    padding:2px 5px;
-    border-radius:6px;
+    gap:11px;
+    font-size:clamp(12px,1.85vh,15px);
+    padding:5px 8px;
+    border-radius:8px;
     min-width:0;
   }
   .lb-ov-row.me{
@@ -961,7 +967,7 @@
     text-align:center;flex:none;
     font-family:'Courier New',monospace;font-weight:900;
     color:#4a5f7d;
-    font-size:clamp(9px,1.28vh,10.5px);
+    font-size:clamp(12px,1.8vh,14px);
   }
   .lb-ov-row.r1 .lb-ov-rank{color:#ffd166}
   .lb-ov-row.r2 .lb-ov-rank{color:#cfd8e6}
@@ -974,14 +980,14 @@
     flex:none;
     font-family:'Courier New',monospace;font-weight:900;
     color:#8affc1;font-variant-numeric:tabular-nums;
-    font-size:clamp(9px,1.28vh,10.5px);
+    font-size:clamp(12px,1.8vh,14px);
   }
   .lb-ov-empty{
-    font-size:clamp(8.5px,1.22vh,10px);
+    font-size:clamp(11px,1.65vh,13px);
     color:#43536b;
     font-weight:700;
     letter-spacing:.08em;
-    padding:6px 4px 3px;
+    padding:10px 4px 6px;
     text-align:center;
   }
   .lb-ov-divider{
@@ -1202,6 +1208,8 @@ const OPPONENT_RENDER_MS = 33;
 const INFINITE_REVEAL_RADIUS = 10;
 /* Infinite mode: how far out the user can zoom. */
 const INFINITE_MIN_ZOOM = 0.6;
+/* Infinite mode: mine density multiplier (1.5× the standard density). */
+const INFINITE_MINE_MULT = 1.5;
 
 const TILES_PER_BOMB = {
   square: 4,
@@ -1263,7 +1271,8 @@ function dimsFor(config){
     const cols = INFINITE_COLS;
     const rows = config.style === 'hex' ? INFINITE_ROWS_HEX : INFINITE_ROWS_SQ;
     const per = TILES_PER_BOMB[config.style] || 4;
-    const mines = Math.max(1, Math.floor((cols * rows) / per));
+    /* Infinite maps are 1.5× denser than the standard density. */
+    const mines = Math.max(1, Math.round((cols * rows) / per * INFINITE_MINE_MULT));
     return { cols, rows, mines, infinite: true };
   }
   const s = STYLES[config.style] || STYLES.square;
@@ -3093,6 +3102,14 @@ function formatTiles(n){
   return n + (n === 1 ? ' tile' : ' tiles');
 }
 
+/* Tooltip for infinite-map entries: how long the run took. */
+function tilesTitle(e){
+  const t = (typeof e.bestTime === 'number' && e.bestTime > 0)
+    ? formatTime(e.bestTime)
+    : 'not recorded';
+  return ' title="Reached this in ' + t + '"';
+}
+
 async function fetchLeaderboard(mode, style, size, cat, insta){
   const key = lbKey(mode, style, size, insta);
   const col = db.collection('leaderboards').doc(key).collection('entries');
@@ -3195,6 +3212,7 @@ async function recordWin(mode, style, size, insta, timeMs, countAsWin, partner, 
         await ref.set({
           name,
           bestTiles: tilesVal,
+          bestTime: timeVal,
           updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         });
       } else {
@@ -3204,7 +3222,10 @@ async function recordWin(mode, style, size, insta, timeMs, countAsWin, partner, 
           updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         };
         const prev = data.bestTiles || 0;
-        if (tilesVal > prev) upd.bestTiles = tilesVal;
+        if (tilesVal > prev){
+          upd.bestTiles = tilesVal;
+          upd.bestTime = timeVal;
+        }
         await ref.update(upd);
       }
     } else {
@@ -3252,6 +3273,7 @@ async function recordWin(mode, style, size, insta, timeMs, countAsWin, partner, 
           await ref.set({
             names, nameKeys: pairKeys,
             bestTiles: tilesVal,
+            bestTime: timeVal,
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
           });
         } else {
@@ -3261,7 +3283,10 @@ async function recordWin(mode, style, size, insta, timeMs, countAsWin, partner, 
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
           };
           const prev = data.bestTiles || 0;
-          if (tilesVal > prev) upd.bestTiles = tilesVal;
+          if (tilesVal > prev){
+            upd.bestTiles = tilesVal;
+            upd.bestTime = timeVal;
+          }
           await ref.update(upd);
         }
       } else {
@@ -3835,12 +3860,16 @@ function renderLeaderboardRows(mode, cat){
       }
     }
 
-    let val, cls = '';
-    if (cat === 'tiles'){ val = formatTiles(e.bestTiles); cls = ' tiles'; }
+    let val, cls = '', title = '';
+    if (cat === 'tiles'){
+      val = formatTiles(e.bestTiles);
+      cls = ' tiles';
+      title = tilesTitle(e);
+    }
     else if (cat === 'time'){ val = formatTime(e.bestTime); }
     else { val = formatWins(e.wins); cls = ' wins'; }
 
-    return '<div class="lb-row' + (isMe ? ' me' : '') + cls + '">' +
+    return '<div class="lb-row' + (isMe ? ' me' : '') + cls + '"' + title + '>' +
       '<span class="lb-rank">' + (i + 1) + '</span>' +
       '<span class="lb-name">' + escapeHtml(nm) + '</span>' +
       '<span class="lb-val">' + val + '</span>' +
@@ -3917,6 +3946,8 @@ function attachLeaderboardHandlers(){
   };
 }
 
+let lbSeq = 0;
+
 async function refreshLeaderboard(force){
   const mode = G.config.mode;
   const style = G.config.style;
@@ -3925,6 +3956,7 @@ async function refreshLeaderboard(force){
   const cat = currentLbCategory();
   const key = lbKey(mode, style, size, insta) + '_' + cat;
 
+  const seq = ++lbSeq;
   LB_STATE.currentKey = key;
   LB_STATE.error = null;
 
@@ -3952,7 +3984,7 @@ async function refreshLeaderboard(force){
 
   try {
     const data = await fetchLeaderboard(mode, style, size, cat, insta);
-    if (LB_STATE.currentKey !== key) return;
+    if (seq !== lbSeq || LB_STATE.currentKey !== key) return;
     lbCache.set(key, { data, ts: Date.now() });
     LB_STATE.loading = false;
     LB_STATE.data = data;
@@ -3960,7 +3992,7 @@ async function refreshLeaderboard(force){
     if (overlay.querySelector('.menu-lb')) updateLeaderboardDOM();
   } catch(e){
     console.warn('[fb] fetch leaderboard failed:', e && (e.code || e.message || e));
-    if (LB_STATE.currentKey !== key) return;
+    if (seq !== lbSeq || LB_STATE.currentKey !== key) return;
     LB_STATE.loading = false;
     LB_STATE.error = 'Could not load';
     LB_STATE.data = [];
@@ -4065,8 +4097,11 @@ function renderOverviewData(cat, data){
         } else {
           nm = e.name || 'Anon';
         }
-        let val;
-        if (cat === 'tiles') val = formatTiles(e.bestTiles);
+        let val, title = '';
+        if (cat === 'tiles'){
+          val = formatTiles(e.bestTiles);
+          title = tilesTitle(e);
+        }
         else if (cat === 'time') val = formatTime(e.bestTime);
         else val = formatWins(e.wins);
 
@@ -4075,7 +4110,7 @@ function renderOverviewData(cat, data){
           (Array.isArray(e.nameKeys) && e.nameKeys.indexOf(myKey) !== -1)
         );
 
-        html += '<div class="lb-ov-row' + (rankCls[i + 1] || '') + (isMe ? ' me' : '') + '">' +
+        html += '<div class="lb-ov-row' + (rankCls[i + 1] || '') + (isMe ? ' me' : '') + '"' + title + '>' +
           '<span class="lb-ov-rank">' + (i + 1) + '</span>' +
           '<span class="lb-ov-name">' + escapeHtml(nm) + '</span>' +
           '<span class="lb-ov-val">' + val + '</span>' +
@@ -4099,7 +4134,9 @@ function renderOverviewData(cat, data){
     const hexItems = items.filter(it => it.style === 'hex');
 
     html += '<div class="lb-ov-group">';
-    html += '<div class="lb-ov-group-title' + cls + '">' + escapeHtml(label) + '</div>';
+    html += '<div class="lb-ov-group-title' + cls + '">' +
+              '<span class="lb-ov-group-name">' + escapeHtml(label) + '</span>' +
+            '</div>';
 
     if (squareItems.length){
       html += '<div class="lb-ov-grid">';
@@ -4108,7 +4145,7 @@ function renderOverviewData(cat, data){
     }
 
     if (hexItems.length){
-      html += '<div class="lb-ov-grid" style="margin-top:clamp(7px,1.05vh,11px)">';
+      html += '<div class="lb-ov-grid" style="margin-top:clamp(10px,1.5vh,16px)">';
       for (const item of hexItems) html += renderCard(item);
       html += '</div>';
     }
@@ -4148,10 +4185,15 @@ function openLeaderboardOverview(){
   };
 
   let cat = 'wins';
+  /* Each load gets a sequence number; stale responses are discarded.
+     This prevents a slow response for one category from overwriting
+     the results of a category the user picked afterwards. */
+  let ovSeq = 0;
 
   const load = async () => {
     const body = overlay.querySelector('#lbOvBody');
     if (!body) return;
+    const mySeq = ++ovSeq;
     if (!db){
       body.innerHTML = '<div class="lb-empty">Leaderboards offline</div>';
       return;
@@ -4159,10 +4201,12 @@ function openLeaderboardOverview(){
     body.innerHTML = '<div class="lb-empty"><span class="spin"></span>Loading…</div>';
     try {
       const data = await fetchOverviewData(cat);
+      if (mySeq !== ovSeq) return;
       if (!overlay.querySelector('#lbOvBody')) return;
       renderOverviewData(cat, data);
     } catch(e){
       console.warn('[fb] overview fetch failed:', e && (e.code || e.message));
+      if (mySeq !== ovSeq) return;
       const b2 = overlay.querySelector('#lbOvBody');
       if (b2) b2.innerHTML = '<div class="lb-empty">Could not load</div>';
     }
@@ -7695,9 +7739,13 @@ function howToHTML(){
     '<div class="config-section" style="border-left-color:rgba(185,140,255,.75);background:rgba(185,140,255,.035)">' +
       '<div class="config-label" style="color:#d4b8ff">INFINITE MODE</div>' +
       '<div class="ht-text">' +
-        'An endless minefield. <b style="color:#b98cff">Survive as long as you can</b> — ' +
-        'the leaderboard tracks <b style="color:#b98cff">how many tiles you revealed</b> before triggering a mine.<br><br>' +
-        '<b style="color:#b98cff">Return to start</b> — tap the ⌖ button (or press R) to smoothly pan the camera back to where you spawned.' +
+        'An endless minefield — and it is <b style="color:#b98cff">50 % denser</b> than the standard boards. ' +
+        '<b style="color:#b98cff">Survive as long as you can</b> — the leaderboard tracks ' +
+        '<b style="color:#b98cff">how many tiles you revealed</b> before triggering a mine ' +
+        '(hover an entry to see how long the run took).<br><br>' +
+        '<b style="color:#b98cff">Return to start</b> — tap the ⌖ button (or press R) to smoothly pan the camera back to where you spawned.<br>' +
+        '<b style="color:#b98cff">Map review</b> — after a run, use <b style="color:#b98cff">FULL MAP</b> to see your entire uncovered area, and press it again to zoom back to the ±' +
+        INFINITE_REVEAL_RADIUS + ' tile view.' +
       '</div>' +
     '</div>' +
     '<div class="ovbtns">' +
@@ -8391,13 +8439,33 @@ function buildEndReviewState(baseState, board, deathTile){
   return s;
 }
 
-/* Clip a large (infinite) board + state to a small region around
-   a center point.  Returns {board, state, offsetR, offsetC}. */
-function clipInfiniteReview(board, state, centerR, centerC, radius){
-  const r0 = Math.max(0, centerR - radius);
-  const r1 = Math.min(board.rows - 1, centerR + radius);
-  const c0 = Math.max(0, centerC - radius);
-  const c1 = Math.min(board.cols - 1, centerC + radius);
+/* Copy a board-state and hide one cell (used for the "solution" view). */
+function hideCellInState(state, r, c){
+  if (!state || r === undefined || c === undefined) return state;
+  const s = makeBoardState(state.rows, state.cols);
+  for (let rr = 0; rr < state.rows; rr++){
+    s.revealed[rr] = state.revealed[rr].slice();
+    s.flagged[rr]  = state.flagged[rr].slice();
+    s.owner[rr]    = state.owner[rr].slice();
+    s.fakeFlag[rr] = state.fakeFlag[rr].slice();
+    s.revealAt[rr] = state.revealAt[rr].slice();
+    s.flagAt[rr]   = state.flagAt[rr].slice();
+  }
+  s.revealed[r][c] = false;
+  s.flagged[r][c]  = false;
+  if (s.owner)    s.owner[r][c]    = 0;
+  if (s.fakeFlag) s.fakeFlag[r][c] = false;
+  s.count        = state.count;
+  s.safeRevealed = state.safeRevealed;
+  s.flagCount    = state.flagCount;
+  return s;
+}
+
+/* Clip a large (infinite) board + state to the given tile rectangle.
+   Returns {board, state, offsetR, offsetC}. */
+function clipInfiniteRegion(board, state, r0, r1, c0, c1){
+  r0 = Math.max(0, r0); r1 = Math.min(board.rows - 1, r1);
+  c0 = Math.max(0, c0); c1 = Math.min(board.cols - 1, c1);
   const nrows = r1 - r0 + 1;
   const ncols = c1 - c0 + 1;
 
@@ -8446,6 +8514,29 @@ function clipInfiniteReview(board, state, centerR, centerC, radius){
   return { board: nb, state: nbs, offsetR: r0, offsetC: c0 };
 }
 
+/* Clip around a center point with a radius (the ±N view). */
+function clipInfiniteReview(board, state, centerR, centerC, radius){
+  return clipInfiniteRegion(board, state,
+    centerR - radius, centerR + radius,
+    centerC - radius, centerC + radius);
+}
+
+/* Bounding box of every revealed / flagged tile. */
+function revealedBoundsOf(state){
+  let r0 = Infinity, r1 = -Infinity, c0 = Infinity, c1 = -Infinity;
+  for (let r = 0; r < state.rows; r++){
+    for (let c = 0; c < state.cols; c++){
+      if (!state.revealed[r][c] && !state.flagged[r][c]) continue;
+      if (r < r0) r0 = r;
+      if (r > r1) r1 = r;
+      if (c < c0) c0 = c;
+      if (c > c1) c1 = c;
+    }
+  }
+  if (r0 === Infinity) return null;
+  return { r0: r0, r1: r1, c0: c0, c1: c1 };
+}
+
 let reviewRafId = null;
 function showMapReview(){
   if (!G.board || !G.myBoard) return;
@@ -8453,59 +8544,89 @@ function showMapReview(){
   const isTerr = (G.config.mode === 'territory');
   const isInf  = isInfiniteSize(G.config.size);
 
-  let myLayout = G.board;
-  let myBaseState = G.myBoard;
-  let myDeath = G.deathTile;
-
-  if (isInf && G.deathTile){
-    const clip = clipInfiniteReview(G.board, G.myBoard, G.deathTile.r, G.deathTile.c, INFINITE_REVEAL_RADIUS);
-    myLayout = clip.board;
-    myBaseState = clip.state;
-    myDeath = { r: G.deathTile.r - clip.offsetR, c: G.deathTile.c - clip.offsetC };
-  }
-
   const theirLayout = (G.config.mode === 'duel') ? (G.theirBoardLayout || G.board) : G.board;
 
-  const meEnd  = buildEndReviewState(myBaseState, myLayout, myDeath);
-  const meFull = buildFullRevealState(myBaseState, myLayout);
-  let themEnd = null, themFull = null;
+  /* ── Left (my) board: the ±N tile view ── */
+  let smallWorld;
+  if (isInf){
+    const bounds = revealedBoundsOf(G.myBoard);
+    let centerR = G.board.rows >> 1, centerC = G.board.cols >> 1;
+    if (G.deathTile){
+      centerR = G.deathTile.r; centerC = G.deathTile.c;
+    } else if (bounds){
+      centerR = Math.round((bounds.r0 + bounds.r1) / 2);
+      centerC = Math.round((bounds.c0 + bounds.c1) / 2);
+    }
+    const clip = clipInfiniteReview(G.board, G.myBoard, centerR, centerC, INFINITE_REVEAL_RADIUS);
+    smallWorld = {
+      layout: clip.board,
+      state: clip.state,
+      death: G.deathTile
+        ? { r: G.deathTile.r - clip.offsetR, c: G.deathTile.c - clip.offsetC }
+        : null
+    };
+  } else {
+    smallWorld = { layout: G.board, state: G.myBoard, death: G.deathTile };
+  }
+
+  /* ── Left (my) board: the whole uncovered region ── */
+  let fullWorld = smallWorld;
+  let hasFullWorld = false;
+  if (isInf){
+    const bounds = revealedBoundsOf(G.myBoard);
+    if (bounds){
+      const PAD = 4;
+      const clip = clipInfiniteRegion(G.board, G.myBoard,
+        bounds.r0 - PAD, bounds.r1 + PAD,
+        bounds.c0 - PAD, bounds.c1 + PAD);
+      if (clip.board.rows > smallWorld.layout.rows ||
+          clip.board.cols > smallWorld.layout.cols){
+        fullWorld = {
+          layout: clip.board,
+          state: clip.state,
+          death: G.deathTile
+            ? { r: G.deathTile.r - clip.offsetR, c: G.deathTile.c - clip.offsetC }
+            : null
+        };
+        hasFullWorld = true;
+      }
+    }
+  }
+
+  function deriveWorld(w){
+    const end  = buildEndReviewState(w.state, w.layout, w.death);
+    const full = buildFullRevealState(w.state, w.layout);
+    return {
+      end: end,
+      full: full,
+      sol: w.death ? hideCellInState(end, w.death.r, w.death.c) : end,
+      solFull: w.death ? hideCellInState(full, w.death.r, w.death.c) : full
+    };
+  }
+
+  const smallDerived = deriveWorld(smallWorld);
+  let fullDerived = null;
+  const getFullDerived = () => {
+    if (!fullDerived){
+      fullDerived = (fullWorld === smallWorld) ? smallDerived : deriveWorld(fullWorld);
+    }
+    return fullDerived;
+  };
+
+  let themEnd = null, themFull = null, themSolution = null, themSolutionFull = null;
   if (isDuel){
     themEnd  = buildEndReviewState(G.theirBoard, theirLayout, G.theirDeathTile);
     themFull = buildFullRevealState(G.theirBoard, theirLayout);
+    themSolution = G.theirDeathTile
+      ? hideCellInState(themEnd, G.theirDeathTile.r, G.theirDeathTile.c) : themEnd;
+    themSolutionFull = G.theirDeathTile
+      ? hideCellInState(themFull, G.theirDeathTile.r, G.theirDeathTile.c) : themFull;
   }
 
-  const hideCell = (state, r, c) => {
-    if (!state || r === undefined || c === undefined) return state;
-    const s = makeBoardState(state.rows, state.cols);
-    for (let rr = 0; rr < state.rows; rr++){
-      s.revealed[rr] = state.revealed[rr].slice();
-      s.flagged[rr]  = state.flagged[rr].slice();
-      s.owner[rr]    = state.owner[rr].slice();
-      s.fakeFlag[rr] = state.fakeFlag[rr].slice();
-      s.revealAt[rr] = state.revealAt[rr].slice();
-      s.flagAt[rr]   = state.flagAt[rr].slice();
-    }
-    s.revealed[r][c] = false;
-    s.flagged[r][c]  = false;
-    if (s.owner)    s.owner[r][c]    = 0;
-    if (s.fakeFlag) s.fakeFlag[r][c] = false;
-    s.count        = state.count;
-    s.safeRevealed = state.safeRevealed;
-    s.flagCount    = state.flagCount;
-    return s;
-  };
-
-  const meSolution       = myDeath ? hideCell(meEnd, myDeath.r, myDeath.c) : meEnd;
-  const meSolutionFull   = myDeath ? hideCell(meFull, myDeath.r, myDeath.c) : meFull;
-  const themSolution     = (isDuel && G.theirDeathTile)
-    ? hideCell(themEnd,  G.theirDeathTile.r, G.theirDeathTile.c) : themEnd;
-  const themSolutionFull = (isDuel && G.theirDeathTile)
-    ? hideCell(themFull, G.theirDeathTile.r, G.theirDeathTile.c) : themFull;
-
   if (isDuel){
-    if (!G.lossHintMe && myLayout && G.myBoard){
+    if (!G.lossHintMe && smallWorld.layout && G.myBoard){
       G.lossHintMe = computeHintForBoard(
-        myLayout, G.myBoard, null, false,
+        smallWorld.layout, G.myBoard, null, false,
         G.deathTile ? G.deathTile.r : undefined,
         G.deathTile ? G.deathTile.c : undefined
       );
@@ -8523,6 +8644,9 @@ function showMapReview(){
   const hintBtnHtml = hasHints
     ? '<button id="btnShowHints">💡 SHOW SOLUTION</button>'
     : '';
+  const fullMapBtnHtml = (isInf && hasFullWorld)
+    ? '<button id="btnFullMap">🗺️ FULL MAP</button>'
+    : '';
 
   const cells =
     '<div class="review-cell">' +
@@ -8538,24 +8662,32 @@ function showMapReview(){
 
   modal.innerHTML =
     '<div class="ovbox mapreview">' +
-      '<h2>MAP <span>REVIEW</span>' + (isInf ? ' · <span style="color:#b98cff">±' + INFINITE_REVEAL_RADIUS + '</span>' : '') + '</h2>' +
+      '<h2>MAP <span>REVIEW</span>' +
+        (isInf ? ' · <span style="color:#b98cff">∞</span>' : '') + '</h2>' +
       '<div class="mapreview-canvas' + (isDuel ? ' two' : '') + '">' + cells + '</div>' +
       '<div class="mapreview-foot">' +
         hintBtnHtml +
-        '<button id="btnToggleView">SHOW FULL MAP</button>' +
+        fullMapBtnHtml +
+        '<button id="btnToggleView">🧩 REVEAL ALL</button>' +
         '<button class="ghost" id="btnCloseReview">CLOSE</button>' +
       '</div>' +
     '</div>';
   modal.classList.remove('hidden');
 
-  /* Use standard metrics for the clipped review board. */
-  const vc = isInf
-    ? { mode: G.config.mode, style: G.config.style, cols: myLayout.cols, rows: myLayout.rows, size: 'small' }
-    : viewConfig();
+  const reviewConfigFor = (layout) => ({
+    mode: G.config.mode,
+    style: G.config.style,
+    cols: layout.cols,
+    rows: layout.rows,
+    size: 'small'
+  });
+
   const views = [];
   modal.querySelectorAll('canvas[data-review]').forEach(c => {
     const v = new BoardView(c);
-    v.setConfig(vc);
+    const cfg = reviewConfigFor(smallWorld.layout);
+    v._reviewCfg = cfg;
+    v.setConfig(cfg);
     if (isTerr) v.setOwnerPalette(myPalette());
     bindCanvasInput(v, false, true);
     views.push(v);
@@ -8564,32 +8696,37 @@ function showMapReview(){
 
   let showingFull = false;
   let showingHints = false;
-  const highlights = myDeath
-    ? [{ r: myDeath.r, c: myDeath.c, color: '#ffe066' }]
-    : [];
+  let showingFullMap = false;
 
   const draw = (now) => {
     reviewRafId = requestAnimationFrame(draw);
     const t = now + 60000;
 
-    const meHints   = (showingHints && G.lossHintMe)   ? hintRenderState(G.lossHintMe)   : null;
-    const themHints = (showingHints && G.lossHintThem) ? hintRenderState(G.lossHintThem) : null;
+    const useFullMap = isInf && showingFullMap && hasFullWorld;
+    const meWorld = useFullMap ? fullWorld : smallWorld;
+    const meDer   = useFullMap ? getFullDerived() : smallDerived;
 
-    let meState, themState;
-    if (showingFull){
-      meState   = showingHints ? meSolutionFull   : meFull;
-      themState = showingHints ? themSolutionFull : themFull;
-    } else {
-      meState   = showingHints ? meSolution   : meEnd;
-      themState = showingHints ? themSolution : themEnd;
-    }
+    const meHints   = (showingHints && G.lossHintMe && !useFullMap)
+      ? hintRenderState(G.lossHintMe) : null;
+    const themHints = (showingHints && G.lossHintThem)
+      ? hintRenderState(G.lossHintThem) : null;
+
+    const meState = showingFull
+      ? (showingHints ? meDer.solFull : meDer.full)
+      : (showingHints ? meDer.sol     : meDer.end);
+
+    const themState = showingFull
+      ? (showingHints ? themSolutionFull : themFull)
+      : (showingHints ? themSolution     : themEnd);
+
+    const highlights = meWorld.death
+      ? [{ r: meWorld.death.r, c: meWorld.death.c, color: '#ffe066' }]
+      : [];
 
     if (views[0]){
-      const combinedHints = isTerr
-        ? mergeHintStates(meHints, themHints)
-        : meHints;
+      const combinedHints = isTerr ? mergeHintStates(meHints, themHints) : meHints;
       views[0].render(t, {
-        board: myLayout,
+        board: meWorld.layout,
         boardState: meState,
         cursors: [],
         highlights: showingHints ? [] : highlights,
@@ -8611,7 +8748,7 @@ function showMapReview(){
   const toggleBtn = modal.querySelector('#btnToggleView');
   toggleBtn.onclick = () => {
     showingFull = !showingFull;
-    toggleBtn.textContent = showingFull ? 'SHOW END STATE' : 'SHOW FULL MAP';
+    toggleBtn.textContent = showingFull ? '↩ END STATE' : '🧩 REVEAL ALL';
     toggleBtn.classList.toggle('primary', showingFull);
   };
   const hintBtn = modal.querySelector('#btnShowHints');
@@ -8620,6 +8757,21 @@ function showMapReview(){
       showingHints = !showingHints;
       hintBtn.textContent = showingHints ? '💡 HIDE SOLUTION' : '💡 SHOW SOLUTION';
       hintBtn.classList.toggle('primary', showingHints);
+    };
+  }
+  const fullMapBtn = modal.querySelector('#btnFullMap');
+  if (fullMapBtn){
+    fullMapBtn.onclick = () => {
+      showingFullMap = !showingFullMap;
+      fullMapBtn.textContent = showingFullMap ? '🔍 ZOOM IN' : '🗺️ FULL MAP';
+      fullMapBtn.classList.toggle('primary', showingFullMap);
+      if (showingFullMap) getFullDerived();
+      const w = (showingFullMap && hasFullWorld) ? fullWorld : smallWorld;
+      const cfg = reviewConfigFor(w.layout);
+      for (const v of views){
+        v._reviewCfg = cfg;
+        v.setConfig(cfg);
+      }
     };
   }
   const closeReview = () => {
@@ -8971,7 +9123,7 @@ window.addEventListener('resize', () => {
     } catch(e){}
     if (G.reviewViews && G.reviewViews.length){
       for (const v of G.reviewViews) {
-        try { v.setConfig(vc, true); } catch(e){}
+        try { v.setConfig(v._reviewCfg || vc, true); } catch(e){}
       }
     }
   }, 120);

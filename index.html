@@ -276,8 +276,9 @@
   .stun.ice .stun-sub{color:#a5e8ff}
   @keyframes stunpulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.08);opacity:.85}}
 
+  /* Opponent status pill — top RIGHT (zoom badge lives on the LEFT). */
   .oppstun{
-    position:absolute;top:12px;left:12px;display:none;
+    position:absolute;top:12px;right:12px;display:none;
     padding:10px 18px;border-radius:99px;
     background:rgba(255,61,129,.30);border:1.5px solid rgba(255,61,129,.7);
     color:#ffb1c7;font-size:13px;letter-spacing:.16em;font-weight:900;
@@ -967,6 +968,14 @@
     grid-template-columns:repeat(auto-fill, minmax(288px, 1fr));
     gap:clamp(10px,1.5vh,16px);
   }
+  /* Wider cards for TILES so multi-player team names fit. */
+  .lb-overview-body.wide .lb-ov-grid{
+    grid-template-columns:repeat(auto-fill, minmax(430px, 1fr));
+  }
+  /* TIME stays at exactly 3 cards per row. */
+  .lb-overview-body.time-view .lb-ov-grid{
+    grid-template-columns:repeat(3, minmax(0, 1fr));
+  }
   .lb-ov-card{
     display:flex;
     flex-direction:column;
@@ -1134,8 +1143,9 @@
   .review-label.them{color:#ff3d81;border:1px solid rgba(255,61,129,.45)}
   .mapreview-foot{flex:none;display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
 
+  /* Zoom badge — top LEFT. */
   .zoom-badge{
-    position:absolute;top:8px;right:8px;
+    position:absolute;top:8px;left:8px;
     padding:4px 10px;border-radius:99px;
     background:rgba(0,0,0,.65);border:1px solid rgba(77,216,255,.45);
     color:#4dd8ff;font-size:10px;font-weight:900;letter-spacing:.14em;
@@ -1172,6 +1182,7 @@
   @media(max-width:820px){
     .menu-grid{grid-template-columns:1fr}
     .lb-list{max-height:220px}
+    .lb-overview-body.time-view .lb-ov-grid{grid-template-columns:repeat(2, minmax(0, 1fr));}
   }
   @media(max-width:520px){
     #app{padding:6px 8px;gap:6px}
@@ -1207,7 +1218,8 @@
     .oppstun{font-size:11px;padding:8px 14px}
     .oppstun b{font-size:13px}
     .lb-ov-grid{grid-template-columns:1fr}
-  }
+    .lb-overview-body.wide .lb-ov-grid{grid-template-columns:1fr}
+    .lb-overview-body.time-view .lb-ov-grid{grid-template-columns:1fr}
 </style>
 </head>
 <body>
@@ -2691,8 +2703,13 @@ function getHintMoves(board, snap){
   for (let r = 0; r < rows; r++){
     for (let c = 0; c < cols; c++){
       const i = r * cols + c;
-      if (snap.revealed[r][c]) state[i] = 1;
-      else if (snap.flagged[r][c] && board.mines.has(r + ',' + c)) state[i] = 2;
+      if (snap.revealed[r][c]){
+        /* A revealed MINE is a *known* mine — treat it exactly like a flag so
+           the solver always reasons with the information the player really has. */
+        state[i] = board.mines.has(r + ',' + c) ? 2 : 1;
+      } else if (snap.flagged[r][c] && board.mines.has(r + ',' + c)){
+        state[i] = 2;
+      }
     }
   }
   const nbrs = new Array(N);
@@ -2979,6 +2996,27 @@ function mergeHintStates(a, b){
   const supports = new Set(a.supports);
   b.supports.forEach(x => supports.add(x));
   return { reveal: reveal, flag: flag, wrong: wrong, supports: supports };
+}
+
+/* Removes any hint marker that points at a tile the player can already see.
+   Belt-and-braces: hints are recomputed from the final review state anyway,
+   but this guarantees "SHOW SOLUTION" never highlights uncovered tiles. */
+function filterHintsAgainstState(hs, state){
+  if (!hs || !state) return hs;
+  const keep = (set, out) => {
+    set.forEach(k => {
+      const idx = k.indexOf(',');
+      if (idx < 0) return;
+      const r = +k.slice(0, idx), c = +k.slice(idx + 1);
+      if (r < 0 || r >= state.rows || c < 0 || c >= state.cols) return;
+      if (state.revealed[r][c]) return;
+      out.add(k);
+    });
+  };
+  const reveal = new Set(); keep(hs.reveal, reveal);
+  const flag   = new Set(); keep(hs.flag,   flag);
+  const wrong  = new Set(); keep(hs.wrong || new Set(), wrong);
+  return { reveal, flag, wrong, supports: hs.supports || new Set() };
 }
 
 const FIREBASE_CONFIG = {
@@ -3941,6 +3979,11 @@ async function fetchOverviewData(cat){
 function renderOverviewData(cat, data){
   const body = overlay.querySelector('#lbOvBody');
   if (!body) return;
+  /* TILES entries can be co-op teams — give them wider cards so
+     the multi-player names have room to breathe.
+     TIME stays at exactly 3 cards per row. */
+  body.classList.toggle('wide', cat === 'tiles');
+  body.classList.toggle('time-view', cat === 'time');
   const grouped = new Map();
   for (const item of data){
     const k = item.g.label;
@@ -5099,11 +5142,13 @@ function hexOrSqCenter(view, r, c){
 const STUN_HTML =
   '<div class="stun">' +
     '<div class="stun-emoji">💥</div>' +
-    '<div class="stun-title">FROZEN</div>' +
+    '<div class="stun-title" data-stuntitle>STUNNED</div>' +
     '<div class="stun-timer" data-timer>10.0</div>' +
-    '<div class="stun-sub">BOMB TRIGGERED</div>' +
+    '<div class="stun-sub" data-stunsub>BOMB TRIGGERED</div>' +
   '</div>';
 
+/* Bomb  → "STUNNED"  (red)
+   Flag  → "FROZEN"   (ice)          */
 function setStunFace(el, reason){
   if (!el) return;
   const ice = (reason === 'flag');
@@ -5111,8 +5156,10 @@ function setStunFace(el, reason){
   el._reason = reason;
   el.classList.toggle('ice', ice);
   const emo = el.querySelector('.stun-emoji');
-  const sub = el.querySelector('.stun-sub');
+  const ttl = el.querySelector('[data-stuntitle]');
+  const sub = el.querySelector('[data-stunsub]');
   if (emo) emo.textContent = ice ? '❄️' : '💥';
+  if (ttl) ttl.textContent = ice ? 'FROZEN' : 'STUNNED';
   if (sub) sub.textContent = ice ? 'WRONG FLAG' : 'BOMB TRIGGERED';
 }
 
@@ -5219,7 +5266,7 @@ function makePanel(cls, name, color, mode){
       '<canvas data-canvas="me"></canvas>' +
       '<canvas data-canvas="them" style="display:none"></canvas>' +
       STUN_HTML +
-      '<div class="oppstun"><span data-oemoji>💥</span> <span data-oname>OPPONENT</span> FROZEN <b>10.0</b></div>' +
+      '<div class="oppstun"><span data-oemoji>💥</span> <span data-oname>OPPONENT</span> <span data-ostate>STUNNED</span> <b>10.0</b></div>' +
       '<div class="zoom-badge" data-zoombadge>⤢ 1.0×</div>';
   } else {
     boardInner =
@@ -5267,7 +5314,7 @@ function makeTerritoryPanel(){
     '<div class="boardwrap">' +
       '<canvas></canvas>' +
       STUN_HTML +
-      '<div class="oppstun"><span data-oemoji>💥</span> <span data-oname>OPPONENT</span> FROZEN <b>10.0</b></div>' +
+      '<div class="oppstun"><span data-oemoji>💥</span> <span data-oname>OPPONENT</span> <span data-ostate>STUNNED</span> <b>10.0</b></div>' +
       '<div class="zoom-badge" data-zoombadge>⤢ 1.0×</div>' +
     '</div>';
   return panel;
@@ -7583,31 +7630,6 @@ function howToHTML(){
         'Clear every safe tile to win.' +
       '</div>' +
     '</div>' +
-    '<div class="config-section" style="border-left-color:rgba(185,140,255,.75);background:rgba(185,140,255,.035)">' +
-      '<div class="config-label" style="color:#d4b8ff">INFINITE MODE</div>' +
-      '<div class="ht-text">' +
-        'An endless minefield — and it is <b style="color:#b98cff">less bomb-heavy</b> than the standard boards ' +
-        '(about 10 % fewer mines), so runs last longer. ' +
-        '<b style="color:#b98cff">Survive as long as you can</b> — the leaderboard tracks ' +
-        '<b style="color:#b98cff">how many tiles you revealed</b> before triggering a mine ' +
-        '(hover an entry with the mouse to see how long the run took).<br><br>' +
-        '<b style="color:#b98cff">The board grows with you</b> — as the camera nears the edge, ' +
-        'fresh rows and columns are added automatically, so there is no hard limit to explore.<br>' +
-        '<b style="color:#b98cff">Return to start</b> — tap the ⌖ button (or press R) to smoothly pan the camera back to where you spawned.<br>' +
-        '<b style="color:#b98cff">Map review</b> — after a run, use <b style="color:#b98cff">FULL MAP</b> to see your entire uncovered area, and press it again to zoom back to the ±' +
-        INFINITE_REVEAL_RADIUS + ' tile view.' +
-      '</div>' +
-    '</div>' +
-    '<div class="config-section" style="border-left-color:rgba(255,61,129,.75);background:rgba(255,61,129,.035)">' +
-      '<div class="config-label" style="color:#ffb1c7">DUEL VIEW</div>' +
-      '<div class="ht-text">' +
-        'You play on your own board — your opponent\'s field is hidden.<br>' +
-        'Tap <b style="color:#b98cff">👁 OPPONENT</b> at the top to peek at their board. ' +
-        'You can pan and zoom while watching, but you cannot dig or flag there.<br>' +
-        'Tap it again (or <b style="color:#b98cff">👁 YOUR BOARD</b>) to return — your own progress is remembered.<br>' +
-        'After the match, use <b style="color:#b98cff">VIEW MAP</b> and the on-screen toggle to flip between both boards.' +
-      '</div>' +
-    '</div>' +
     '<div class="ovbtns">' +
       '<button class="primary" id="btnBackMenu">GOT IT</button>' +
     '</div>' +
@@ -8247,18 +8269,19 @@ function buildFullRevealState(baseState, board){
   s.safeRevealed = board.safeCount;
   return s;
 }
+
+/* End-of-game review state.
+   Every tile the player actually turned over is shown — including mines they
+   triggered (they are *revealed* bombs and must stay visible, and the
+   solution helper treats them as known mines). Mines that were never
+   revealed are left hidden, so the review never invents bombs the player
+   never touched. */
 function buildEndReviewState(baseState, board, deathTiles){
-  const list = deathTiles == null ? [] : (Array.isArray(deathTiles) ? deathTiles : [deathTiles]);
-  const deathSet = new Set();
-  for (const d of list){
-    if (d && d.r !== undefined && d.c !== undefined) deathSet.add(d.r + ',' + d.c);
-  }
   const s = makeBoardState(board.rows, board.cols);
   for (let r = 0; r < board.rows; r++){
     for (let c = 0; c < board.cols; c++){
       const isMine = board.mines.has(r + ',' + c);
-      const isDeath = deathSet.has(r + ',' + c);
-      const rev = baseState.revealed[r][c] && (!isMine || isDeath);
+      const rev = baseState.revealed[r][c];
       s.revealed[r][c] = rev;
       s.flagged[r][c]  = baseState.flagged[r][c];
       s.flagAt[r][c]   = 1;
@@ -8363,13 +8386,27 @@ function showMapReview(){
   const isInf  = isInfiniteSize(G.config.size);
   const theirLayout = (G.config.mode === 'duel') ? (G.theirBoardLayout || G.board) : G.board;
 
+  /* Death tiles only belong on the board they happened on. In DUEL the two
+     players play separate fields, so the opponent's death tile must NOT be
+     marked on our board (that used to paint a bogus bomb on our review). */
+  const sharedBoard = (G.config.mode !== 'duel');
+  function collectDeaths(){
+    const out = [];
+    if (G.deathTile) out.push(G.deathTile);
+    if (sharedBoard && G.theirDeathTile &&
+        (!G.deathTile || G.deathTile.r !== G.theirDeathTile.r || G.deathTile.c !== G.theirDeathTile.c)){
+      out.push(G.theirDeathTile);
+    }
+    return out;
+  }
+
   let smallWorld;
   if (isInf){
     const bounds = revealedBoundsOf(G.myBoard);
     let centerR = G.board.rows >> 1, centerC = G.board.cols >> 1;
     if (G.deathTile){
       centerR = G.deathTile.r; centerC = G.deathTile.c;
-    } else if (G.theirDeathTile){
+    } else if (sharedBoard && G.theirDeathTile){
       centerR = G.theirDeathTile.r; centerC = G.theirDeathTile.c;
     } else if (bounds){
       centerR = Math.round((bounds.r0 + bounds.r1) / 2);
@@ -8377,23 +8414,16 @@ function showMapReview(){
     }
     const clip = clipInfiniteReview(G.board, G.myBoard, centerR, centerC, INFINITE_REVEAL_RADIUS);
     const toLocal = (t) => t ? { r: t.r - clip.offsetR, c: t.c - clip.offsetC } : null;
-    const localDeath = toLocal(G.deathTile);
-    const localTheirDeath = toLocal(G.theirDeathTile);
     const deaths = [];
-    if (localDeath) deaths.push(localDeath);
-    if (localTheirDeath &&
-        (!localDeath || localDeath.r !== localTheirDeath.r || localDeath.c !== localTheirDeath.c)){
-      deaths.push(localTheirDeath);
+    for (const d of collectDeaths()){
+      const ld = toLocal(d);
+      if (!ld) continue;
+      deaths.push(ld);
     }
-    smallWorld = { layout: clip.board, state: clip.state, death: localDeath, deaths: deaths };
+    smallWorld = { layout: clip.board, state: clip.state, deaths: deaths, death: deaths[0] || null };
   } else {
-    const deaths = [];
-    if (G.deathTile) deaths.push(G.deathTile);
-    if (G.theirDeathTile &&
-        (!G.deathTile || G.deathTile.r !== G.theirDeathTile.r || G.deathTile.c !== G.theirDeathTile.c)){
-      deaths.push(G.theirDeathTile);
-    }
-    smallWorld = { layout: G.board, state: G.myBoard, death: G.deathTile, deaths: deaths };
+    const deaths = collectDeaths().slice();
+    smallWorld = { layout: G.board, state: G.myBoard, deaths: deaths, death: deaths[0] || null };
   }
 
   let fullWorld = smallWorld;
@@ -8408,15 +8438,13 @@ function showMapReview(){
       if (clip.board.rows > smallWorld.layout.rows ||
           clip.board.cols > smallWorld.layout.cols){
         const toLocal = (t) => t ? { r: t.r - clip.offsetR, c: t.c - clip.offsetC } : null;
-        const localDeath = toLocal(G.deathTile);
-        const localTheirDeath = toLocal(G.theirDeathTile);
         const deaths = [];
-        if (localDeath) deaths.push(localDeath);
-        if (localTheirDeath &&
-            (!localDeath || localDeath.r !== localTheirDeath.r || localDeath.c !== localTheirDeath.c)){
-          deaths.push(localTheirDeath);
+        for (const d of collectDeaths()){
+          const ld = toLocal(d);
+          if (!ld) continue;
+          deaths.push(ld);
         }
-        fullWorld = { layout: clip.board, state: clip.state, death: localDeath, deaths: deaths };
+        fullWorld = { layout: clip.board, state: clip.state, deaths: deaths, death: deaths[0] || null };
         hasFullWorld = true;
       }
     }
@@ -8443,29 +8471,31 @@ function showMapReview(){
 
   let themEnd = null, themFull = null, themSolution = null, themSolutionFull = null;
   if (isDuel){
-    themEnd  = buildEndReviewState(G.theirBoard, theirLayout, G.theirDeathTile);
+    const themDeaths = G.theirDeathTile ? [G.theirDeathTile] : [];
+    themEnd  = buildEndReviewState(G.theirBoard, theirLayout, themDeaths);
     themFull = buildFullRevealState(G.theirBoard, theirLayout);
     themSolution = G.theirDeathTile
       ? hideCellInState(themEnd, G.theirDeathTile.r, G.theirDeathTile.c) : themEnd;
     themSolutionFull = G.theirDeathTile
       ? hideCellInState(themFull, G.theirDeathTile.r, G.theirDeathTile.c) : themFull;
   }
-  if (isDuel){
-    if (!G.lossHintMe && smallWorld.layout && G.myBoard){
-      G.lossHintMe = computeHintForBoard(
-        smallWorld.layout, G.myBoard, null, false,
-        G.deathTile ? G.deathTile.r : undefined,
-        G.deathTile ? G.deathTile.c : undefined
-      );
-    }
-    if (!G.lossHintThem && theirLayout && G.theirBoard){
-      G.lossHintThem = computeHintForBoard(
-        theirLayout, G.theirBoard, null, false,
-        G.theirDeathTile ? G.theirDeathTile.r : undefined,
-        G.theirDeathTile ? G.theirDeathTile.c : undefined
-      );
+
+  /* Recompute the solution from the FINAL board state so it can never
+     suggest tiles that are already uncovered (this was happening in Duel
+     after a stun — the stored hint was computed before more tiles were
+     revealed). Revealed mines now count as known mines for the solver. */
+  if (!isInf){
+    if (isTerr){
+      G.lossHintMe   = computeHintForBoard(smallWorld.layout, smallDerived.end, G.myOwner,    G.territoryUnlocked);
+      G.lossHintThem = computeHintForBoard(smallWorld.layout, smallDerived.end, G.theirOwner, G.territoryUnlocked);
+    } else if (isDuel){
+      G.lossHintMe   = computeHintForBoard(smallWorld.layout, smallDerived.end, null, false);
+      G.lossHintThem = computeHintForBoard(theirLayout, themEnd, null, false);
+    } else {
+      G.lossHintMe   = computeHintForBoard(smallWorld.layout, smallDerived.end, null, false);
     }
   }
+
   const hasHints = !isInf && !!(G.lossHintMe || G.lossHintThem);
   const hintBtnHtml = hasHints ? '<button id="btnShowHints">💡 SHOW SOLUTION</button>' : '';
   const fullMapBtnHtml = (isInf && hasFullWorld) ? '<button id="btnFullMap">🗺️ FULL MAP</button>' : '';
@@ -8527,8 +8557,6 @@ function showMapReview(){
     const useFullMap = isInf && showingFullMap && hasFullWorld;
     const meWorld = useFullMap ? fullWorld : smallWorld;
     const meDer   = useFullMap ? getFullDerived() : smallDerived;
-    const meHints   = (showingHints && G.lossHintMe && !useFullMap) ? hintRenderState(G.lossHintMe) : null;
-    const themHints = (showingHints && G.lossHintThem) ? hintRenderState(G.lossHintThem) : null;
     const meState = showingFull
       ? (showingHints ? meDer.solFull : meDer.full)
       : (showingHints ? meDer.sol     : meDer.end);
@@ -8542,6 +8570,10 @@ function showMapReview(){
     const themHighlights = G.theirDeathTile
       ? [{ r: G.theirDeathTile.r, c: G.theirDeathTile.c, color: '#ffe066' }]
       : [];
+    let meHints   = (showingHints && G.lossHintMe && !useFullMap) ? hintRenderState(G.lossHintMe) : null;
+    let themHints = (showingHints && G.lossHintThem) ? hintRenderState(G.lossHintThem) : null;
+    meHints   = filterHintsAgainstState(meHints, meState);
+    themHints = filterHintsAgainstState(themHints, themState);
     if (views[0]){
       if (isDuel && showingOpponentMap){
         views[0].render(t, {
@@ -8894,11 +8926,13 @@ function updateHUD(now){
     if (els.oppStun){
       const rem = G.them ? (G.them.stunUntil - now) : 0;
       if (rem > 0 && G.state === 'playing'){
-        const ice = G.them && G.them.stunReason === 'flag';
+        const ice = !!(G.them && G.them.stunReason === 'flag');
         els.oppStun.classList.add('on');
-        els.oppStun.classList.toggle('ice', !!ice);
+        els.oppStun.classList.toggle('ice', ice);
         const oe = els.oppStun.querySelector('[data-oemoji]');
         if (oe) setText(oe, ice ? '❄️' : '💥');
+        const os = els.oppStun.querySelector('[data-ostate]');
+        if (os) setText(os, ice ? 'FROZEN' : 'STUNNED');
         setText(els.oppStun.querySelector('b'), (rem / 1000).toFixed(1));
       } else {
         els.oppStun.classList.remove('on');

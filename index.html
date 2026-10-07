@@ -8271,17 +8271,23 @@ function buildFullRevealState(baseState, board){
 }
 
 /* End-of-game review state.
-   Every tile the player actually turned over is shown — including mines they
-   triggered (they are *revealed* bombs and must stay visible, and the
-   solution helper treats them as known mines). Mines that were never
-   revealed are left hidden, so the review never invents bombs the player
-   never touched. */
+   Safe tiles the player turned over are always shown.
+   A mine is only shown if the player actually clicked it (i.e. it is one
+   of the death tiles). Mines uncovered by the end-of-game reveal animation
+   are left hidden, so the review never paints bombs the player never hit. */
 function buildEndReviewState(baseState, board, deathTiles){
+  const list = deathTiles == null ? []
+             : (Array.isArray(deathTiles) ? deathTiles : [deathTiles]);
+  const deathSet = new Set();
+  for (const d of list){
+    if (d && d.r !== undefined && d.c !== undefined) deathSet.add(d.r + ',' + d.c);
+  }
   const s = makeBoardState(board.rows, board.cols);
   for (let r = 0; r < board.rows; r++){
     for (let c = 0; c < board.cols; c++){
-      const isMine = board.mines.has(r + ',' + c);
-      const rev = baseState.revealed[r][c];
+      const isMine  = board.mines.has(r + ',' + c);
+      const isDeath = deathSet.has(r + ',' + c);
+      const rev = baseState.revealed[r][c] && (!isMine || isDeath);
       s.revealed[r][c] = rev;
       s.flagged[r][c]  = baseState.flagged[r][c];
       s.flagAt[r][c]   = 1;

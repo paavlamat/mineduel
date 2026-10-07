@@ -116,6 +116,7 @@
     width:100%;
   }
   #arena.solo .panel{max-width:1400px}
+  #arena.duel .panel{max-width:1400px}
   #arena.territory .panel{max-width:1600px}
 
   .panel{
@@ -155,6 +156,7 @@
   .pkeys.insta{color:#ff9f43;text-shadow:0 0 10px rgba(255,159,67,.45)}
 
   .pstats{flex:none;display:flex;gap:6px;margin-bottom:8px;position:relative;z-index:1;flex-wrap:wrap}
+  .pstats.center-stats{justify-content:center}
   .pstat{
     flex:1 1 0;min-width:60px;
     background:rgba(255,255,255,.03);
@@ -170,6 +172,8 @@
     color:var(--pc);
     font-variant-numeric:tabular-nums;
   }
+  .pstat .pval.reveal-mine{color:#5dff9e;text-shadow:0 0 12px rgba(93,255,158,.45)}
+  .pstat .pval.reveal-theirs{color:#ff6b8a;text-shadow:0 0 12px rgba(255,107,138,.45)}
   button.pstat-action{
     flex:0 0 auto;
     font-family:inherit;
@@ -273,7 +277,7 @@
   @keyframes stunpulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.08);opacity:.85}}
 
   .oppstun{
-    position:absolute;top:12px;right:12px;display:none;
+    position:absolute;top:12px;left:12px;display:none;
     padding:10px 18px;border-radius:99px;
     background:rgba(255,61,129,.30);border:1.5px solid rgba(255,61,129,.7);
     color:#ffb1c7;font-size:13px;letter-spacing:.16em;font-weight:900;
@@ -596,6 +600,11 @@
     padding:clamp(12px,2.4vh,30px) clamp(16px,2.6vw,44px);
     border-radius:clamp(16px,2.6vh,28px);
   }
+  .ovbox.menu-pop::-webkit-scrollbar{
+    width:0;
+    height:0;
+    display:none;
+  }
   .ovbox.menu-pop .big{
     font-size:clamp(34px,7.2vh,80px);
     line-height:1;
@@ -837,6 +846,11 @@
     scrollbar-width:thin;
     padding-right:2px;
   }
+  .lb-list::-webkit-scrollbar{
+    width:0;
+    height:0;
+    display:none;
+  }
   .lb-row{
     display:flex;align-items:center;gap:8px;
     padding:6px 8px;border-radius:8px;
@@ -868,8 +882,28 @@
     color:#4dd8ff;font-variant-numeric:tabular-nums;flex:none;
     font-size:clamp(9.5px,1.45vh,11.5px);
   }
-  .lb-row.wins .lb-val{color:#8affc1}
-  .lb-row.tiles .lb-val{color:#b98cff}
+  .lb-guest-badge{
+    display:inline-block;
+    margin-left:4px;
+    padding:1px 6px;
+    border-radius:6px;
+    font-size:.78em;
+    font-weight:900;
+    letter-spacing:.14em;
+    color:#b8cbe4;
+    background:rgba(139,154,180,.14);
+    border:1px solid rgba(139,154,180,.38);
+    vertical-align:1px;
+    text-transform:uppercase;
+    line-height:1.3;
+    text-shadow:none;
+  }
+  .lb-row.me .lb-guest-badge,
+  .lb-ov-row.me .lb-guest-badge{
+    color:#cfe4ff;
+    background:rgba(77,216,255,.14);
+    border-color:rgba(77,216,255,.42);
+  }
   .lb-empty{
     text-align:center;padding:clamp(14px,2.4vh,28px) 8px;
     font-size:clamp(9px,1.4vh,11px);letter-spacing:.1em;
@@ -942,6 +976,7 @@
     border-radius:14px;
     padding:clamp(12px,1.7vh,18px) clamp(13px,1.5vw,19px);
     min-width:0;
+    min-height:150px;
   }
   .lb-ov-card-title{
     display:flex;
@@ -979,6 +1014,7 @@
     background:rgba(77,216,255,.10);
     box-shadow:inset 0 0 0 1px rgba(77,216,255,.22);
   }
+  .lb-ov-row-empty{opacity:.32}
   .lb-ov-rank{
     text-align:center;flex:none;
     font-family:'Courier New',monospace;font-weight:900;
@@ -1099,7 +1135,7 @@
   .mapreview-foot{flex:none;display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
 
   .zoom-badge{
-    position:absolute;top:8px;left:8px;
+    position:absolute;top:8px;right:8px;
     padding:4px 10px;border-radius:99px;
     background:rgba(0,0,0,.65);border:1px solid rgba(77,216,255,.45);
     color:#4dd8ff;font-size:10px;font-weight:900;letter-spacing:.14em;
@@ -1218,29 +1254,17 @@ const FRAME_MIN_MS = 1000 / TARGET_FPS;
 const PAN_SPEED_CSS = 900;
 const ZOOM_RATE = 2.4;
 
-const OPPONENT_RENDER_MS = 33;
+/* Opponent board renders on the same 120 FPS cadence as the main board. */
+const OPPONENT_RENDER_MS = 0;
 
-/* Infinite mode: reveal radius for the death animation and map review. */
 const INFINITE_REVEAL_RADIUS = 10;
-/* Infinite mode: how far out the user can zoom. */
 const INFINITE_MIN_ZOOM = 0.6;
-/* Infinite mode: mine density multiplier (relative to the standard
-   1 mine per 4 tiles density).  Lowered from 1.5× to 0.9× so the
-   endless boards are noticeably less bomb-heavy and runs last longer. */
 const INFINITE_MINE_MULT = 0.9;
 
-/* Infinite mode: how close the camera may get (in tiles) to the
-   current board edge before the board auto-grows by GROW_TILES
-   tiles in that direction. */
 const INFINITE_EDGE_MARGIN = 5;
-/* How many tiles to add per side when the board grows.  Must be
-   even for hex (row parity is used for the odd-row x-offset). */
 const INFINITE_GROW_TILES = 50;
 
-const TILES_PER_BOMB = {
-  square: 4,
-  hex:    4
-};
+const TILES_PER_BOMB = { square: 4, hex: 4 };
 
 function bombsFor(rows, cols, style){
   const per = TILES_PER_BOMB[style] || TILES_PER_BOMB.square;
@@ -1248,16 +1272,8 @@ function bombsFor(rows, cols, style){
 }
 
 const STYLES = {
-  square: {
-    id:'square', name:'Classic',
-    cols:16, rows:16,
-    terrCols:24, terrRows:24
-  },
-  hex: {
-    id:'hex', name:'Hex Grid',
-    cols:18, rows:15,
-    terrCols:26, terrRows:20
-  }
+  square: { id:'square', name:'Classic', cols:16, rows:16, terrCols:24, terrRows:24 },
+  hex:    { id:'hex',    name:'Hex Grid', cols:18, rows:15, terrCols:26, terrRows:20 }
 };
 
 const SIZES = {
@@ -1330,14 +1346,8 @@ const MODES = {
 const HOTKEY_STORE = 'mineduel-hotkeys-v1';
 
 const DEFAULT_HOTKEYS = {
-  up:      'ArrowUp',
-  down:    'ArrowDown',
-  left:    'ArrowLeft',
-  right:   'ArrowRight',
-  dig:     'Space',
-  flag:    'KeyF',
-  zoomIn:  'ControlLeft',
-  zoomOut: 'ShiftLeft'
+  up:'ArrowUp', down:'ArrowDown', left:'ArrowLeft', right:'ArrowRight',
+  dig:'Space', flag:'KeyF', zoomIn:'ControlLeft', zoomOut:'ShiftLeft'
 };
 
 const HOTKEYS = Object.assign({}, DEFAULT_HOTKEYS);
@@ -1407,10 +1417,6 @@ function mulberry32(a){
   };
 }
 
-/* Deterministic per-tile hash in [0, 1).  Used to place mines in
-   regions that get added to the board after the initial generation
-   (see applyBoardGrowth).  Both host and guest compute the same
-   value for the same (seed, r, c), so growing keeps them in sync. */
 function hashRand(seed, r, c){
   let h = (seed >>> 0);
   h = (h + 0x9E3779B9) >>> 0;
@@ -1466,8 +1472,7 @@ function sqNeighbors(r, c, rows, cols){
     }
   return out;
 }
-const neighborsFor = style =>
-  style === 'hex' ? hexNeighbors : sqNeighbors;
+const neighborsFor = style => style === 'hex' ? hexNeighbors : sqNeighbors;
 
 function copyToClipboard(text){
   return new Promise(resolve => {
@@ -1522,50 +1527,23 @@ const SFX = {
   click(){ beep(720, 0.035, 'triangle', 0.028); },
   clickSoft(){ beep(520, 0.03, 'sine', 0.022); },
   denied(){ beep(180, 0.09, 'square', 0.03); },
-  reveal(val){
-    const v = clamp(val || 0, 0, 8);
-    beep(500 + v * 60, 0.05, 'square', 0.045);
-  },
+  reveal(val){ const v = clamp(val || 0, 0, 8); beep(500 + v * 60, 0.05, 'square', 0.045); },
   flag(){ beep(900, 0.05, 'triangle', 0.03); },
   unflag(){ beep(600, 0.05, 'triangle', 0.03); },
-  mine(){
-    beep(90, 0.5, 'sawtooth', 0.09);
-    setTimeout(() => beep(60, 0.9, 'sawtooth', 0.07), 100);
-  },
-  freeze(){
-    beep(540, 0.09, 'square', 0.04);
-    setTimeout(() => beep(380, 0.13, 'square', 0.035), 90);
-    setTimeout(() => beep(230, 0.26, 'square', 0.03), 210);
-  },
-  oppStun(){
-    beep(780, 0.07, 'triangle', 0.05);
-    setTimeout(() => beep(560, 0.09, 'triangle', 0.05), 70);
-    setTimeout(() => beep(300, 0.26, 'sawtooth', 0.05), 160);
-  },
-  unlock(){
-    beep(660, 0.10, 'triangle', 0.05);
-    setTimeout(() => beep(880, 0.12, 'triangle', 0.05), 100);
-    setTimeout(() => beep(1180, 0.22, 'triangle', 0.05), 220);
-  },
-  win(){
-    beep(880, 0.12, 'square', 0.05);
-    setTimeout(() => beep(1180, 0.2, 'square', 0.05), 140);
-  },
+  mine(){ beep(90, 0.5, 'sawtooth', 0.09); setTimeout(() => beep(60, 0.9, 'sawtooth', 0.07), 100); },
+  freeze(){ beep(540, 0.09, 'square', 0.04); setTimeout(() => beep(380, 0.13, 'square', 0.035), 90); setTimeout(() => beep(230, 0.26, 'square', 0.03), 210); },
+  oppStun(){ beep(780, 0.07, 'triangle', 0.05); setTimeout(() => beep(560, 0.09, 'triangle', 0.05), 70); setTimeout(() => beep(300, 0.26, 'sawtooth', 0.05), 160); },
+  unlock(){ beep(660, 0.10, 'triangle', 0.05); setTimeout(() => beep(880, 0.12, 'triangle', 0.05), 100); setTimeout(() => beep(1180, 0.22, 'triangle', 0.05), 220); },
+  win(){ beep(880, 0.12, 'square', 0.05); setTimeout(() => beep(1180, 0.2, 'square', 0.05), 140); },
   lose(){ beep(200, 0.35, 'sawtooth', 0.06); },
   countdown(n){ beep(520 + (3 - Math.min(n, 5)) * 110, 0.14, 'square', 0.04); },
   go(){ beep(1200, 0.22, 'square', 0.05); },
   zoom(){ beep(840, 0.04, 'sine', 0.018); }
 };
 
-/* ══════════════════════════════════════════════════════════════
-   BOARD GENERATION
-   ══════════════════════════════════════════════════════════════ */
 function territoryStarts(rows, cols){
   const r = Math.floor(rows / 2);
-  return [
-    { r, c: 1 },
-    { r, c: cols - 2 }
-  ];
+  return [{ r, c: 1 }, { r, c: cols - 2 }];
 }
 
 function placeholderBoard(style, rows, cols){
@@ -1574,19 +1552,15 @@ function placeholderBoard(style, rows, cols){
     style, cols, rows,
     mines: new Set(), adj,
     neighbors: neighborsFor(style),
-    mineCount: 0,
-    safeCount: rows * cols,
+    mineCount: 0, safeCount: rows * cols,
     start: null, starts: [], pending: true,
-    infinite: false,
-    seed: 0
+    infinite: false, seed: 0
   };
 }
 
 function openingSafeZone(rows, cols, neighbors, clickR, clickC){
   const safe = new Set();
-  const add = (r, c) => {
-    if (r >= 0 && r < rows && c >= 0 && c < cols) safe.add(r + ',' + c);
-  };
+  const add = (r, c) => { if (r >= 0 && r < rows && c >= 0 && c < cols) safe.add(r + ',' + c); };
   add(clickR, clickC);
   for (const [nr, nc] of neighbors(clickR, clickC, rows, cols)) add(nr, nc);
   return safe;
@@ -1596,9 +1570,7 @@ function genBoardDeferred(seed, style, cols, rows, mineCount, clickR, clickC, st
   const rnd = mulberry32(seed);
   const neighbors = neighborsFor(style);
   const safe = new Set();
-  const addSafe = (r, c) => {
-    if (r >= 0 && r < rows && c >= 0 && c < cols) safe.add(r + ',' + c);
-  };
+  const addSafe = (r, c) => { if (r >= 0 && r < rows && c >= 0 && c < cols) safe.add(r + ',' + c); };
   for (const s of starts){
     addSafe(s.r, s.c);
     for (const [nr, nc] of neighbors(s.r, s.c, rows, cols)) addSafe(nr, nc);
@@ -1637,49 +1609,36 @@ function genBoardDeferred(seed, style, cols, rows, mineCount, clickR, clickC, st
     style, cols, rows, mines, adj, neighbors,
     mineCount: mines.size,
     safeCount: rows * cols - mines.size,
-    start: starts[0],
-    starts,
-    infinite: false,
-    seed: seed >>> 0
+    start: starts[0], starts,
+    infinite: false, seed: seed >>> 0
   };
 }
 
-/* ══════════════════════════════════════════════════════════════
-   EXACT SOLVER
-   ══════════════════════════════════════════════════════════════ */
 function enumerateSolutions(n, constraints, maxSolutions){
   if (n === 0) return { count: 1, mineCounts: new Int32Array(0) };
   if (!maxSolutions) maxSolutions = 200000;
-
   const nc = constraints.length;
-
   for (let i = 0; i < nc; i++){
     const c = constraints[i];
     if (c.mines < 0 || c.mines > c.cells.length) return { count: 0, mineCounts: new Int32Array(n) };
   }
-
   const assignment = new Int8Array(n);
   for (let i = 0; i < n; i++) assignment[i] = -1;
   const mineCounts = new Int32Array(n);
-
   const cellCons = new Array(n);
   for (let i = 0; i < n; i++) cellCons[i] = [];
   for (let ci = 0; ci < nc; ci++){
     const cells = constraints[ci].cells;
     for (let k = 0; k < cells.length; k++) cellCons[cells[k]].push(ci);
   }
-
   const order = new Array(n);
   for (let i = 0; i < n; i++) order[i] = i;
   order.sort(function(a, b){ return cellCons[b].length - cellCons[a].length; });
-
   const conMines = new Int32Array(nc);
   const conUnassigned = new Int32Array(nc);
   for (let i = 0; i < nc; i++) conUnassigned[i] = constraints[i].cells.length;
-
   let count = 0;
   let overflow = false;
-
   function tryAssign(cell, val){
     assignment[cell] = val;
     const list = cellCons[cell];
@@ -1707,7 +1666,6 @@ function enumerateSolutions(n, constraints, maxSolutions){
     }
     assignment[cell] = -1;
   }
-
   function recurse(idx){
     if (overflow) return;
     if (idx === n){
@@ -1718,14 +1676,11 @@ function enumerateSolutions(n, constraints, maxSolutions){
     }
     const cell = order[idx];
     for (let v = 0; v <= 1; v++){
-      if (tryAssign(cell, v)){
-        recurse(idx + 1);
-      }
+      if (tryAssign(cell, v)){ recurse(idx + 1); }
       undoAssign(cell, v);
       if (overflow) return;
     }
   }
-
   recurse(0);
   if (overflow) return null;
   return { count: count, mineCounts: mineCounts };
@@ -1739,7 +1694,6 @@ function solveBoard(board, opening){
     const r = opening[i][0], c = opening[i][1];
     if (r >= 0 && r < rows && c >= 0 && c < cols) state[r * cols + c] = 1;
   }
-
   const nbrs = new Array(N);
   const adjFlat = new Int16Array(N);
   for (let r = 0; r < rows; r++){
@@ -1752,13 +1706,10 @@ function solveBoard(board, opening){
       adjFlat[i] = board.adj[r][c];
     }
   }
-
   const MAX_ITER = 400;
   const hiddenBuf = new Int32Array(16);
-
   for (let iter = 0; iter < MAX_ITER; iter++){
     let changed = false;
-
     for (let i = 0; i < N; i++){
       if (state[i] !== 1) continue;
       const a = adjFlat[i];
@@ -1780,7 +1731,6 @@ function solveBoard(board, opening){
       }
     }
     if (changed) continue;
-
     const consHidden = [], consRem = [];
     for (let i = 0; i < N; i++){
       if (state[i] !== 1) continue;
@@ -1797,8 +1747,7 @@ function solveBoard(board, opening){
       if (!h.length) continue;
       const rem = a - flags;
       if (rem < 0 || rem > h.length) continue;
-      consHidden.push(h);
-      consRem.push(rem);
+      consHidden.push(h); consRem.push(rem);
     }
     const cn = consHidden.length;
     if (cn){
@@ -1811,10 +1760,8 @@ function solveBoard(board, opening){
           arr.push(i);
         }
       }
-
       const toReveal = [], toFlag = [];
       const seenPairs = new Set();
-
       byCell.forEach(list => {
         const L = list.length;
         for (let x = 0; x < L; x++){
@@ -1823,18 +1770,15 @@ function solveBoard(board, opening){
             const key = i < j ? (i * 8192 + j) : (j * 8192 + i);
             if (seenPairs.has(key)) continue;
             seenPairs.add(key);
-
             let A = i, B = j;
             if (consHidden[A].length >= consHidden[B].length){ A = j; B = i; }
             if (consHidden[A].length >= consHidden[B].length) continue;
-
             const ha = consHidden[A], hb = consHidden[B];
             let subset = true;
             for (let t = 0; t < ha.length; t++){
               if (hb.indexOf(ha[t]) === -1){ subset = false; break; }
             }
             if (!subset) continue;
-
             const remDiff = consRem[B] - consRem[A];
             const dLen = hb.length - ha.length;
             if (remDiff === 0){
@@ -1847,7 +1791,6 @@ function solveBoard(board, opening){
           }
         }
       });
-
       let subChanged = false;
       if (toReveal.length){
         for (let k = 0; k < toReveal.length; k++){
@@ -1863,7 +1806,6 @@ function solveBoard(board, opening){
       }
       if (subChanged) continue;
     }
-
     const allCons = [];
     const hiddenSet = new Set();
     for (let i = 0; i < N; i++){
@@ -1884,7 +1826,6 @@ function solveBoard(board, opening){
       allCons.push({ cells: h, mines: rem });
       for (let k = 0; k < h.length; k++) hiddenSet.add(h[k]);
     }
-
     if (allCons.length && hiddenSet.size){
       const parent = new Map();
       const find = function(x){
@@ -1906,7 +1847,6 @@ function solveBoard(board, opening){
           if (ra !== rb) parent.set(ra, rb);
         }
       }
-
       const comps = new Map();
       for (let ci = 0; ci < allCons.length; ci++){
         const c = allCons[ci];
@@ -1916,18 +1856,14 @@ function solveBoard(board, opening){
         for (let k = 0; k < c.cells.length; k++) comp.cells.add(c.cells[k]);
         comp.constraints.push(c);
       }
-
       let deduced = false;
       comps.forEach(function(comp){
         if (deduced) return;
-
         const cells = [];
         comp.cells.forEach(function(cell){ cells.push(cell); });
         if (cells.length > 60) return;
-
         const cellIndex = new Map();
         for (let i = 0; i < cells.length; i++) cellIndex.set(cells[i], i);
-
         const localCons = [];
         for (let ci = 0; ci < comp.constraints.length; ci++){
           const c = comp.constraints[ci];
@@ -1935,28 +1871,22 @@ function solveBoard(board, opening){
           for (let k = 0; k < c.cells.length; k++) lc.push(cellIndex.get(c.cells[k]));
           localCons.push({ cells: lc, mines: c.mines });
         }
-
         const res = enumerateSolutions(cells.length, localCons, 200000);
         if (!res || res.count === 0) return;
-
         for (let i = 0; i < cells.length; i++){
           const cell = cells[i];
           if (state[cell] !== 0) continue;
           if (res.mineCounts[i] === 0){
-            state[cell] = 1;
-            deduced = true;
+            state[cell] = 1; deduced = true;
           } else if (res.mineCounts[i] === res.count){
-            state[cell] = 2;
-            deduced = true;
+            state[cell] = 2; deduced = true;
           }
         }
       });
       if (deduced) continue;
     }
-
     break;
   }
-
   let count = 0;
   for (let i = 0; i < N; i++) if (state[i] === 1) count++;
   return { count: count, state: state };
@@ -1969,7 +1899,6 @@ function solveBoardTerritory(board, starts){
   const owner = new Int8Array(N);
   const adjFlat = new Int16Array(N);
   const nbrs = new Array(N);
-
   for (let r = 0; r < rows; r++){
     for (let c = 0; c < cols; c++){
       const i = r * cols + c;
@@ -1980,13 +1909,10 @@ function solveBoardTerritory(board, starts){
       nbrs[i] = list;
     }
   }
-
   function canTouch(i, who){
     if (owner[i] === who) return true;
     const list = nbrs[i];
-    for (let k = 0; k < list.length; k++){
-      if (owner[list[k]] === who) return true;
-    }
+    for (let k = 0; k < list.length; k++) if (owner[list[k]] === who) return true;
     return false;
   }
   function toucher(i){
@@ -1994,7 +1920,6 @@ function solveBoardTerritory(board, starts){
     if (canTouch(i, 2)) return 2;
     return 0;
   }
-
   function revealAt(r, c, who){
     const stack = [r * cols + c];
     while (stack.length){
@@ -2015,7 +1940,6 @@ function solveBoardTerritory(board, starts){
     }
     return true;
   }
-
   for (let s = 0; s < starts.length && s < 2; s++){
     const who = s + 1;
     const st = starts[s];
@@ -2026,13 +1950,10 @@ function solveBoardTerritory(board, starts){
       if (!revealAt(ring[k][0], ring[k][1], who)) return null;
     }
   }
-
   const MAX_ITER = 400;
   const hiddenBuf = new Int32Array(64);
-
   for (let iter = 0; iter < MAX_ITER; iter++){
     let changed = false;
-
     for (let i = 0; i < N; i++){
       if (state[i] !== 1) continue;
       const a = adjFlat[i];
@@ -2061,14 +1982,12 @@ function solveBoardTerritory(board, starts){
           if (state[j] !== 0) continue;
           const who = toucher(j);
           if (!who) continue;
-          state[j] = 2;
-          owner[j] = who;
+          state[j] = 2; owner[j] = who;
           changed = true;
         }
       }
     }
     if (changed) continue;
-
     const consHidden = [], consRem = [];
     for (let i = 0; i < N; i++){
       if (state[i] !== 1) continue;
@@ -2085,8 +2004,7 @@ function solveBoardTerritory(board, starts){
       if (!h.length) continue;
       const rem = a - flags;
       if (rem < 0 || rem > h.length) continue;
-      consHidden.push(h);
-      consRem.push(rem);
+      consHidden.push(h); consRem.push(rem);
     }
     const cn = consHidden.length;
     if (cn){
@@ -2145,13 +2063,11 @@ function solveBoardTerritory(board, starts){
         if (state[idx] !== 0) continue;
         const who = toucher(idx);
         if (!who) continue;
-        state[idx] = 2;
-        owner[idx] = who;
+        state[idx] = 2; owner[idx] = who;
         subChanged = true;
       }
       if (subChanged) continue;
     }
-
     const allCons = [];
     const hiddenSet = new Set();
     for (let i = 0; i < N; i++){
@@ -2172,7 +2088,6 @@ function solveBoardTerritory(board, starts){
       allCons.push({ cells: h, mines: rem });
       for (let k = 0; k < h.length; k++) hiddenSet.add(h[k]);
     }
-
     let deduced = false;
     let boom = false;
     if (allCons.length && hiddenSet.size){
@@ -2196,7 +2111,6 @@ function solveBoardTerritory(board, starts){
           if (ra !== rb) parent.set(ra, rb);
         }
       }
-
       const comps = new Map();
       for (let ci = 0; ci < allCons.length; ci++){
         const c = allCons[ci];
@@ -2206,16 +2120,13 @@ function solveBoardTerritory(board, starts){
         for (let k = 0; k < c.cells.length; k++) comp.cells.add(c.cells[k]);
         comp.constraints.push(c);
       }
-
       comps.forEach(function(comp){
         if (deduced || boom) return;
         const cells = [];
         comp.cells.forEach(function(cell){ cells.push(cell); });
         if (cells.length > 60) return;
-
         const cellIndex = new Map();
         for (let i = 0; i < cells.length; i++) cellIndex.set(cells[i], i);
-
         const localCons = [];
         for (let ci = 0; ci < comp.constraints.length; ci++){
           const c = comp.constraints[ci];
@@ -2223,10 +2134,8 @@ function solveBoardTerritory(board, starts){
           for (let k = 0; k < c.cells.length; k++) lc.push(cellIndex.get(c.cells[k]));
           localCons.push({ cells: lc, mines: c.mines });
         }
-
         const res = enumerateSolutions(cells.length, localCons, 200000);
         if (!res || res.count === 0) return;
-
         for (let i = 0; i < cells.length; i++){
           const cell = cells[i];
           if (state[cell] !== 0) continue;
@@ -2239,8 +2148,7 @@ function solveBoardTerritory(board, starts){
             const cr = (cell / cols) | 0;
             if (!revealAt(cr, cell - cr * cols, who)){ boom = true; return; }
           } else {
-            state[cell] = 2;
-            owner[cell] = who;
+            state[cell] = 2; owner[cell] = who;
           }
           deduced = true;
         }
@@ -2248,10 +2156,8 @@ function solveBoardTerritory(board, starts){
     }
     if (boom) return null;
     if (deduced) continue;
-
     break;
   }
-
   let count = 0;
   for (let i = 0; i < N; i++) if (state[i] === 1) count++;
   return { count: count, state: state };
@@ -2265,18 +2171,12 @@ function infiniteStartIsPlayable(board, startR, startC, R){
   const c1 = Math.min(board.cols - 1, startC + R);
   const nrows = r1 - r0 + 1;
   const ncols = c1 - c0 + 1;
-
   const nb = {
-    style: board.style,
-    cols: ncols, rows: nrows,
-    mines: new Set(),
-    adj: [],
-    neighbors: board.neighbors,
-    mineCount: 0, safeCount: 0,
-    infinite: false
+    style: board.style, cols: ncols, rows: nrows,
+    mines: new Set(), adj: [], neighbors: board.neighbors,
+    mineCount: 0, safeCount: 0, infinite: false
   };
   for (let i = 0; i < nrows; i++) nb.adj.push(new Array(ncols).fill(0));
-
   for (let r = r0; r <= r1; r++){
     for (let c = c0; c <= c1; c++){
       const nr = r - r0, nc = c - c0;
@@ -2290,7 +2190,6 @@ function infiniteStartIsPlayable(board, startR, startC, R){
     }
   }
   nb.safeCount = nrows * ncols - nb.mineCount;
-
   const sr = startR - r0;
   const sc = startC - c0;
   const res = solveBoard(nb, [[sr, sc]]);
@@ -2305,7 +2204,6 @@ function generateSolvableBoard(seed, style, cols, rows, mineCount,
     b.infinite = true;
     return { board: b, seed, score: b.safeCount };
   }
-
   const solve = b => {
     if (!territory){
       const r = solveBoard(b, opening);
@@ -2314,16 +2212,13 @@ function generateSolvableBoard(seed, style, cols, rows, mineCount,
     const r = solveBoardTerritory(b, starts);
     return r || { count: 0 };
   };
-
   const startedAt = Date.now();
   const BUDGET_MS = territory ? 2500 : 3500;
   const STEPS = [1.0, 0.98, 0.96, 0.94, 0.92, 0.90];
   const perStep = territory ? 150 : 300;
   const minMines = Math.max(3, Math.floor(mineCount * 0.90));
-
   let attempt = 0;
   let best = null, bestSeed = seed, bestScore = -1;
-
   for (let si = 0; si < STEPS.length; si++){
     const mines = Math.max(minMines, Math.floor(mineCount * STEPS[si]));
     for (let k = 0; k < perStep; k++){
@@ -2342,7 +2237,6 @@ function generateSolvableBoard(seed, style, cols, rows, mineCount,
     }
     if ((Date.now() - startedAt) > BUDGET_MS) break;
   }
-
   if (!best){
     const s = (seed + 0xDEADBEEF) >>> 0;
     best = genBoardDeferred(s, style, cols, rows,
@@ -2483,10 +2377,7 @@ function applyGeneratedBoard(res, clickR, clickC){
 let pregenTarget = null;
 let pregenPromise = null;
 
-function cancelPregen(){
-  pregenTarget = null;
-  pregenPromise = null;
-}
+function cancelPregen(){ pregenTarget = null; pregenPromise = null; }
 
 function kickPregen(){
   cancelPregen();
@@ -2497,14 +2388,10 @@ function kickPregen(){
   const r = d.rows >> 1, c = d.cols >> 1;
   pregenTarget = { r: r, c: c };
   pregenPromise = generateBoardAsync({
-    seed: G.mySeed >>> 0,
-    style: G.config.style,
+    seed: G.mySeed >>> 0, style: G.config.style,
     cols: d.cols, rows: d.rows, mineCount: d.mines,
-    clickR: r, clickC: c,
-    starts: [{ r: r, c: c }],
-    opening: [[r, c]],
-    territory: false,
-    infinite: false
+    clickR: r, clickC: c, starts: [{ r: r, c: c }],
+    opening: [[r, c]], territory: false, infinite: false
   });
 }
 
@@ -2513,7 +2400,6 @@ let genInFlight = null;
 function ensureBoardReadyAsync(clickR, clickC){
   if (!G.boardPending) return genInFlight || Promise.resolve();
   if (genInFlight) return genInFlight;
-
   const d = dimsFor(G.config);
   const mode = G.config.mode;
   const isInf = isInfiniteSize(G.config.size);
@@ -2522,7 +2408,6 @@ function ensureBoardReadyAsync(clickR, clickC){
   const opening = (clickR === undefined || clickC === undefined)
     ? starts.map(s => [s.r, s.c])
     : [[clickR, clickC]];
-
   let promise;
   if (pregenTarget && pregenPromise &&
       clickR !== undefined && clickC !== undefined &&
@@ -2530,17 +2415,14 @@ function ensureBoardReadyAsync(clickR, clickC){
     promise = pregenPromise;
   } else {
     promise = generateBoardAsync({
-      seed: G.mySeed >>> 0,
-      style: G.config.style,
+      seed: G.mySeed >>> 0, style: G.config.style,
       cols: d.cols, rows: d.rows, mineCount: d.mines,
       clickR: clickR, clickC: clickC,
       starts: starts, opening: opening,
-      territory: mode === 'territory',
-      infinite: isInf
+      territory: mode === 'territory', infinite: isInf
     });
   }
   cancelPregen();
-
   genInFlight = promise.then(res => {
     genInFlight = null;
     if (!G.boardPending) return;
@@ -2549,13 +2431,11 @@ function ensureBoardReadyAsync(clickR, clickC){
     genInFlight = null;
     if (!G.boardPending) return;
     applyGeneratedBoard(generateBoardSync({
-      seed: G.mySeed >>> 0,
-      style: G.config.style,
+      seed: G.mySeed >>> 0, style: G.config.style,
       cols: d.cols, rows: d.rows, mineCount: d.mines,
       clickR: clickR, clickC: clickC,
       starts: starts, opening: opening,
-      territory: mode === 'territory',
-      infinite: isInf
+      territory: mode === 'territory', infinite: isInf
     }), clickR, clickC);
   });
   return genInFlight;
@@ -2582,12 +2462,6 @@ function rebuildBoardFromMines(layout, mineArr, style){
   layout.pending = false;
 }
 
-/* ══════════════════════════════════════════════════════════════
-   INFINITE BOARD GROWTH
-   ══════════════════════════════════════════════════════════════ */
-
-/* Returns the tile rectangle currently visible in the given view,
-   in board-local tile coordinates.  May extend past 0 / rows / cols. */
 function computeVisibleTiles(view){
   const m = view.metrics;
   if (!m) return null;
@@ -2597,7 +2471,6 @@ function computeVisibleTiles(view){
   const worldTop    = -view.panY / scale;
   const worldRight  = (view.pw - view.panX) / scale;
   const worldBottom = (view.ph - view.panY) / scale;
-
   if (m.style === 'hex'){
     const { size, pad, HW } = m;
     const rowStep = size * 1.5;
@@ -2616,15 +2489,11 @@ function computeVisibleTiles(view){
   return { r0, r1, c0, c1 };
 }
 
-/* Shift a board-state's 2D arrays and dimensions to make room for
-   `top`/`bottom`/`left`/`right` new rows/columns.  All previous
-   content is preserved at its new (shifted) coordinates. */
 function growBoardStateArrays(bs, top, bottom, left, right){
   if (!bs) return;
   const oldRows = bs.rows, oldCols = bs.cols;
   const newRows = oldRows + top + bottom;
   const newCols = oldCols + left + right;
-
   function shift2D(arr, fill){
     const out = [];
     for (let r = 0; r < newRows; r++) out.push(new Array(newCols).fill(fill));
@@ -2635,7 +2504,6 @@ function growBoardStateArrays(bs, top, bottom, left, right){
     }
     return out;
   }
-
   bs.revealed = shift2D(bs.revealed, false);
   bs.flagged  = shift2D(bs.flagged, false);
   bs.owner    = shift2D(bs.owner, 0);
@@ -2646,7 +2514,6 @@ function growBoardStateArrays(bs, top, bottom, left, right){
   bs.cols = newCols;
 }
 
-/* Shift all tile coordinates inside a hint object by (top, left). */
 function shiftHint(hint, top, left){
   if (!hint) return;
   if (top === 0 && left === 0) return;
@@ -2667,23 +2534,13 @@ function shiftHint(hint, top, left){
   }
 }
 
-/* Grow the infinite board by `top`/`bottom`/`left`/`right` tiles on
-   each side.  Everything that references a tile (board + board-state
-   arrays, mine keys, cursor, start position, hints, camera pan) is
-   shifted so nothing changes visually.  New tiles are mine-seeded
-   with `hashRand(seed, r, c)`, which is deterministic across clients
-   so a co-op partner computing the same growth ends up with the
-   same field. */
 function applyBoardGrowth(top, bottom, left, right){
   const board = G.board;
   const bs = G.myBoard;
   if (!board || !bs) return;
-
   const oldRows = board.rows, oldCols = board.cols;
   const newRows = oldRows + top + bottom;
   const newCols = oldCols + left + right;
-
-  /* 1. Shift existing mine keys. */
   const newMines = new Set();
   board.mines.forEach(key => {
     const idx = key.indexOf(',');
@@ -2692,21 +2549,17 @@ function applyBoardGrowth(top, bottom, left, right){
     const c = parseInt(key.slice(idx + 1), 10) + left;
     newMines.add(r + ',' + c);
   });
-
-  /* 2. Seed mines for the newly added border tiles. */
   const seed = (board.seed !== undefined) ? (board.seed >>> 0) : (G.boardSeed >>> 0);
   const density = INFINITE_MINE_MULT / (TILES_PER_BOMB[board.style] || 4);
   for (let r = 0; r < newRows; r++){
     const rowIsOld = (r >= top && r < top + oldRows);
     for (let c = 0; c < newCols; c++){
       const colIsOld = (c >= left && c < left + oldCols);
-      if (rowIsOld && colIsOld) continue; /* preserved tile */
+      if (rowIsOld && colIsOld) continue;
       if (hashRand(seed, r, c) < density) newMines.add(r + ',' + c);
     }
   }
   board.mines = newMines;
-
-  /* 3. Reallocate and shift the adjacency grid. */
   const newAdj = [];
   for (let r = 0; r < newRows; r++) newAdj.push(new Array(newCols).fill(0));
   for (let r = 0; r < oldRows; r++){
@@ -2717,47 +2570,23 @@ function applyBoardGrowth(top, bottom, left, right){
   board.adj = newAdj;
   board.rows = newRows;
   board.cols = newCols;
-
-  /* 4. Recompute adjacency across the whole (now-larger) board. */
   recomputeAdjacency(board);
   board.mineCount = board.mines.size;
   board.safeCount = newRows * newCols - board.mineCount;
-
-  /* 5. Grow the two board-state arrays. */
   growBoardStateArrays(bs, top, bottom, left, right);
   if (G.theirBoard && G.theirBoard !== bs){
     growBoardStateArrays(G.theirBoard, top, bottom, left, right);
   }
-
-  /* 6. Shift all cursor / position / hint references. */
-  if (G.me){
-    G.me.cursor.r += top;
-    G.me.cursor.c += left;
-  }
-  if (G.them){
-    G.them.cursor.r += top;
-    G.them.cursor.c += left;
-  }
+  if (G.me){ G.me.cursor.r += top; G.me.cursor.c += left; }
+  if (G.them){ G.them.cursor.r += top; G.them.cursor.c += left; }
   G.myStartR += top;
   G.myStartC += left;
-  if (G.deathTile){
-    G.deathTile.r += top; G.deathTile.c += left;
-  }
-  if (G.theirDeathTile){
-    G.theirDeathTile.r += top; G.theirDeathTile.c += left;
-  }
-  if (G.boardOpening){
-    G.boardOpening.r += top; G.boardOpening.c += left;
-  }
-  if (G.pendingDig){
-    G.pendingDig.r += top; G.pendingDig.c += left;
-  }
+  if (G.deathTile){ G.deathTile.r += top; G.deathTile.c += left; }
+  if (G.theirDeathTile){ G.theirDeathTile.r += top; G.theirDeathTile.c += left; }
+  if (G.boardOpening){ G.boardOpening.r += top; G.boardOpening.c += left; }
+  if (G.pendingDig){ G.pendingDig.r += top; G.pendingDig.c += left; }
   shiftHint(G.lossHintMe, top, left);
   shiftHint(G.lossHintThem, top, left);
-
-  /* 7. Compensate the camera pan so the viewport doesn't jump.
-        Tile (r, c) moved to (r+top, c+left) in world pixels; we need
-        pan -= deltaWorld * scale to keep the same screen position. */
   const view = G.viewMe;
   if (view && view.metrics){
     const m = view.metrics;
@@ -2775,59 +2604,39 @@ function applyBoardGrowth(top, bottom, left, right){
     view.panY -= dwy * scale;
   }
   if (G.viewAnim) G.viewAnim.active = false;
-
-  /* 8. In co-op, the shared board was regenerated - the guest should
-        receive the update so both stay in sync.  (In solo mode this
-        is a no-op.) */
   if (G.config.mode === 'coop' && G.role === 'host' && G.conn && G.conn.open){
-    try {
-      send({
-        t: 'grow',
-        top: top, bottom: bottom, left: left, right: right
-      });
-    } catch(e){}
+    try { send({ t: 'grow', top: top, bottom: bottom, left: left, right: right }); } catch(e){}
   }
 }
 
-/* Detect whether the camera is nearing the board edge and grow the
-   board if so.  Called from the render loop when in infinite mode. */
 let lastGrowthCheck = 0;
 function growInfiniteBoardIfNeeded(now){
   if (!isInfiniteSize(G.config.size)) return;
   if (G.state !== 'playing') return;
   if (!G.viewMe || !G.board || !G.myBoard || !G.me) return;
+  /* In co-op, only the host drives growth so both players stay in sync. */
+  if (G.config.mode === 'coop' && G.role === 'guest') return;
   if (now - lastGrowthCheck < 250) return;
   lastGrowthCheck = now;
-
   const view = G.viewMe;
   const visible = computeVisibleTiles(view);
   if (!visible) return;
-
   const board = G.board;
   const M = INFINITE_EDGE_MARGIN;
   const G_ = INFINITE_GROW_TILES;
-
   let top = 0, bottom = 0, left = 0, right = 0;
   if (visible.r0 < M) top = G_;
   if (visible.r1 > board.rows - 1 - M) bottom = G_;
   if (visible.c0 < M) left = G_;
   if (visible.c1 > board.cols - 1 - M) right = G_;
-
-  /* For hex, growing by an odd number of rows at the top would flip
-     the row-parity used for the odd-row x offset, causing a visible
-     one-half-hex horizontal jump.  Round to even. */
   if (board.style === 'hex'){
     if (top & 1) top++;
     if (bottom & 1) bottom++;
   }
-
   if (!top && !bottom && !left && !right) return;
   applyBoardGrowth(top, bottom, left, right);
 }
 
-/* ══════════════════════════════════════════════════════════════
-   LOSS HINT — post-mortem analysis of a losing move.
-   ══════════════════════════════════════════════════════════════ */
 function snapshotBoardState(bs){
   if (!bs) return null;
   const rows = bs.rows, cols = bs.cols;
@@ -2878,7 +2687,6 @@ function getHintMoves(board, snap){
   if (!board || !snap) return null;
   const rows = board.rows, cols = board.cols;
   const N = rows * cols;
-
   const state = new Uint8Array(N);
   for (let r = 0; r < rows; r++){
     for (let c = 0; c < cols; c++){
@@ -2887,7 +2695,6 @@ function getHintMoves(board, snap){
       else if (snap.flagged[r][c] && board.mines.has(r + ',' + c)) state[i] = 2;
     }
   }
-
   const nbrs = new Array(N);
   const adjFlat = new Int16Array(N);
   for (let r = 0; r < rows; r++){
@@ -2900,14 +2707,12 @@ function getHintMoves(board, snap){
       adjFlat[i] = board.adj[r][c];
     }
   }
-
   const reveals = [];
   const flags = [];
   const wrongs = [];
   const supports = new Set();
   const revealSet = new Set();
   const flagSet = new Set();
-
   for (let r = 0; r < rows; r++){
     for (let c = 0; c < cols; c++){
       if (!snap.flagged[r][c]) continue;
@@ -2915,7 +2720,6 @@ function getHintMoves(board, snap){
       wrongs.push({ r, c, supports: [] });
     }
   }
-
   function addReveal(i, srcIdxs){
     if (revealSet.has(i)) return;
     revealSet.add(i);
@@ -2932,9 +2736,7 @@ function getHintMoves(board, snap){
       supports: srcIdxs.map(k => [Math.floor(k / cols), k % cols])
     });
   }
-
   const hiddenBuf = [];
-
   for (let i = 0; i < N; i++){
     if (state[i] !== 1) continue;
     const a = adjFlat[i];
@@ -2960,7 +2762,6 @@ function getHintMoves(board, snap){
   if (reveals.length || flags.length || wrongs.length){
     return { reveal: reveals, flag: flags, wrong: wrongs, supports: supports };
   }
-
   const consHidden = [], consRem = [], consSrc = [];
   for (let i = 0; i < N; i++){
     if (state[i] !== 1) continue;
@@ -2999,22 +2800,18 @@ function getHintMoves(board, snap){
           const key = i < j ? (i * 8192 + j) : (j * 8192 + i);
           if (seenPairs.has(key)) continue;
           seenPairs.add(key);
-
           let A = i, B = j;
           if (consHidden[A].length >= consHidden[B].length){ A = j; B = i; }
           if (consHidden[A].length >= consHidden[B].length) continue;
-
           const ha = consHidden[A], hb = consHidden[B];
           let subset = true;
           for (let t = 0; t < ha.length; t++){
             if (hb.indexOf(ha[t]) === -1){ subset = false; break; }
           }
           if (!subset) continue;
-
           const remDiff = consRem[B] - consRem[A];
           const dLen = hb.length - ha.length;
           const srcA = consSrc[A], srcB = consSrc[B];
-
           if (remDiff === 0){
             for (let t = 0; t < hb.length; t++){
               if (ha.indexOf(hb[t]) === -1) addReveal(hb[t], [srcA, srcB]);
@@ -3035,7 +2832,6 @@ function getHintMoves(board, snap){
   if (reveals.length || flags.length || wrongs.length){
     return { reveal: reveals, flag: flags, wrong: wrongs, supports: supports };
   }
-
   const allCons = [];
   const hiddenSet = new Set();
   for (let i = 0; i < N; i++){
@@ -3056,7 +2852,6 @@ function getHintMoves(board, snap){
     allCons.push({ cells: h, mines: rem, src: i });
     for (let k = 0; k < h.length; k++) hiddenSet.add(h[k]);
   }
-
   if (allCons.length && hiddenSet.size){
     const parent = new Map();
     const find = function(x){
@@ -3078,7 +2873,6 @@ function getHintMoves(board, snap){
         if (ra !== rb) parent.set(ra, rb);
       }
     }
-
     const comps = new Map();
     for (let ci = 0; ci < allCons.length; ci++){
       const c = allCons[ci];
@@ -3088,15 +2882,12 @@ function getHintMoves(board, snap){
       for (let k = 0; k < c.cells.length; k++) comp.cells.add(c.cells[k]);
       comp.constraints.push(c);
     }
-
     comps.forEach(function(comp){
       const cells = [];
       comp.cells.forEach(function(cell){ cells.push(cell); });
       if (cells.length > 40) return;
-
       const cellIndex = new Map();
       for (let i = 0; i < cells.length; i++) cellIndex.set(cells[i], i);
-
       const localCons = [];
       const srcMap = [];
       for (let ci = 0; ci < comp.constraints.length; ci++){
@@ -3106,10 +2897,8 @@ function getHintMoves(board, snap){
         localCons.push({ cells: lc, mines: c.mines });
         srcMap.push(c.src);
       }
-
       const res = enumerateSolutions(cells.length, localCons, 200000);
       if (!res || res.count === 0) return;
-
       for (let i = 0; i < cells.length; i++){
         const cell = cells[i];
         if (state[cell] !== 0) continue;
@@ -3129,7 +2918,6 @@ function getHintMoves(board, snap){
       }
     });
   }
-
   if (reveals.length || flags.length || wrongs.length){
     return { reveal: reveals, flag: flags, wrong: wrongs, supports: supports };
   }
@@ -3193,9 +2981,6 @@ function mergeHintStates(a, b){
   return { reveal: reveal, flag: flag, wrong: wrong, supports: supports };
 }
 
-/* ══════════════════════════════════════════════════════════════
-   FIREBASE / NAME REGISTRY / LEADERBOARD
-   ══════════════════════════════════════════════════════════════ */
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyD4ugISesi_WPh-xC4fdGI90SYmqyb3BtE",
   authDomain: "mineduel-b8dbd.firebaseapp.com",
@@ -3223,26 +3008,11 @@ function initFirebase(){
     firebase.initializeApp(FIREBASE_CONFIG);
     db = firebase.firestore();
     auth = firebase.auth();
-
-    const settle = () => {
-      if (!fbReady){ fbReady = true; fbResolve(); }
-    };
-
-    auth.onAuthStateChanged(u => {
-      fbUser = u || null;
-      if (u) settle();
-    });
-
+    const settle = () => { if (!fbReady){ fbReady = true; fbResolve(); } };
+    auth.onAuthStateChanged(u => { fbUser = u || null; if (u) settle(); });
     auth.signInAnonymously()
-      .then(cred => {
-        fbUser = cred.user;
-        console.log('[fb] signed in anonymously as', cred.user.uid);
-        settle();
-      })
-      .catch(err => {
-        console.warn('[fb] anonymous sign-in failed:', err && err.code);
-        settle();
-      });
+      .then(cred => { fbUser = cred.user; console.log('[fb] signed in anonymously as', cred.user.uid); settle(); })
+      .catch(err => { console.warn('[fb] anonymous sign-in failed:', err && err.code); settle(); });
   } catch(e){
     console.warn('[fb] init failed:', e);
     if (!fbReady){ fbReady = true; fbResolve(); }
@@ -3254,23 +3024,12 @@ function trySignIn(){
   return new Promise(resolve => {
     if (!auth){ resolve(null); return; }
     let done = false;
-    const finish = u => {
-      if (done) return;
-      done = true;
-      clearTimeout(timer);
-      resolve(u || null);
-    };
-    const timer = setTimeout(() => {
-      console.warn('[fb] sign-in timed out');
-      finish(null);
-    }, 9000);
+    const finish = u => { if (done) return; done = true; clearTimeout(timer); resolve(u || null); };
+    const timer = setTimeout(() => { console.warn('[fb] sign-in timed out'); finish(null); }, 9000);
     try {
       auth.signInAnonymously()
         .then(cred => { fbUser = cred.user; finish(cred.user); })
-        .catch(err => {
-          console.warn('[fb] sign-in failed:', err && (err.code || err.message));
-          finish(null);
-        });
+        .catch(err => { console.warn('[fb] sign-in failed:', err && (err.code || err.message)); finish(null); });
     } catch(e){
       console.warn('[fb] sign-in threw:', e);
       finish(null);
@@ -3296,13 +3055,7 @@ const LB_CONFIG_KEYS = (() => {
   return out;
 })();
 
-const LB_STATE = {
-  category: 'time',
-  data: [],
-  loading: false,
-  error: null,
-  currentKey: ''
-};
+const LB_STATE = { category: 'time', data: [], loading: false, error: null, currentKey: '' };
 
 function lbKey(mode, style, size, insta){
   return mode + (insta ? '_insta' : '') + '_' + style + '_' + size;
@@ -3315,18 +3068,10 @@ function currentLbCategory(){
   return LB_STATE.category || 'time';
 }
 
-function getPlayerName(){
-  try { return localStorage.getItem('mineduel-name') || ''; } catch(e){ return ''; }
-}
-function setPlayerName(n){
-  try { localStorage.setItem('mineduel-name', n); } catch(e){}
-}
-function getPlayerNameKey(){
-  try { return localStorage.getItem('mineduel-nameKey') || ''; } catch(e){ return ''; }
-}
-function setPlayerNameKey(k){
-  try { localStorage.setItem('mineduel-nameKey', k); } catch(e){}
-}
+function getPlayerName(){ try { return localStorage.getItem('mineduel-name') || ''; } catch(e){ return ''; } }
+function setPlayerName(n){ try { localStorage.setItem('mineduel-name', n); } catch(e){} }
+function getPlayerNameKey(){ try { return localStorage.getItem('mineduel-nameKey') || ''; } catch(e){ return ''; } }
+function setPlayerNameKey(k){ try { localStorage.setItem('mineduel-nameKey', k); } catch(e){} }
 function clearPlayerName(){
   try {
     localStorage.removeItem('mineduel-name');
@@ -3372,14 +3117,8 @@ function formatClock(ms){
   const s = total - m * 60;
   return m + ':' + (s < 10 ? '0' : '') + s.toFixed(1);
 }
-function formatWins(n){
-  n = n || 0;
-  return n + (n === 1 ? ' win' : ' wins');
-}
-function formatTiles(n){
-  n = Math.max(0, Math.round(n || 0));
-  return n + (n === 1 ? ' tile' : ' tiles');
-}
+function formatWins(n){ n = n || 0; return n + (n === 1 ? ' win' : ' wins'); }
+function formatTiles(n){ n = Math.max(0, Math.round(n || 0)); return n + (n === 1 ? ' tile' : ' tiles'); }
 
 function tilesTimeText(e){
   if (typeof e.bestTime === 'number' && e.bestTime > 0) return formatTime(e.bestTime);
@@ -3394,7 +3133,6 @@ function tilesTitle(e){
 (function initLbTooltip(){
   let tip = null;
   let current = null;
-
   const ensure = () => {
     if (tip) return tip;
     tip = document.createElement('div');
@@ -3403,7 +3141,6 @@ function tilesTitle(e){
     document.body.appendChild(tip);
     return tip;
   };
-
   const place = (x, y) => {
     const el = ensure();
     const pad = 14;
@@ -3417,12 +3154,7 @@ function tilesTitle(e){
     el.style.left = left + 'px';
     el.style.top  = top + 'px';
   };
-
-  const hide = () => {
-    current = null;
-    if (tip) tip.classList.add('hidden');
-  };
-
+  const hide = () => { current = null; if (tip) tip.classList.add('hidden'); };
   document.addEventListener('pointerover', e => {
     if (e.pointerType && e.pointerType !== 'mouse') return;
     const t = e.target;
@@ -3434,13 +3166,11 @@ function tilesTitle(e){
     box.classList.remove('hidden');
     place(e.clientX, e.clientY);
   });
-
   document.addEventListener('pointermove', e => {
     if (!current) return;
     if (!current.isConnected){ hide(); return; }
     place(e.clientX, e.clientY);
   });
-
   document.addEventListener('pointerout', e => {
     if (!current) return;
     const t = e.target;
@@ -3451,7 +3181,6 @@ function tilesTitle(e){
     if (to === el) return;
     hide();
   });
-
   window.addEventListener('scroll', hide, true);
 })();
 
@@ -3477,26 +3206,20 @@ async function registerName(raw, isChange){
   if (v.error) throw new Error(v.error);
   const name = v.name;
   const key  = v.key;
-
   await fbReadyPromise;
-
   if (!db || !auth){
     setPlayerName(name); setPlayerNameKey(key);
     return { name, offline: true };
   }
-
   let user = auth.currentUser;
   if (!user) user = await trySignIn();
-
   if (!user){
     console.warn('[fb] auth unavailable — name saved locally only');
     setPlayerName(name); setPlayerNameKey(key);
     return { name, offline: true };
   }
-
   if (isChange) await changePlayerName(name);
   else          await reserveName(name, user.uid);
-
   setPlayerName(name);
   setPlayerNameKey(key);
   return { name, offline: false };
@@ -3521,20 +3244,16 @@ async function isNameRegisteredOnServer(){
 async function recordWin(mode, style, size, insta, timeMs, countAsWin, partner, tiles){
   if (!db || !auth) return;
   if (isGuest) return;
-
   const name = getPlayerName();
   const nameKey = getPlayerNameKey();
   if (!name || !nameKey) return;
-
   await fbReadyPromise;
   if (!auth.currentUser) return;
-
   const registered = await isNameRegisteredOnServer();
   if (!registered){
     console.warn('[fb] "' + name + '" is not a registered name — score not submitted');
     return;
   }
-
   const key = lbKey(mode, style, size, insta);
   const isDuel = (mode === 'duel');
   const isTerr = (mode === 'territory');
@@ -3543,53 +3262,32 @@ async function recordWin(mode, style, size, insta, timeMs, countAsWin, partner, 
   const timeVal = Math.max(1, Math.round(timeMs || 0));
   const tilesVal = Math.max(0, Math.round(tiles || 0));
   const addWin = (countAsWin === undefined) ? true : !!countAsWin;
-
   const useTeam = isTeamMode &&
                   partner && partner.name && partner.key &&
                   partner.key !== nameKey;
-
   if (!useTeam || !isInf){
     try {
       const ref = db.collection('leaderboards').doc(key).collection('entries').doc(nameKey);
       const snap = await ref.get();
-
       if (isInf){
         if (!snap.exists){
-          await ref.set({
-            name,
-            bestTiles: tilesVal,
-            bestTime: timeVal,
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-          });
+          await ref.set({ name, bestTiles: tilesVal, bestTime: timeVal, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
         } else {
           const data = snap.data() || {};
-          const upd = {
-            name,
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-          };
+          const upd = { name, updatedAt: firebase.firestore.FieldValue.serverTimestamp() };
           const prev = data.bestTiles || 0;
-          if (tilesVal > prev){
-            upd.bestTiles = tilesVal;
-            upd.bestTime = timeVal;
-          }
+          if (tilesVal > prev){ upd.bestTiles = tilesVal; upd.bestTime = timeVal; }
           await ref.update(upd);
         }
       } else {
         const writesTime = !isDuel && !isTerr && !useTeam;
         if (!snap.exists){
-          const doc = {
-            name,
-            wins: addWin ? 1 : 0,
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-          };
+          const doc = { name, wins: addWin ? 1 : 0, updatedAt: firebase.firestore.FieldValue.serverTimestamp() };
           if (writesTime) doc.bestTime = timeVal;
           await ref.set(doc);
         } else {
           const data = snap.data() || {};
-          const upd = {
-            name,
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-          };
+          const upd = { name, updatedAt: firebase.firestore.FieldValue.serverTimestamp() };
           if (addWin) upd.wins = (data.wins || 0) + 1;
           if (writesTime){
             const prev = data.bestTime;
@@ -3602,7 +3300,6 @@ async function recordWin(mode, style, size, insta, timeMs, countAsWin, partner, 
       console.warn('[fb] record win failed:', e && (e.code || e.message || e));
     }
   }
-
   if (useTeam){
     try {
       const pairKeys = [nameKey, partner.key].slice().sort();
@@ -3611,46 +3308,24 @@ async function recordWin(mode, style, size, insta, timeMs, countAsWin, partner, 
       nameByKey[nameKey] = name;
       nameByKey[partner.key] = partner.name;
       const names = pairKeys.map(k => nameByKey[k]);
-
       const ref = db.collection('leaderboards').doc(key).collection('entries').doc(pairId);
       const snap = await ref.get();
-
       if (isInf){
         if (!snap.exists){
-          await ref.set({
-            names, nameKeys: pairKeys,
-            bestTiles: tilesVal,
-            bestTime: timeVal,
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-          });
+          await ref.set({ names, nameKeys: pairKeys, bestTiles: tilesVal, bestTime: timeVal, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
         } else {
           const data = snap.data() || {};
-          const upd = {
-            names, nameKeys: pairKeys,
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-          };
+          const upd = { names, nameKeys: pairKeys, updatedAt: firebase.firestore.FieldValue.serverTimestamp() };
           const prev = data.bestTiles || 0;
-          if (tilesVal > prev){
-            upd.bestTiles = tilesVal;
-            upd.bestTime = timeVal;
-          }
+          if (tilesVal > prev){ upd.bestTiles = tilesVal; upd.bestTime = timeVal; }
           await ref.update(upd);
         }
       } else {
         if (!snap.exists){
-          await ref.set({
-            names: names,
-            nameKeys: pairKeys,
-            bestTime: timeVal,
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-          });
+          await ref.set({ names: names, nameKeys: pairKeys, bestTime: timeVal, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
         } else {
           const data = snap.data() || {};
-          const upd = {
-            names: names,
-            nameKeys: pairKeys,
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-          };
+          const upd = { names: names, nameKeys: pairKeys, updatedAt: firebase.firestore.FieldValue.serverTimestamp() };
           const prev = data.bestTime;
           if (!prev || timeVal < prev) upd.bestTime = timeVal;
           await ref.update(upd);
@@ -3660,7 +3335,6 @@ async function recordWin(mode, style, size, insta, timeMs, countAsWin, partner, 
       console.warn('[fb] record team score failed:', e && (e.code || e.message || e));
     }
   }
-
   lbCache.delete(key + '_wins');
   lbCache.delete(key + '_time');
   lbCache.delete(key + '_tiles');
@@ -3670,11 +3344,8 @@ async function ensurePlayerName(){
   const localName = getPlayerName();
   const localKey = getPlayerNameKey();
   if (!localName || !localKey) return false;
-
   await fbReadyPromise;
-
   if (!db || !auth || !auth.currentUser) return true;
-
   const uid = auth.currentUser.uid;
   try {
     const snap = await db.collection('names').doc(localKey).get();
@@ -3682,10 +3353,8 @@ async function ensurePlayerName(){
     const data = snap.data() || {};
     const uids = data.linkedUids || [];
     if (uids.indexOf(uid) === -1) return false;
-
     await db.collection('users').doc(uid).set({
-      name: localName,
-      nameKey: localKey,
+      name: localName, nameKey: localKey,
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     }, { merge: true });
     return true;
@@ -3703,7 +3372,6 @@ async function reserveName(rawName, uid){
   const { name, key } = v;
   const nameRef = db.collection('names').doc(key);
   const userRef = db.collection('users').doc(uid);
-
   await db.runTransaction(async tx => {
     const nameSnap = await tx.get(nameRef);
     if (nameSnap.exists){
@@ -3711,25 +3379,14 @@ async function reserveName(rawName, uid){
       const uids = data.linkedUids || [];
       if (uids.indexOf(uid) === -1) throw new Error('That name is already taken');
       tx.set(userRef, {
-        name: data.displayName || name,
-        nameKey: key,
+        name: data.displayName || name, nameKey: key,
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       }, { merge: true });
       return;
     }
-    tx.set(nameRef, {
-      displayName: name,
-      count: 1,
-      linkedUids: [uid],
-      createdAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
-    tx.set(userRef, {
-      name: name,
-      nameKey: key,
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
+    tx.set(nameRef, { displayName: name, count: 1, linkedUids: [uid], createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+    tx.set(userRef, { name: name, nameKey: key, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
   });
-
   console.log('[fb] reserved name "' + name + '" for uid', uid);
   return { name, key };
 }
@@ -3737,170 +3394,111 @@ async function reserveName(rawName, uid){
 async function migrateLeaderboardEntry(oldKey, newKey, newName){
   if (!db || !oldKey || !newKey || oldKey === newKey) return;
   if (!auth || !auth.currentUser) return;
-
   let touched = false;
   for (const configKey of LB_CONFIG_KEYS){
     const oldRef = db.collection('leaderboards').doc(configKey).collection('entries').doc(oldKey);
     const newRef = db.collection('leaderboards').doc(configKey).collection('entries').doc(newKey);
-
     let oldSnap;
-    try { oldSnap = await oldRef.get(); }
-    catch(e){ continue; }
+    try { oldSnap = await oldRef.get(); } catch(e){ continue; }
     if (!oldSnap.exists) continue;
     const oldData = oldSnap.data() || {};
-
     let newSnap = null;
-    try { newSnap = await newRef.get(); }
-    catch(e){ newSnap = null; }
-
-    const doc = {
-      name: newName,
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    };
+    try { newSnap = await newRef.get(); } catch(e){ newSnap = null; }
+    const doc = { name: newName, updatedAt: firebase.firestore.FieldValue.serverTimestamp() };
     if (typeof oldData.wins === 'number') doc.wins = oldData.wins;
     if (typeof oldData.bestTime === 'number') doc.bestTime = oldData.bestTime;
     if (typeof oldData.bestTiles === 'number') doc.bestTiles = oldData.bestTiles;
     if (oldData.partnerName) doc.partnerName = oldData.partnerName;
-
     if (newSnap && newSnap.exists){
       const nd = newSnap.data() || {};
       doc.wins = (nd.wins || 0) + (oldData.wins || 0);
-      const times = [nd.bestTime, oldData.bestTime]
-        .filter(t => typeof t === 'number' && t > 0);
+      const times = [nd.bestTime, oldData.bestTime].filter(t => typeof t === 'number' && t > 0);
       if (times.length) doc.bestTime = Math.min.apply(null, times);
       else delete doc.bestTime;
-      const tilesArr = [nd.bestTiles, oldData.bestTiles]
-        .filter(t => typeof t === 'number' && t > 0);
+      const tilesArr = [nd.bestTiles, oldData.bestTiles].filter(t => typeof t === 'number' && t > 0);
       if (tilesArr.length) doc.bestTiles = Math.max.apply(null, tilesArr);
       else delete doc.bestTiles;
       if (!doc.partnerName && nd.partnerName) doc.partnerName = nd.partnerName;
     }
-
     try {
       await newRef.set(doc);
       await oldRef.delete();
       touched = true;
     } catch(e){
-      console.warn('[fb] migrate entry failed for', configKey,
-                   e && (e.code || e.message));
+      console.warn('[fb] migrate entry failed for', configKey, e && (e.code || e.message));
     }
   }
-
   if (touched) lbCache.clear();
 }
 
 async function migrateTeamEntries(oldKey, newKey, newName){
   if (!db || !auth || !auth.currentUser) return false;
   if (!oldKey || !newKey || oldKey === newKey) return false;
-
   let touched = false;
-
   for (const configKey of LB_CONFIG_KEYS){
     let snap;
     try {
-      snap = await db.collection('leaderboards').doc(configKey)
-        .collection('entries')
-        .where('nameKeys', 'array-contains', oldKey)
-        .get();
+      snap = await db.collection('leaderboards').doc(configKey).collection('entries').where('nameKeys', 'array-contains', oldKey).get();
     } catch(e){
-      console.warn('[fb] team entry lookup failed for', configKey,
-                   e && (e.code || e.message));
+      console.warn('[fb] team entry lookup failed for', configKey, e && (e.code || e.message));
       continue;
     }
     if (snap.empty) continue;
-
     const items = [];
     snap.forEach(d => {
       const data = d.data() || {};
       if (!Array.isArray(data.nameKeys)) return;
       items.push({ ref: d.ref, data });
     });
-
     for (const item of items){
       const ref  = item.ref;
       const data = item.data;
       const oldKeys  = data.nameKeys.slice();
-      const oldNames = (Array.isArray(data.names) && data.names.length === oldKeys.length)
-        ? data.names.slice()
-        : oldKeys.slice();
-
+      const oldNames = (Array.isArray(data.names) && data.names.length === oldKeys.length) ? data.names.slice() : oldKeys.slice();
       const idx = oldKeys.indexOf(oldKey);
       if (idx === -1) continue;
-
       const newKeys  = oldKeys.slice();
       const newNames = oldNames.slice();
       newKeys[idx]  = newKey;
       newNames[idx] = newName;
-
       const pairs = newKeys.map((k, i) => ({ k, n: newNames[i] }));
       pairs.sort((a, b) => a.k < b.k ? -1 : a.k > b.k ? 1 : 0);
       const sortedKeys  = pairs.map(p => p.k);
       const sortedNames = pairs.map(p => p.n);
       const newPairId = sortedKeys.join('__');
-
       const oldSortedKeys = oldKeys.slice().sort();
       const oldPairId = oldSortedKeys.join('__');
-
       if (newPairId === oldPairId){
         try {
-          await ref.update({
-            names: sortedNames,
-            nameKeys: sortedKeys,
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-          });
+          await ref.update({ names: sortedNames, nameKeys: sortedKeys, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
           touched = true;
-        } catch(e){
-          console.warn('[fb] team entry update failed:', e && (e.code || e.message));
-        }
+        } catch(e){ console.warn('[fb] team entry update failed:', e && (e.code || e.message)); }
         continue;
       }
-
-      const newRef = db.collection('leaderboards').doc(configKey)
-                       .collection('entries').doc(newPairId);
-
+      const newRef = db.collection('leaderboards').doc(configKey).collection('entries').doc(newPairId);
       let newSnap = null;
-      try { newSnap = await newRef.get(); }
-      catch(e){ newSnap = null; }
-
-      const doc = {
-        names:    sortedNames,
-        nameKeys: sortedKeys,
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      };
-      if (typeof data.bestTime === 'number' && data.bestTime > 0){
-        doc.bestTime = data.bestTime;
-      }
-      if (typeof data.bestTiles === 'number' && data.bestTiles > 0){
-        doc.bestTiles = data.bestTiles;
-      }
+      try { newSnap = await newRef.get(); } catch(e){ newSnap = null; }
+      const doc = { names: sortedNames, nameKeys: sortedKeys, updatedAt: firebase.firestore.FieldValue.serverTimestamp() };
+      if (typeof data.bestTime === 'number' && data.bestTime > 0) doc.bestTime = data.bestTime;
+      if (typeof data.bestTiles === 'number' && data.bestTiles > 0) doc.bestTiles = data.bestTiles;
       if (typeof data.wins === 'number') doc.wins = data.wins;
-
       if (newSnap && newSnap.exists){
         const nd = newSnap.data() || {};
-        if (typeof nd.wins === 'number' || typeof data.wins === 'number'){
-          doc.wins = (nd.wins || 0) + (data.wins || 0);
-        }
-        const times = [nd.bestTime, data.bestTime]
-          .filter(t => typeof t === 'number' && t > 0);
+        if (typeof nd.wins === 'number' || typeof data.wins === 'number') doc.wins = (nd.wins || 0) + (data.wins || 0);
+        const times = [nd.bestTime, data.bestTime].filter(t => typeof t === 'number' && t > 0);
         if (times.length) doc.bestTime = Math.min.apply(null, times);
         else delete doc.bestTime;
-        const tilesArr = [nd.bestTiles, data.bestTiles]
-          .filter(t => typeof t === 'number' && t > 0);
+        const tilesArr = [nd.bestTiles, data.bestTiles].filter(t => typeof t === 'number' && t > 0);
         if (tilesArr.length) doc.bestTiles = Math.max.apply(null, tilesArr);
         else delete doc.bestTiles;
       }
-
       try {
         await newRef.set(doc);
         await ref.delete();
         touched = true;
-      } catch(e){
-        console.warn('[fb] team entry migrate failed for', configKey,
-                     e && (e.code || e.message));
-      }
+      } catch(e){ console.warn('[fb] team entry migrate failed for', configKey, e && (e.code || e.message)); }
     }
   }
-
   return touched;
 }
 
@@ -3913,21 +3511,16 @@ async function changePlayerName(newRaw){
   const uid = auth.currentUser.uid;
   const oldKey = getPlayerNameKey();
   const oldName = getPlayerName();
-
   if (newKey === oldKey){
-    setPlayerName(newName);
-    setPlayerNameKey(newKey);
+    setPlayerName(newName); setPlayerNameKey(newKey);
     await db.collection('users').doc(uid).set({
-      name: newName, nameKey: newKey,
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      name: newName, nameKey: newKey, updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     }, { merge: true });
     return { name: newName, oldName };
   }
-
   const newRef = db.collection('names').doc(newKey);
   const userRef = db.collection('users').doc(uid);
   const oldRef = oldKey ? db.collection('names').doc(oldKey) : null;
-
   await db.runTransaction(async tx => {
     const newSnap = await tx.get(newRef);
     if (newSnap.exists){
@@ -3935,39 +3528,27 @@ async function changePlayerName(newRaw){
       const uids = nd.linkedUids || [];
       if (uids.indexOf(uid) === -1) throw new Error('That name is already taken');
     } else {
-      tx.set(newRef, {
-        displayName: newName,
-        count: 1,
-        linkedUids: [uid],
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
+      tx.set(newRef, { displayName: newName, count: 1, linkedUids: [uid], createdAt: firebase.firestore.FieldValue.serverTimestamp() });
     }
-    tx.set(userRef, {
-      name: newName, nameKey: newKey,
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    }, { merge: true });
+    tx.set(userRef, { name: newName, nameKey: newKey, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
   });
-
   let oldBecameEmpty = false;
   if (oldRef){
     try {
       const check = await oldRef.get();
-      if (!check.exists){
-        oldBecameEmpty = true;
-      } else {
+      if (!check.exists){ oldBecameEmpty = true; }
+      else {
         const data = check.data() || {};
         const others = (data.linkedUids || []).filter(u => u !== uid);
         oldBecameEmpty = (others.length === 0);
       }
     } catch(e){}
   }
-
   if (oldBecameEmpty && oldKey){
     await migrateLeaderboardEntry(oldKey, newKey, newName).catch(()=>{});
     await migrateTeamEntries(oldKey, newKey, newName).catch(()=>{});
     lbCache.clear();
   }
-
   if (oldRef){
     try {
       await db.runTransaction(async tx => {
@@ -3979,20 +3560,15 @@ async function changePlayerName(newRaw){
           else tx.update(oldRef, { count: uids.length, linkedUids: uids });
         }
       });
-    } catch(e){
-      console.warn('[fb] release old name failed:', e && (e.code || e.message));
-    }
+    } catch(e){ console.warn('[fb] release old name failed:', e && (e.code || e.message)); }
   }
-
   setPlayerName(newName);
   setPlayerNameKey(newKey);
   return { name: newName, oldName };
 }
 
 async function applyLinkedName(hostName, hostKey){
-  if (!auth){
-    throw new Error('Auth not available');
-  }
+  if (!auth) throw new Error('Auth not available');
   if (!auth.currentUser){
     const u = await trySignIn();
     if (!u) throw new Error('Not signed in — check your connection');
@@ -4003,28 +3579,18 @@ async function applyLinkedName(hostName, hostKey){
   const oldKey = getPlayerNameKey();
   const oldName = getPlayerName();
   const oldRef = (oldKey && oldKey !== hostKey) ? db.collection('names').doc(oldKey) : null;
-
   let displayName = hostName;
-
   await db.runTransaction(async tx => {
     const newSnap = await tx.get(newRef);
     if (!newSnap.exists) throw new Error('That name is no longer available');
     const nd = newSnap.data() || {};
     displayName = nd.displayName || hostName;
     const uids = nd.linkedUids || [];
-
     if (uids.indexOf(uid) === -1){
-      tx.update(newRef, {
-        count: (nd.count || 0) + 1,
-        linkedUids: uids.concat([uid])
-      });
+      tx.update(newRef, { count: (nd.count || 0) + 1, linkedUids: uids.concat([uid]) });
     }
-    tx.set(userRef, {
-      name: displayName, nameKey: hostKey,
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    }, { merge: true });
+    tx.set(userRef, { name: displayName, nameKey: hostKey, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
   });
-
   let oldBecameEmpty = false;
   if (oldRef){
     try {
@@ -4037,13 +3603,11 @@ async function applyLinkedName(hostName, hostKey){
       }
     } catch(e){}
   }
-
   if (oldBecameEmpty && oldKey){
     await migrateLeaderboardEntry(oldKey, hostKey, displayName).catch(()=>{});
     await migrateTeamEntries(oldKey, hostKey, displayName).catch(()=>{});
     lbCache.clear();
   }
-
   if (oldRef){
     try {
       await db.runTransaction(async tx => {
@@ -4057,80 +3621,61 @@ async function applyLinkedName(hostName, hostKey){
       });
     } catch(e){}
   }
-
   setPlayerName(displayName);
   setPlayerNameKey(hostKey);
   return { name: displayName, oldName };
 }
 
+/* Parallelised removal — everything fires off at once so the process
+   feels much faster. Chunks of 8 remain to stay under the batch limit. */
 async function removeLeaderboardEntries(nameKey){
   if (!db || !nameKey) return;
-
   const CHUNK = 8;
+  const jobs = [];
   for (let i = 0; i < LB_CONFIG_KEYS.length; i += CHUNK){
     const slice = LB_CONFIG_KEYS.slice(i, i + CHUNK);
-    const batch = db.batch();
-    for (const key of slice){
-      batch.delete(
-        db.collection('leaderboards').doc(key).collection('entries').doc(nameKey)
-      );
-    }
-    try {
-      await batch.commit();
-    } catch(e){
-      console.warn('[fb] remove entries chunk failed:', e && (e.code || e.message));
-    }
+    jobs.push((async () => {
+      const batch = db.batch();
+      for (const key of slice){
+        batch.delete(db.collection('leaderboards').doc(key).collection('entries').doc(nameKey));
+      }
+      try { await batch.commit(); } catch(e){}
+    })());
   }
-
   for (const configKey of LB_CONFIG_KEYS){
-    let snap;
-    try {
-      snap = await db.collection('leaderboards').doc(configKey)
-        .collection('entries')
-        .where('nameKeys', 'array-contains', nameKey)
-        .get();
-    } catch(e){
-      console.warn('[fb] team entry lookup failed for', configKey,
-                   e && (e.code || e.message));
-      continue;
-    }
-    if (snap.empty) continue;
-
-    const batch = db.batch();
-    let n = 0;
-    snap.forEach(d => {
-      const data = d.data() || {};
-      if (!Array.isArray(data.nameKeys)) return;
-      batch.delete(d.ref);
-      n++;
-    });
-    if (!n) continue;
-    try {
-      await batch.commit();
-    } catch(e){
-      console.warn('[fb] remove team entries failed for', configKey,
-                   e && (e.code || e.message));
-    }
+    jobs.push((async () => {
+      let snap;
+      try {
+        snap = await db.collection('leaderboards').doc(configKey).collection('entries').where('nameKeys', 'array-contains', nameKey).get();
+      } catch(e){ return; }
+      if (snap.empty) return;
+      const batch = db.batch();
+      let n = 0;
+      snap.forEach(d => {
+        const data = d.data() || {};
+        if (!Array.isArray(data.nameKeys)) return;
+        batch.delete(d.ref);
+        n++;
+      });
+      if (!n) return;
+      try { await batch.commit(); } catch(e){}
+    })());
   }
-
+  await Promise.all(jobs);
   lbCache.clear();
 }
 
 async function removePlayerName(){
   const nameKey = getPlayerNameKey();
   const oldName = getPlayerName();
-
   await fbReadyPromise;
-
   if (db && auth && nameKey){
     let user = auth.currentUser;
     if (!user) user = await trySignIn();
-
     if (user){
       const uid = user.uid;
       const nameRef = db.collection('names').doc(nameKey);
       const userRef = db.collection('users').doc(uid);
-
       let nameFullyReleased = false;
       try {
         const snap = await nameRef.get();
@@ -4140,11 +3685,7 @@ async function removePlayerName(){
           nameFullyReleased = (linked.filter(u => u !== uid).length === 0);
         }
       } catch(e){}
-
-      if (nameFullyReleased){
-        await removeLeaderboardEntries(nameKey);
-      }
-
+      if (nameFullyReleased){ await removeLeaderboardEntries(nameKey); }
       try {
         await db.runTransaction(async tx => {
           const snap = await tx.get(nameRef);
@@ -4152,27 +3693,31 @@ async function removePlayerName(){
             const data = snap.data() || {};
             const linked = data.linkedUids || [];
             const uids = linked.filter(u => u !== uid);
-            if (uids.length === 0){
-              tx.delete(nameRef);
-            } else {
-              tx.update(nameRef, { count: uids.length, linkedUids: uids });
-            }
+            if (uids.length === 0){ tx.delete(nameRef); }
+            else { tx.update(nameRef, { count: uids.length, linkedUids: uids }); }
           }
-          tx.set(userRef, {
-            name: '',
-            nameKey: '',
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-          }, { merge: true });
+          tx.set(userRef, { name: '', nameKey: '', updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
         });
-        console.log('[fb] released name "' + oldName + '" from uid', uid);
-      } catch(e){
-        console.warn('[fb] removePlayerName:', e && (e.code || e.message));
-      }
+      } catch(e){ console.warn('[fb] removePlayerName:', e && (e.code || e.message)); }
     }
   }
-
   clearPlayerName();
   return { name: oldName };
+}
+
+function entryDisplayInfo(e, mode, cat){
+  if (!e) return { name: 'Anon', isGuest: false };
+  const base = e.name ? String(e.name) : 'Anon';
+  const isRealTeam = Array.isArray(e.nameKeys) && e.nameKeys.length >= 2;
+  if (isRealTeam){
+    const names = (Array.isArray(e.names) && e.names.length >= 2) ? e.names : e.nameKeys;
+    return { name: names.join(' & '), isGuest: false };
+  }
+  const coopScored = (mode === 'coop' && (cat === 'time' || cat === 'tiles'));
+  if (coopScored){
+    return { name: base, isGuest: true };
+  }
+  return { name: base, isGuest: false };
 }
 
 function renderLeaderboardRows(mode, cat){
@@ -4185,40 +3730,29 @@ function renderLeaderboardRows(mode, cat){
   if (!LB_STATE.data.length){
     return '<div class="lb-empty">No scores yet.<br>Be the first!</div>';
   }
-  const joint = (mode === 'coop' || mode === 'territory');
   const myKey = getPlayerNameKey();
-  const myName = getPlayerName();
 
   return LB_STATE.data.map((e, i) => {
-    let nm = 'Anon';
+    const info = entryDisplayInfo(e, mode, cat);
+    const nmHtml = escapeHtml(info.name) +
+      (info.isGuest ? ' &amp; <span class="lb-guest-badge">guest</span>' : '');
     let isMe = false;
-
-    if (Array.isArray(e.nameKeys) && e.nameKeys.length){
-      const names = (Array.isArray(e.names) && e.names.length) ? e.names : e.nameKeys;
-      nm = names.join(' & ');
-      if (!isGuest && myKey) isMe = e.nameKeys.indexOf(myKey) !== -1;
-    } else {
-      nm = e.name || 'Anon';
-      if (joint && e.partnerName) nm = nm + ' & ' + e.partnerName;
-      if (!isGuest && myKey){
-        if (e.id === myKey) isMe = true;
-        else if (joint && e.partnerName && e.partnerName.toLowerCase() === myKey) isMe = true;
-        else if (joint && myName && e.partnerName === myName) isMe = true;
+    if (!isGuest && myKey){
+      if (Array.isArray(e.nameKeys) && e.nameKeys.length){
+        isMe = e.nameKeys.indexOf(myKey) !== -1;
+      } else if (e.id === myKey){
+        isMe = true;
       }
     }
 
     let val, cls = '', title = '';
-    if (cat === 'tiles'){
-      val = formatTiles(e.bestTiles);
-      cls = ' tiles';
-      title = tilesTitle(e);
-    }
+    if (cat === 'tiles'){ val = formatTiles(e.bestTiles); cls = ' tiles'; title = tilesTitle(e); }
     else if (cat === 'time'){ val = formatTime(e.bestTime); }
     else { val = formatWins(e.wins); cls = ' wins'; }
 
     return '<div class="lb-row' + (isMe ? ' me' : '') + cls + '"' + title + '>' +
       '<span class="lb-rank">' + (i + 1) + '</span>' +
-      '<span class="lb-name">' + escapeHtml(nm) + '</span>' +
+      '<span class="lb-name">' + nmHtml + '</span>' +
       '<span class="lb-val">' + val + '</span>' +
     '</div>';
   }).join('');
@@ -4245,25 +3779,20 @@ function renderLeaderboardHTML(){
   } else {
     catsHtml = '<button class="lb-cat active" data-lbcat="wins" disabled>🏆 WINS</button>';
   }
-
   const unlockBtn = guest
     ? '<button class="lb-unlock-btn" id="lbUnlockBtn">✨ Choose name to unlock</button>'
     : '';
-
   let cfgNameCls = '';
-  if (insta) cfgNameCls = ' insta';
-  else if (isInf) cfgNameCls = ' inf';
-
-  const cfgName = escapeHtml(modeName) + (insta ? ' <span style="color:#ff9f43">· INSTANT</span>' : '') +
+  if (isInf) cfgNameCls = ' inf';
+  /* Rules text is no longer appended here so the mode name stays clean. */
+  const cfgName = escapeHtml(modeName) +
                   ' · ' + escapeHtml(styleName) + ' · ' +
                   (isInf
                     ? '<span style="color:#b98cff;font-weight:900">INFINITE</span>'
                     : escapeHtml(sizeName));
-
   const infHint = isInf
     ? '<div class="lb-config-name" style="border:none;background:none;padding:0;color:#5d7fa8">hover an entry to see its run time</div>'
     : '';
-
   return (
     unlockBtn +
     '<div class="lb-head">' +
@@ -4293,9 +3822,7 @@ function attachLeaderboardHandlers(){
     };
   });
   const unlock = overlay.querySelector('#lbUnlockBtn');
-  if (unlock) unlock.onclick = () => {
-    try { location.reload(); } catch(e){}
-  };
+  if (unlock) unlock.onclick = () => { try { location.reload(); } catch(e){} };
 }
 
 let lbSeq = 0;
@@ -4307,11 +3834,9 @@ async function refreshLeaderboard(force){
   const insta = !!G.config.insta;
   const cat = currentLbCategory();
   const key = lbKey(mode, style, size, insta) + '_' + cat;
-
   const seq = ++lbSeq;
   LB_STATE.currentKey = key;
   LB_STATE.error = null;
-
   if (!db){
     LB_STATE.loading = false;
     LB_STATE.data = [];
@@ -4319,7 +3844,6 @@ async function refreshLeaderboard(force){
     if (overlay.querySelector('.menu-lb')) updateLeaderboardDOM();
     return;
   }
-
   if (!force){
     const cached = lbCache.get(key);
     if (cached && (Date.now() - cached.ts < LB_TTL)){
@@ -4329,11 +3853,9 @@ async function refreshLeaderboard(force){
       return;
     }
   }
-
   LB_STATE.loading = true;
   LB_STATE.data = [];
   if (overlay.querySelector('.menu-lb')) updateLeaderboardDOM();
-
   try {
     const data = await fetchLeaderboard(mode, style, size, cat, insta);
     if (seq !== lbSeq || LB_STATE.currentKey !== key) return;
@@ -4352,22 +3874,26 @@ async function refreshLeaderboard(force){
   }
 }
 
+/* Infinite sizes now live inside their own mode group (SOLO / CO-OP)
+   instead of separate groups, and the "DUEL · STANDARD" label replaces
+   the old "· INSTANT" wording. */
 const OV_GROUPS = [
-  { mode:'solo',      insta:false, label:'SOLO' },
-  { mode:'coop',      insta:false, label:'CO-OP' },
-  { mode:'duel',      insta:false, label:'DUEL' },
-  { mode:'duel',      insta:true,  label:'DUEL · INSTANT' },
-  { mode:'territory', insta:false, label:'TERRITORIAL' },
-  { mode:'territory', insta:true,  label:'TERRITORIAL · INSTANT' },
-  { mode:'solo',      insta:false, label:'SOLO · INFINITE', sizeFilter:'infinite' },
-  { mode:'coop',      insta:false, label:'CO-OP · INFINITE', sizeFilter:'infinite' }
+  { mode:'solo',      insta:false, label:'SOLO',                    sizes:['small','medium','large','infinite'] },
+  { mode:'coop',      insta:false, label:'CO-OP',                   sizes:['small','medium','large','infinite'] },
+  { mode:'duel',      insta:false, label:'DUEL',                    sizes:['small','medium','large'] },
+  { mode:'duel',      insta:true,  label:'DUEL · STANDARD',         sizes:['small','medium','large'] },
+  { mode:'territory', insta:false, label:'TERRITORIAL',             sizes:['small','medium','large'] },
+  { mode:'territory', insta:true,  label:'TERRITORIAL · STANDARD',  sizes:['small','medium','large'] }
 ];
 
 async function fetchTopForConfig(g, style, size, cat, limit){
   const key = lbKey(g.mode, style, size, g.insta);
   const col = db.collection('leaderboards').doc(key).collection('entries');
   let q;
-  if (cat === 'tiles'){
+  const isInf = (size === 'infinite');
+  if (isInf){
+    q = col.orderBy('bestTiles', 'desc').limit(limit);
+  } else if (cat === 'tiles'){
     q = col.orderBy('bestTiles', 'desc').limit(limit);
   } else if (cat === 'time'){
     if (g.mode === 'duel' || g.mode === 'territory') return [];
@@ -4383,13 +3909,17 @@ async function fetchTopForConfig(g, style, size, cat, limit){
 
 async function fetchOverviewData(cat){
   const all = [];
+  /* Category-aware filtering:
+     - WINS:   finite boards only (duel, territory, solo/coop small-medium-large)
+     - TIME:   finite solo/coop only (duel & territory don't track time)
+     - TILES:  infinite boards only (solo/coop infinite) */
   for (const g of OV_GROUPS){
     if (cat === 'time' && (g.mode === 'duel' || g.mode === 'territory')) continue;
-    if (cat === 'tiles' && !g.sizeFilter) continue;
-    if (cat !== 'tiles' && g.sizeFilter) continue;
-    const sizes = g.sizeFilter ? [g.sizeFilter] : ['small','medium','large'];
     for (const style of ['square','hex']){
-      for (const size of sizes){
+      for (const size of g.sizes){
+        if (cat === 'wins'  && size === 'infinite') continue;
+        if (cat === 'time'  && size === 'infinite') continue;
+        if (cat === 'tiles' && size !== 'infinite') continue;
         all.push({ g, style, size });
       }
     }
@@ -4399,7 +3929,7 @@ async function fetchOverviewData(cat){
   for (let i = 0; i < all.length; i += CHUNK){
     const slice = all.slice(i, i + CHUNK);
     const chunkRes = await Promise.all(slice.map(item =>
-      fetchTopForConfig(item.g, item.style, item.size, cat, 3)
+      fetchTopForConfig(item.g, item.style, item.size, cat, 10)
         .then(entries => ({ g: item.g, style: item.style, size: item.size, entries }))
         .catch(() => ({ g: item.g, style: item.style, size: item.size, entries: [] }))
     ));
@@ -4411,14 +3941,12 @@ async function fetchOverviewData(cat){
 function renderOverviewData(cat, data){
   const body = overlay.querySelector('#lbOvBody');
   if (!body) return;
-
   const grouped = new Map();
   for (const item of data){
     const k = item.g.label;
     if (!grouped.has(k)) grouped.set(k, []);
     grouped.get(k).push(item);
   }
-
   const myKey = getPlayerNameKey();
   const rankCls = ['', ' r1', ' r2', ' r3'];
 
@@ -4430,6 +3958,7 @@ function renderOverviewData(cat, data){
                     : (item.size === 'medium') ? ' yellow'
                     : (item.size === 'large') ? ' red'
                     : (item.size === 'infinite') ? ' infinite' : '';
+    const isInf = (item.size === 'infinite');
 
     let html = '<div class="lb-ov-card">';
     html += '<div class="lb-ov-card-title">' +
@@ -4437,75 +3966,60 @@ function renderOverviewData(cat, data){
               '<span class="sep">·</span>' +
               '<span class="sz' + sizeCls + '">' + escapeHtml(sizeName) + '</span>' +
             '</div>';
-
     if (!item.entries.length){
       html += '<div class="lb-ov-empty">— no scores yet —</div>';
     } else {
-      item.entries.forEach((e, i) => {
-        let nm;
-        if (Array.isArray(e.nameKeys) && e.nameKeys.length){
-          const names = (Array.isArray(e.names) && e.names.length) ? e.names : e.nameKeys;
-          nm = names.join(' & ');
-        } else {
-          nm = e.name || 'Anon';
-        }
+      /* Up to 10 rows per card. */
+      const N = Math.min(item.entries.length, 10);
+      for (let i = 0; i < N; i++){
+        const e = item.entries[i];
+        const info = entryDisplayInfo(e, item.g.mode, cat);
+        const nmHtml = escapeHtml(info.name) +
+          (info.isGuest ? ' &amp; <span class="lb-guest-badge">guest</span>' : '');
         let val, title = '', cls = '';
-        if (cat === 'tiles'){
-          val = formatTiles(e.bestTiles);
-          title = tilesTitle(e);
-          cls = ' tiles';
-        }
+        if (isInf || cat === 'tiles'){ val = formatTiles(e.bestTiles); title = tilesTitle(e); cls = ' tiles'; }
         else if (cat === 'time') val = formatTime(e.bestTime);
         else val = formatWins(e.wins);
-
         const isMe = !isGuest && myKey && (
           e.id === myKey ||
           (Array.isArray(e.nameKeys) && e.nameKeys.indexOf(myKey) !== -1)
         );
-
         html += '<div class="lb-ov-row' + (rankCls[i + 1] || '') + (isMe ? ' me' : '') + cls + '"' + title + '>' +
           '<span class="lb-ov-rank">' + (i + 1) + '</span>' +
-          '<span class="lb-ov-name">' + escapeHtml(nm) + '</span>' +
+          '<span class="lb-ov-name">' + nmHtml + '</span>' +
           '<span class="lb-ov-val">' + val + '</span>' +
         '</div>';
-      });
+      }
     }
     html += '</div>';
     return html;
   }
 
   let html = '';
-
   grouped.forEach((items, label) => {
-    const isInsta = label.indexOf('INSTA') !== -1;
+    const isInsta = label.indexOf('STANDARD') !== -1;
     const isInf = label.indexOf('INFINITE') !== -1;
     let cls = '';
     if (isInsta) cls = ' insta';
     else if (isInf) cls = ' inf';
-
     const squareItems = items.filter(it => it.style === 'square');
     const hexItems = items.filter(it => it.style === 'hex');
-
     html += '<div class="lb-ov-group">';
     html += '<div class="lb-ov-group-title' + cls + '">' +
               '<span class="lb-ov-group-name">' + escapeHtml(label) + '</span>' +
             '</div>';
-
     if (squareItems.length){
       html += '<div class="lb-ov-grid">';
       for (const item of squareItems) html += renderCard(item);
       html += '</div>';
     }
-
     if (hexItems.length){
       html += '<div class="lb-ov-grid" style="margin-top:clamp(10px,1.5vh,16px)">';
       for (const item of hexItems) html += renderCard(item);
       html += '</div>';
     }
-
     html += '</div>';
   });
-
   body.innerHTML = html;
   scheduleMenuFit();
 }
@@ -4516,7 +4030,7 @@ function openLeaderboardOverview(){
     '<div class="ovbox menu-pop">' +
       '<div class="big">📊</div>' +
       '<h2>ALL <span>LEADERBOARDS</span></h2>' +
-      '<p>Every mode at a glance · top 3 per board.<br>Duel &amp; Territorial track wins · Infinite tracks tiles (hover an entry for its time).</p>' +
+      '<p>Every mode at a glance · up to top 10 per board.<br>Infinite boards rank by tiles revealed · hover an entry for its time.</p>' +
       '<div class="lb-ov-cats">' +
         '<button class="lb-cat active" data-ovcat="wins">🏆 WINS</button>' +
         '<button class="lb-cat" data-ovcat="time">⏱ TIME</button>' +
@@ -4528,26 +4042,17 @@ function openLeaderboardOverview(){
       '<div class="ovbtns"><button class="primary" id="btnBackMenu">BACK</button></div>' +
     '</div>'
   );
-
   const back = overlay.querySelector('#btnBackMenu');
   if (back) back.onclick = () => {
-    menuView = 'main';
-    menuError = '';
-    renderMenu('');
-    refreshLeaderboard(false);
+    menuView = 'main'; menuError = ''; renderMenu(''); refreshLeaderboard(false);
   };
-
   let cat = 'wins';
   let ovSeq = 0;
-
   const load = async () => {
     const body = overlay.querySelector('#lbOvBody');
     if (!body) return;
     const mySeq = ++ovSeq;
-    if (!db){
-      body.innerHTML = '<div class="lb-empty">Leaderboards offline</div>';
-      return;
-    }
+    if (!db){ body.innerHTML = '<div class="lb-empty">Leaderboards offline</div>'; return; }
     body.innerHTML = '<div class="lb-empty"><span class="spin"></span>Loading…</div>';
     try {
       const data = await fetchOverviewData(cat);
@@ -4561,7 +4066,6 @@ function openLeaderboardOverview(){
       if (b2) b2.innerHTML = '<div class="lb-empty">Could not load</div>';
     }
   };
-
   overlay.querySelectorAll('[data-ovcat]').forEach(b => {
     b.onclick = () => {
       if (b.disabled) return;
@@ -4571,7 +4075,6 @@ function openLeaderboardOverview(){
       load();
     };
   });
-
   load();
 }
 
@@ -4584,9 +4087,7 @@ function makeBoardState(rows, cols){
     fakeFlag: Array.from({length: rows}, () => new Array(cols).fill(false)),
     revealAt: Array.from({length: rows}, () => new Array(cols).fill(0)),
     flagAt:   Array.from({length: rows}, () => new Array(cols).fill(0)),
-    count: 0,
-    safeRevealed: 0,
-    flagCount: 0
+    count: 0, safeRevealed: 0, flagCount: 0
   };
 }
 function makePlayerState(start){
@@ -4624,7 +4125,9 @@ const G = {
   pendingPreSnap: null,
   viewAnim: null,
   myStartR: 0, myStartC: 0,
-  cameraUnlocked: false
+  cameraUnlocked: false,
+  duelShowOpponent: false,
+  firstSafeDone: false
 };
 
 let rememberedInsta = false;
@@ -4645,29 +4148,23 @@ let fitRaf1 = 0, fitRaf2 = 0;
 function fitMenuBox(){
   const box = overlay.querySelector('.ovbox.menu-pop');
   if (!box || !box.parentElement) return;
-
   box.style.zoom = '';
   box.style.maxHeight = 'none';
   box.style.overflowY = 'hidden';
   void box.offsetHeight;
-
   const ovStyle = getComputedStyle(overlay);
   const padTop    = parseFloat(ovStyle.paddingTop)    || 0;
   const padBottom = parseFloat(ovStyle.paddingBottom) || 0;
   const padLeft   = parseFloat(ovStyle.paddingLeft)   || 0;
   const padRight  = parseFloat(ovStyle.paddingRight)  || 0;
-
   const availH = Math.max(120, overlay.clientHeight - padTop - padBottom);
   const availW = Math.max(120, overlay.clientWidth  - padLeft - padRight);
-
   const h = box.offsetHeight;
   const w = box.offsetWidth;
-
   let scale = 1;
   if (h > availH) scale = Math.min(scale, availH / h);
   if (w > availW) scale = Math.min(scale, availW / w);
   scale = Math.max(scale, 0.55);
-
   let maxH;
   if (scale < 0.999 && supportsZoom()){
     box.style.zoom = scale.toFixed(3);
@@ -4689,9 +4186,8 @@ function scheduleMenuFit(){
 let zoomSupported = null;
 function supportsZoom(){
   if (zoomSupported !== null) return zoomSupported;
-  try {
-    zoomSupported = !!(window.CSS && CSS.supports && CSS.supports('zoom', '0.5'));
-  } catch(e){ zoomSupported = false; }
+  try { zoomSupported = !!(window.CSS && CSS.supports && CSS.supports('zoom', '0.5')); }
+  catch(e){ zoomSupported = false; }
   return zoomSupported;
 }
 
@@ -4815,7 +4311,6 @@ class BoardView {
     const isDuel = config.mode === 'duel';
     const isTerr = config.mode === 'territory';
     const isInf  = isInfiniteSize(config.size);
-
     if (config.style === 'hex'){
       let size = isDuel ? 22 : (isTerr ? 20 : (isInf ? 26 : 30));
       if (small) size = isDuel ? 15 : (isTerr ? 14 : (isInf ? 20 : 22));
@@ -4870,7 +4365,6 @@ class BoardView {
     let minX = Infinity, maxX = -Infinity;
     let minY = Infinity, maxY = -Infinity;
     let found = false;
-
     if (m.style === 'hex'){
       const { size, HW, pad } = m;
       const halfW = HW * 0.5;
@@ -4905,7 +4399,6 @@ class BoardView {
       }
     }
     if (!found) return null;
-
     const EXPAND = 25;
     let expX, expY;
     if (m.style === 'hex'){
@@ -4916,12 +4409,7 @@ class BoardView {
       expX = EXPAND * step;
       expY = EXPAND * step;
     }
-    return {
-      left:   minX - expX,
-      right:  maxX + expX,
-      top:    minY - expY,
-      bottom: maxY + expY
-    };
+    return { left: minX - expX, right: maxX + expX, top: minY - expY, bottom: maxY + expY };
   }
   clampPan(){
     const m = this.metrics; if (!m) return;
@@ -4933,12 +4421,10 @@ class BoardView {
       const maxPanX = -b.left * scale;
       if (minPanX > maxPanX) this.panX = (minPanX + maxPanX) / 2;
       else this.panX = clamp(this.panX, minPanX, maxPanX);
-
       const minPanY = this.ph - b.bottom * scale;
       const maxPanY = -b.top * scale;
       if (minPanY > maxPanY) this.panY = (minPanY + maxPanY) / 2;
       else this.panY = clamp(this.panY, minPanY, maxPanY);
-
       if (!isFinite(this.panX)) this.panX = 0;
       if (!isFinite(this.panY)) this.panY = 0;
       return;
@@ -5046,7 +4532,6 @@ class BoardView {
     }
     return (best && bestDist < size * 0.98) ? best : null;
   }
-
   getMineSprite(size){
     if (this._mineSprite && this._mineSprite._size === size) return this._mineSprite;
     const dpr = Math.max(1, this.dpr);
@@ -5075,7 +4560,6 @@ class BoardView {
     this._mineSprite = c;
     return c;
   }
-
   visibleSquareRange(cell, gap, pad, rows, cols){
     const scale = this.baseScale * this.zoom;
     const step = cell + gap;
@@ -5102,13 +4586,11 @@ class BoardView {
     const c1 = Math.min(cols - 1, Math.ceil((worldRight - pad) / HW) + 1);
     return { r0, r1, c0, c1 };
   }
-
   render(now, state){
     const ctx = this.ctx;
     const dt = Math.min(now - this.lastT, 50);
     this.lastT = now;
     if (this.shake > 0) this.shake = Math.max(0, this.shake - dt * 0.0026);
-
     for (let i = this.particles.length - 1; i >= 0; i--){
       const p = this.particles[i];
       const s = dt / 1000;
@@ -5118,11 +4600,9 @@ class BoardView {
       p.life -= p.decay * s;
       if (p.life <= 0) this.particles.splice(i, 1);
     }
-
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     if (!this.metrics) return;
-
     let sx = 0, sy = 0;
     if (this.shake > 0.01){
       const m = this.shake * 12;
@@ -5133,10 +4613,8 @@ class BoardView {
     ctx.setTransform(scale, 0, 0, scale,
       (this.panX + sx) * this.dpr,
       (this.panY + sy) * this.dpr);
-
     if (this.metrics.style === 'hex') this.renderHex(now, state);
     else this.renderSquare(now, state);
-
     if (this.particles.length){
       for (const p of this.particles){
         ctx.globalAlpha = clamp(p.life, 0, 1);
@@ -5178,10 +4656,8 @@ class BoardView {
     const mineSprite = this.getMineSprite(cell);
     const nowMs = now;
     const hints = state.hints;
-
     const range = this.visibleSquareRange(cell, gap, pad, rows, cols);
     const r0 = range.r0, r1 = range.r1, c0 = range.c0, c1 = range.c1;
-
     for (let r = r0; r <= r1; r++){
       for (let c = c0; c <= c1; c++){
         const x = pad + c * (cell + gap);
@@ -5191,36 +4667,30 @@ class BoardView {
         const isMine = board.mines.has(r + ',' + c);
         const own = (useOwner && boardState.owner) ? boardState.owner[r][c] : 0;
         const isSupport = hints && hints.supports && hints.supports.has(r + ',' + c);
-
         if (rev && nowMs >= boardState.revealAt[r][c]){
           const t = (nowMs - boardState.revealAt[r][c]) / 200;
           const e = easeOutCubic(clamp(t, 0, 1));
           const sc = 0.68 + 0.32 * e;
           const a = clamp(t * 2.2, 0, 1);
-
           ctx.save();
           ctx.globalAlpha = a;
           ctx.translate(x + cell/2, y + cell/2);
           ctx.scale(sc, sc);
           ctx.translate(-cell/2, -cell/2);
-
           ctx.fillStyle = isMine ? '#2a0810' : '#070b14';
           this.roundRect(ctx, 0, 0, cell, cell, radius);
           ctx.fill();
-
           if (own){
             ctx.fillStyle = isMine ? this.ownerTintMine[own] : this.ownerTint[own];
             this.roundRect(ctx, 0, 0, cell, cell, radius);
             ctx.fill();
           }
-
           ctx.strokeStyle = own
             ? this.ownerEdge[own]
             : (isMine ? 'rgba(255,77,109,.55)' : 'rgba(58,96,150,.3)');
           ctx.lineWidth = own ? 2.2 : 1.4;
           this.roundRect(ctx, 0, 0, cell, cell, radius);
           ctx.stroke();
-
           if (isMine){
             ctx.drawImage(mineSprite, 0, 0, cell, cell);
           } else if (board.adj[r][c] > 0){
@@ -5236,20 +4706,17 @@ class BoardView {
           ctx.fillStyle = hiddenBase;
           this.roundRect(ctx, x, y, cell, cell, radius);
           ctx.fill();
-
           if (own){
             ctx.fillStyle = this.ownerTint[own];
             this.roundRect(ctx, x, y, cell, cell, radius);
             ctx.fill();
           }
-
           const pulse = 0.22 + 0.11 * Math.sin(nowMs / 800 + (r * 0.7 + c * 0.45));
           ctx.strokeStyle = own ? this.ownerEdge[own]
             : 'rgba(90,165,255,' + pulse.toFixed(3) + ')';
           ctx.lineWidth = own ? 2 : 1.5;
           this.roundRect(ctx, x, y, cell, cell, radius);
           ctx.stroke();
-
           if (flg){
             const ft = clamp((nowMs - (boardState.flagAt[r][c] || nowMs)) / 240, 0, 1);
             const fs = clamp(easeOutBack(ft), 0, 1.3);
@@ -5276,10 +4743,8 @@ class BoardView {
         }
       }
     }
-
     if (hints){
       const pulse = 0.5 + 0.5 * Math.sin(nowMs / 200);
-
       if (hints.supports){
         hints.supports.forEach(function(key){
           const parts = key.split(',');
@@ -5303,7 +4768,6 @@ class BoardView {
           ctx.restore();
         });
       }
-
       if (hints.reveal){
         hints.reveal.forEach(function(key){
           const parts = key.split(',');
@@ -5327,7 +4791,6 @@ class BoardView {
           ctx.restore();
         });
       }
-
       if (hints.flag){
         hints.flag.forEach(function(key){
           const parts = key.split(',');
@@ -5351,7 +4814,6 @@ class BoardView {
           ctx.restore();
         });
       }
-
       if (hints.wrong){
         hints.wrong.forEach(function(key){
           const parts = key.split(',');
@@ -5375,7 +4837,6 @@ class BoardView {
         });
       }
     }
-
     if (state.highlights){
       for (const h of state.highlights){
         if (h.r < r0 || h.r > r1 || h.c < c0 || h.c > c1) continue;
@@ -5390,7 +4851,6 @@ class BoardView {
         ctx.restore();
       }
     }
-
     for (const cur of cursors){
       if (cur.r < r0 || cur.r > r1 || cur.c < c0 || cur.c > c1) continue;
       const x = pad + cur.c * (cell + gap);
@@ -5416,10 +4876,8 @@ class BoardView {
     const mineSprite = this.getMineSprite(size * 1.6);
     const nowMs = now;
     const hints = state.hints;
-
     const range = this.visibleHexRange(size, m.HW, m.pad, rows, cols);
     const r0 = range.r0, r1 = range.r1, c0 = range.c0, c1 = range.c1;
-
     for (let r = r0; r <= r1; r++){
       for (let c = c0; c <= c1; c++){
         const p = this.hexCenter(r, c);
@@ -5429,7 +4887,6 @@ class BoardView {
         const isMine = board.mines.has(r + ',' + c);
         const own = (useOwner && boardState.owner) ? boardState.owner[r][c] : 0;
         const isSupport = hints && hints.supports && hints.supports.has(r + ',' + c);
-
         if (rev && nowMs >= boardState.revealAt[r][c]){
           const t = (nowMs - boardState.revealAt[r][c]) / 240;
           const e = easeOutCubic(clamp(t, 0, 1));
@@ -5450,7 +4907,6 @@ class BoardView {
             : (isMine ? 'rgba(255,77,109,.55)' : 'rgba(58,96,150,.32)');
           ctx.lineWidth = own ? 2.4 : 1.4;
           ctx.stroke();
-
           if (isMine){
             const sz = size * 1.6;
             ctx.drawImage(mineSprite, -sz/2, -sz/2, sz, sz);
@@ -5505,10 +4961,8 @@ class BoardView {
         }
       }
     }
-
     if (hints){
       const pulse = 0.5 + 0.5 * Math.sin(nowMs / 200);
-
       if (hints.supports){
         hints.supports.forEach(function(key){
           const parts = key.split(',');
@@ -5525,7 +4979,6 @@ class BoardView {
           ctx.restore();
         }.bind(this));
       }
-
       if (hints.reveal){
         hints.reveal.forEach(function(key){
           const parts = key.split(',');
@@ -5542,7 +4995,6 @@ class BoardView {
           ctx.restore();
         }.bind(this));
       }
-
       if (hints.flag){
         hints.flag.forEach(function(key){
           const parts = key.split(',');
@@ -5559,7 +5011,6 @@ class BoardView {
           ctx.restore();
         }.bind(this));
       }
-
       if (hints.wrong){
         hints.wrong.forEach(function(key){
           const parts = key.split(',');
@@ -5582,7 +5033,6 @@ class BoardView {
         }.bind(this));
       }
     }
-
     if (state.highlights){
       for (const h of state.highlights){
         if (h.r < r0 || h.r > r1 || h.c < c0 || h.c > c1) continue;
@@ -5630,18 +5080,8 @@ class BoardView {
   }
 }
 
-const PALETTE_CYAN = {
-  tint:     'rgba(77,216,255,.17)',
-  tintMine: 'rgba(77,216,255,.30)',
-  edge:     'rgba(77,216,255,.72)',
-  solid:    '#4dd8ff'
-};
-const PALETTE_PINK = {
-  tint:     'rgba(255,61,129,.17)',
-  tintMine: 'rgba(255,61,129,.30)',
-  edge:     'rgba(255,61,129,.72)',
-  solid:    '#ff3d81'
-};
+const PALETTE_CYAN = { tint:'rgba(77,216,255,.17)', tintMine:'rgba(77,216,255,.30)', edge:'rgba(77,216,255,.72)', solid:'#4dd8ff' };
+const PALETTE_PINK = { tint:'rgba(255,61,129,.17)', tintMine:'rgba(255,61,129,.30)', edge:'rgba(255,61,129,.72)', solid:'#ff3d81' };
 function myPalette(){
   return (G.myOwner === 1)
     ? { 1: PALETTE_CYAN, 2: PALETTE_PINK }
@@ -5703,29 +5143,100 @@ function theirRevealedCount(){
   return 0;
 }
 
-function makePanel(cls, name, color){
+/* Builds the stats row.
+   - Duel with GAMEMODE rules (non-insta): 7 cells, OPPONENT button at position 4 (middle).
+   - Duel with STANDARD rules (insta): 5 cells, OPPONENT button at position 3 (middle),
+     with YOU REVEALED shifted to the right of the button. */
+function makePanelStatsHTML(isCoop, isThem, mode){
+  const isDuelMe = (mode === 'duel') && !isThem;
+  const stunRules = usesStunPenalty();
+  let html = '<div class="pstats">';
+  html += '<div class="pstat" data-minesstat><span class="plabel">MINES LEFT</span><span class="pval" data-mines>0</span></div>';
+  html += '<div class="pstat"><span class="plabel">TIME</span><span class="pval" data-time>0.0</span></div>';
+
+  if (isCoop){
+    html +=
+      '<div class="pstat"><span class="plabel">YOU REVEALED</span><span class="pval reveal-mine" data-revealyou>0</span></div>' +
+      '<div class="pstat"><span class="plabel">THEY REVEALED</span><span class="pval reveal-theirs" data-revealmate>0</span></div>' +
+      '<div class="pstat"><span class="plabel">TOTAL REVEALED</span><span class="pval" data-revealtotal>0</span></div>' +
+      '<button type="button" class="pstat-action" data-returnstart style="display:none" title="Return to start">RETURN</button>';
+    html += '</div>';
+    return html;
+  }
+
+  if (isDuelMe){
+    if (stunRules){
+      html +=
+        '<div class="pstat"><span class="plabel">YOU REVEALED</span><span class="pval reveal-mine" data-revealed>0</span></div>' +
+        '<button type="button" class="pstat-action" data-toggleopp title="View opponent board">👁 OPPONENT</button>' +
+        '<div class="pstat"><span class="plabel">THEY REVEALED</span><span class="pval reveal-theirs" data-theyrevealed>0</span></div>' +
+        '<div class="pstat" data-hitsstat><span class="plabel">YOUR HITS</span><span class="pval" data-hits>0</span></div>' +
+        '<div class="pstat" data-theirhitsstat><span class="plabel">THEIR HITS</span><span class="pval reveal-theirs" data-theirhits>0</span></div>';
+    } else {
+      html +=
+        '<button type="button" class="pstat-action" data-toggleopp title="View opponent board">👁 OPPONENT</button>' +
+        '<div class="pstat"><span class="plabel">YOU REVEALED</span><span class="pval reveal-mine" data-revealed>0</span></div>' +
+        '<div class="pstat"><span class="plabel">THEY REVEALED</span><span class="pval reveal-theirs" data-theyrevealed>0</span></div>';
+    }
+    html += '</div>';
+    return html;
+  }
+
+  html +=
+    '<div class="pstat"><span class="plabel">' +
+      (isThem ? 'THEY REVEALED' : 'YOU REVEALED') +
+    '</span><span class="pval ' + (isThem ? 'reveal-theirs' : 'reveal-mine') + '" data-revealed>0</span></div>' +
+    '<button type="button" class="pstat-action" data-returnstart style="display:none" title="Return to start">RETURN</button>';
+  if (stunRules){
+    html += '<div class="pstat" data-hitsstat><span class="plabel">' +
+      (isThem ? 'THEIR HITS' : 'HITS') +
+      '</span><span class="pval" data-hits>0</span></div>';
+  }
+  html += '</div>';
+  return html;
+}
+
+function makePanel(cls, name, color, mode){
+  const isCoop = mode === 'coop';
+  const isThem = (cls === 'them');
+  const isDuelMe = (mode === 'duel') && !isThem;
   const panel = document.createElement('div');
   panel.className = 'panel ' + cls;
   panel.style.setProperty('--pc', color);
+
+  let barHtml;
+  if (isDuelMe){
+    barHtml =
+      '<div class="pbar"><i data-pbar></i></div>' +
+      '<div class="pbar" style="--pc:#ff3d81"><i data-pbar-them></i></div>';
+  } else {
+    barHtml = '<div class="pbar"><i data-pbar></i></div>';
+  }
+
+  let boardInner;
+  if (isDuelMe){
+    boardInner =
+      '<canvas data-canvas="me"></canvas>' +
+      '<canvas data-canvas="them" style="display:none"></canvas>' +
+      STUN_HTML +
+      '<div class="oppstun"><span data-oemoji>💥</span> <span data-oname>OPPONENT</span> FROZEN <b>10.0</b></div>' +
+      '<div class="zoom-badge" data-zoombadge>⤢ 1.0×</div>';
+  } else {
+    boardInner =
+      '<canvas></canvas>' +
+      STUN_HTML +
+      '<div class="zoom-badge" data-zoombadge>⤢ 1.0×</div>';
+  }
+
   panel.innerHTML =
     '<div class="phead">' +
       '<span class="dot"></span>' +
       '<span class="pname" style="color:' + color + '">' + escapeHtml(name) + '</span>' +
       '<span class="pkeys"></span>' +
     '</div>' +
-    '<div class="pstats">' +
-      '<div class="pstat" data-minesstat><span class="plabel">MINES</span><span class="pval" data-mines>0</span></div>' +
-      '<div class="pstat"><span class="plabel">TIME</span><span class="pval" data-time>0.0</span></div>' +
-      '<button type="button" class="pstat-action" data-returnstart style="display:none" title="Return to start">RETURN</button>' +
-      '<div class="pstat"><span class="plabel" data-revealedlabel>REVEALED</span><span class="pval" data-revealed>0</span></div>' +
-      '<div class="pstat" data-hitsstat><span class="plabel">HITS</span><span class="pval" data-hits>0</span></div>' +
-    '</div>' +
-    '<div class="pbar"><i></i></div>' +
-    '<div class="boardwrap">' +
-      '<canvas></canvas>' +
-      STUN_HTML +
-      '<div class="zoom-badge" data-zoombadge>⤢ 1.0×</div>' +
-    '</div>';
+    makePanelStatsHTML(isCoop, isThem, mode) +
+    barHtml +
+    '<div class="boardwrap">' + boardInner + '</div>';
   return panel;
 }
 
@@ -5743,10 +5254,11 @@ function makeTerritoryPanel(){
       '<span class="pkeys"></span>' +
     '</div>' +
     '<div class="pstats">' +
-      '<div class="pstat" style="--pc:#4dd8ff"><span class="plabel">YOUR LAND</span><span class="pval" data-myland>0</span></div>' +
-      '<div class="pstat" style="--pc:#ff3d81"><span class="plabel">THEIR LAND</span><span class="pval" data-theirland>0</span></div>' +
+      '<div class="pstat" style="--pc:#4dd8ff"><span class="plabel">YOU REVEALED</span><span class="pval reveal-mine" data-myland>0</span></div>' +
+      '<div class="pstat" style="--pc:#ff3d81"><span class="plabel">THEY REVEALED</span><span class="pval reveal-theirs" data-theirland>0</span></div>' +
       '<div class="pstat" style="--pc:#cfe4ff"><span class="plabel">TIME</span><span class="pval" data-time>0.0</span></div>' +
-      '<div class="pstat" data-hitsstat><span class="plabel">HITS</span><span class="pval" data-hits>0</span></div>' +
+      '<div class="pstat" data-hitsstat><span class="plabel">YOUR HITS</span><span class="pval" data-hits>0</span></div>' +
+      '<div class="pstat" data-theirhitsstat><span class="plabel">THEIR HITS</span><span class="pval reveal-theirs" data-theirhits>0</span></div>' +
     '</div>' +
     '<div class="tbar">' +
       '<i class="mine" data-mybar style="width:0%"></i>' +
@@ -5761,19 +5273,13 @@ function makeTerritoryPanel(){
   return panel;
 }
 
-function myNameText(){
-  if (isGuest) return 'YOU';
-  return getPlayerName() || 'YOU';
-}
-function theirNameText(){
-  return G.theirName || 'OPPONENT';
-}
+function myNameText(){ if (isGuest) return 'YOU'; return getPlayerName() || 'YOU'; }
+function theirNameText(){ return G.theirName || 'OPPONENT'; }
 
 function updatePanelNames(){
   const myName = myNameText();
   const theirName = theirNameText();
   const mode = G.config.mode;
-
   if (G.panelMe && G.panelMe._els){
     const e = G.panelMe._els;
     if (mode === 'solo'){
@@ -5791,6 +5297,7 @@ function updatePanelNames(){
       if (e.oppNameEl)  e.oppNameEl.textContent = theirName;
     } else {
       if (e.nameEl) e.nameEl.textContent = myName;
+      if (e.oppNameEl) e.oppNameEl.textContent = theirName;
     }
   }
   if (G.panelThem && G.panelThem._els && G.panelThem._els.nameEl){
@@ -5803,51 +5310,88 @@ function viewConfig(){
   return { mode: G.config.mode, style: G.config.style, cols: d.cols, rows: d.rows, size: G.config.size };
 }
 
+function activeBoardView(){
+  if (G.config.mode === 'duel' && G.duelShowOpponent && G.viewThem) return G.viewThem;
+  return G.viewMe;
+}
+
+function applyDuelView(){
+  if (G.config.mode !== 'duel') return;
+  const show = !!G.duelShowOpponent;
+  if (G.viewMe && G.viewMe.canvas) G.viewMe.canvas.style.display = show ? 'none' : 'block';
+  if (G.viewThem && G.viewThem.canvas){
+    G.viewThem.canvas.style.display = show ? 'block' : 'none';
+    if (show){ try { G.viewThem.resize(); } catch(e){} }
+  }
+  const btn = G.panelMe ? G.panelMe.querySelector('[data-toggleopp]') : null;
+  if (btn) btn.textContent = show ? '👁 YOUR BOARD' : '👁 OPPONENT';
+}
+
+function toggleDuelView(){
+  if (G.config.mode !== 'duel') return;
+  if (G.state !== 'playing' && G.state !== 'over') return;
+  G.duelShowOpponent = !G.duelShowOpponent;
+  applyDuelView();
+  SFX.clickSoft();
+}
+
 function buildArena(){
   arena.innerHTML = '';
   G.viewMe = null; G.viewThem = null; G.panelMe = null; G.panelThem = null;
+  G.duelShowOpponent = false;
   const mode = G.config.mode;
   const insta = !!G.config.insta;
   const isInf = isInfiniteSize(G.config.size);
   const showHits = usesStunPenalty();
   arena.classList.toggle('solo', mode === 'solo');
+  arena.classList.toggle('duel', mode === 'duel');
   arena.classList.toggle('territory', mode === 'territory');
   if (mode === 'territory'){ buildTerritoryArena(); updatePanelNames(); return; }
   const isSolo = mode === 'solo';
-  const isCoop = mode === 'coop';
 
-  const panelA = makePanel('me', isSolo ? 'SOLO' : 'YOU', '#4dd8ff');
+  const panelA = makePanel('me', isSolo ? 'SOLO' : 'YOU', '#4dd8ff', mode);
   arena.appendChild(panelA);
-  G.viewMe = new BoardView(panelA.querySelector('canvas'));
+  const canvasMe = panelA.querySelector('canvas[data-canvas="me"]') || panelA.querySelector('canvas');
+  G.viewMe = new BoardView(canvasMe);
   G.viewMe.setConfig(viewConfig());
   bindCanvasInput(G.viewMe, true, true);
-  wireZoomBadge(panelA, G.viewMe);
+  wireZoomBadge(panelA, activeBoardView);
   panelA._els = {
     mines: panelA.querySelector('[data-mines]'),
     time:  panelA.querySelector('[data-time]'),
     hits:  panelA.querySelector('[data-hits]'),
     hitsStat: panelA.querySelector('[data-hitsstat]'),
+    theirHits: panelA.querySelector('[data-theirhits]'),
+    theirHitsStat: panelA.querySelector('[data-theirhitsstat]'),
     revealed: panelA.querySelector('[data-revealed]'),
-    bar:   panelA.querySelector('.pbar i'),
+    theirRevealed: panelA.querySelector('[data-theyrevealed]'),
+    revealYou: panelA.querySelector('[data-revealyou]'),
+    revealMate: panelA.querySelector('[data-revealmate]'),
+    revealTotal: panelA.querySelector('[data-revealtotal]'),
+    bar:   panelA.querySelector('[data-pbar]'),
+    barThem: panelA.querySelector('[data-pbar-them]'),
     stun:  panelA.querySelector('.stun'),
+    oppStun: panelA.querySelector('.oppstun'),
+    oppNameEl: panelA.querySelector('[data-oname]'),
     keys:  panelA.querySelector('.pkeys'),
     nameEl: panelA.querySelector('.pname'),
     panel: panelA
   };
-  /* The "REVEALED" stat on the local player's panel only ever counts the
-     local player's own tiles — label it accordingly. */
-  const revLabelEl = panelA.querySelector('[data-revealedlabel]');
-  if (revLabelEl) revLabelEl.textContent = 'YOU REVEALED';
-  if (!showHits && panelA._els.hitsStat) panelA._els.hitsStat.style.display = 'none';
+  if (!showHits){
+    if (panelA._els.hitsStat) panelA._els.hitsStat.style.display = 'none';
+    if (panelA._els.theirHitsStat) panelA._els.theirHitsStat.style.display = 'none';
+  }
   if (insta) panelA._els.keys.classList.add('insta');
-  if (isCoop) panelA._els.keys.textContent = 'SHARED · ' + panelKeysText();
-  else        panelA._els.keys.textContent = panelKeysText();
+  if (mode === 'coop') panelA._els.keys.textContent = 'SHARED · ' + panelKeysText();
+  else                 panelA._els.keys.textContent = panelKeysText();
 
   if (isInf){
     const minesBox = panelA.querySelector('[data-minesstat]');
     if (minesBox) minesBox.style.display = 'none';
     const pbar = panelA.querySelector('.pbar');
     if (pbar) pbar.style.display = 'none';
+    const statsEl = panelA.querySelector('.pstats');
+    if (statsEl) statsEl.classList.add('center-stats');
     const retBtn = panelA.querySelector('[data-returnstart]');
     if (retBtn){
       retBtn.style.display = 'flex';
@@ -5865,29 +5409,21 @@ function buildArena(){
   }
 
   if (mode === 'duel'){
-    const panelB = makePanel('them', 'OPPONENT', '#ff3d81');
-    arena.appendChild(panelB);
-    G.viewThem = new BoardView(panelB.querySelector('canvas'));
+    const cThem = panelA.querySelector('canvas[data-canvas="them"]');
+    G.viewThem = new BoardView(cThem);
     G.viewThem.setConfig(viewConfig());
-    bindCanvasInput(G.viewThem, false, false);
-    panelB._els = {
-      mines: panelB.querySelector('[data-mines]'),
-      time:  panelB.querySelector('[data-time]'),
-      hits:  panelB.querySelector('[data-hits]'),
-      hitsStat: panelB.querySelector('[data-hitsstat]'),
-      revealed: panelB.querySelector('[data-revealed]'),
-      bar:   panelB.querySelector('.pbar i'),
-      stun:  panelB.querySelector('.stun'),
-      keys:  panelB.querySelector('.pkeys'),
-      nameEl: panelB.querySelector('.pname'),
-      panel: panelB
-    };
-    const revLabelB = panelB.querySelector('[data-revealedlabel]');
-    if (revLabelB) revLabelB.textContent = 'THEY REVEALED';
-    if (!showHits && panelB._els.hitsStat) panelB._els.hitsStat.style.display = 'none';
-    panelB._els.keys.textContent = 'LIVE VIEW · NO ZOOM';
-    G.panelThem = panelB;
+    bindCanvasInput(G.viewThem, false, true);
+    const togBtn = panelA.querySelector('[data-toggleopp]');
+    if (togBtn){
+      togBtn.addEventListener('click', e => {
+        e.preventDefault(); e.stopPropagation();
+        toggleDuelView();
+      });
+      togBtn.addEventListener('pointerdown', e => e.stopPropagation());
+    }
+    applyDuelView();
   }
+
   G.panelMe = panelA;
   updatePanelNames();
 }
@@ -5906,28 +5442,36 @@ function buildTerritoryArena(){
     time:      panel.querySelector('[data-time]'),
     hits:      panel.querySelector('[data-hits]'),
     hitsStat:  panel.querySelector('[data-hitsstat]'),
+    theirHits: panel.querySelector('[data-theirhits]'),
+    theirHitsStat: panel.querySelector('[data-theirhitsstat]'),
     myBar:     panel.querySelector('[data-mybar]'),
     theirBar:  panel.querySelector('[data-theirbar]'),
     stun:      panel.querySelector('.stun'),
     oppStun:   panel.querySelector('.oppstun'),
+    oppNameEl: panel.querySelector('[data-oname]'),
     nameMeEl:   panel.querySelector('[data-nameme]'),
     nameThemEl: panel.querySelector('[data-namethem]'),
-    oppNameEl:  panel.querySelector('[data-oname]'),
     panel:     panel
   };
-  if (!usesStunPenalty() && panel._els.hitsStat) panel._els.hitsStat.style.display = 'none';
+  if (!usesStunPenalty()){
+    if (panel._els.hitsStat) panel._els.hitsStat.style.display = 'none';
+    if (panel._els.theirHitsStat) panel._els.theirHitsStat.style.display = 'none';
+  }
   const keysEl = panel.querySelector('.pkeys');
   if (G.config.insta) keysEl.classList.add('insta');
   keysEl.textContent = panelKeysText();
   G.panelMe = panel;
 }
 
-function wireZoomBadge(panel, view){
+function wireZoomBadge(panel, getView){
   const badge = panel.querySelector('[data-zoombadge]');
   if (!badge) return;
+  const resolve = () => (typeof getView === 'function') ? getView() : getView;
   let rafId = null;
   const tick = () => {
     rafId = requestAnimationFrame(tick);
+    const view = resolve();
+    if (!view){ badge.classList.remove('on'); return; }
     if (Math.abs(view.zoom - 1) > 0.001){
       badge.classList.add('on');
       badge.textContent = '⤢ ' + view.zoom.toFixed(1) + '× · reset';
@@ -5938,7 +5482,8 @@ function wireZoomBadge(panel, view){
   rafId = requestAnimationFrame(tick);
   badge.addEventListener('click', e => {
     e.stopPropagation();
-    view.resetView();
+    const view = resolve();
+    if (view) view.resetView();
     SFX.clickSoft();
   });
   badge.addEventListener('pointerdown', e => e.stopPropagation());
@@ -5949,9 +5494,15 @@ function interactive(){
 }
 
 function returnToStart(){
-  if (!G.viewMe || !G.board || !G.me) return;
-  const v = G.viewMe;
-  const p = hexOrSqCenter(v, G.myStartR, G.myStartC);
+  const v = activeBoardView();
+  if (!v || !G.board || !G.me) return;
+  let targetR = G.myStartR, targetC = G.myStartC;
+  if (G.config.mode === 'duel' && G.duelShowOpponent){
+    targetR = G.board.rows >> 1;
+    targetC = G.board.cols >> 1;
+    if (G.them){ targetR = G.them.cursor.r; targetC = G.them.cursor.c; }
+  }
+  const p = hexOrSqCenter(v, targetR, targetC);
   const scale = v.baseScale * v.zoom;
   G.viewAnim = {
     active: true,
@@ -5972,12 +5523,10 @@ function bindCanvasInput(view, gameplay, allowZoom){
   let pinch = null;
   let touchGesture = null;
   let mousePan = null;
-
   const clientToLocal = (clientX, clientY) => {
     const rect = canvas.getBoundingClientRect();
     return { x: clientX - rect.left, y: clientY - rect.top, rect };
   };
-
   canvas.addEventListener('contextmenu', e => e.preventDefault());
   canvas.addEventListener('wheel', e => {
     if (!view.metrics) return;
@@ -5993,12 +5542,10 @@ function bindCanvasInput(view, gameplay, allowZoom){
     const { x, y } = clientToLocal(e.clientX, e.clientY);
     view.zoomAround(x, y, newZoom);
   }, { passive: false });
-
   const cancelTouchGesture = () => {
     if (touchGesture && touchGesture.timer) clearTimeout(touchGesture.timer);
     touchGesture = null;
   };
-
   canvas.addEventListener('pointerdown', e => {
     if (!view.metrics) return;
     try { canvas.setPointerCapture(e.pointerId); } catch(err){}
@@ -6007,7 +5554,6 @@ function bindCanvasInput(view, gameplay, allowZoom){
       startX: e.clientX, startY: e.clientY,
       startTime: performance.now()
     });
-
     if (e.pointerType === 'mouse'){
       if (e.button === 1 || (e.button === 0 && e.shiftKey)){
         e.preventDefault();
@@ -6022,7 +5568,6 @@ function bindCanvasInput(view, gameplay, allowZoom){
       else if (e.button === 2) localFlagAt(cell.r, cell.c);
       return;
     }
-
     if (pointers.size >= 2){
       cancelTouchGesture();
       if (allowZoom){
@@ -6035,7 +5580,6 @@ function bindCanvasInput(view, gameplay, allowZoom){
       }
       return;
     }
-
     touchGesture = {
       id: e.pointerId, x0: e.clientX, y0: e.clientY,
       x: e.clientX, y: e.clientY,
@@ -6055,12 +5599,10 @@ function bindCanvasInput(view, gameplay, allowZoom){
       }, 400);
     }
   });
-
   canvas.addEventListener('pointermove', e => {
     const tracked = pointers.get(e.pointerId);
     if (!tracked) return;
     tracked.x = e.clientX; tracked.y = e.clientY;
-
     if (mousePan && mousePan.id === e.pointerId){
       const dx = e.clientX - mousePan.lastX;
       const dy = e.clientY - mousePan.lastY;
@@ -6105,7 +5647,6 @@ function bindCanvasInput(view, gameplay, allowZoom){
       }
     }
   });
-
   const finishPointer = e => {
     if (mousePan && mousePan.id === e.pointerId) mousePan = null;
     if (touchGesture && touchGesture.id === e.pointerId){
@@ -6129,7 +5670,6 @@ function bindCanvasInput(view, gameplay, allowZoom){
       };
     }
   };
-
   canvas.addEventListener('pointerup', finishPointer);
   canvas.addEventListener('pointercancel', finishPointer);
 }
@@ -6161,15 +5701,11 @@ window.addEventListener('keydown', e => {
     }
     return;
   }
-
   const tag = (e.target && e.target.tagName) || '';
   if (tag === 'INPUT' || tag === 'TEXTAREA') return;
-
   const code = e.code || '';
-
   if (code === HOTKEYS.zoomIn){ heldZoom.in = true; e.preventDefault(); return; }
   if (code === HOTKEYS.zoomOut){ heldZoom.out = true; e.preventDefault(); return; }
-
   if ((code === 'KeyW' || code === 'KeyA' || code === 'KeyS' || code === 'KeyD') &&
       !codeBoundToAction(code)){
     const hasReview = G.reviewViews && G.reviewViews.length > 0;
@@ -6180,9 +5716,7 @@ window.addEventListener('keydown', e => {
     }
     return;
   }
-
   if (G.state !== 'playing' || !G.me) return;
-
   let handled = true;
   if      (code === HOTKEYS.up)    moveCursor(-1, 0);
   else if (code === HOTKEYS.down)  moveCursor(1, 0);
@@ -6209,6 +5743,7 @@ window.addEventListener('blur', clearHeldKeys);
 
 function activeViews(){
   if (G.reviewViews && G.reviewViews.length) return G.reviewViews;
+  if (G.config.mode === 'duel' && G.duelShowOpponent && G.viewThem) return [G.viewThem];
   return G.viewMe ? [G.viewMe] : [];
 }
 
@@ -6410,19 +5945,15 @@ function mapRevealStats(){
   const mode = G.config.mode;
   if (mode === 'solo') return null;
   if (!G.board || !G.myBoard) return null;
-
   if (mode === 'duel'){
     const myTotal = Math.max(1, G.board.safeCount || 0);
     const mine = clamp((G.myBoard.safeRevealed || 0) / myTotal * 100, 0, 100);
-
     const theirLayout = G.theirBoardLayout || G.board;
     const theirTotal = Math.max(1, (theirLayout && theirLayout.safeCount) || myTotal);
     const theirRevealed = G.theirBoard ? (G.theirBoard.safeRevealed || 0) : 0;
     const theirs = clamp(theirRevealed / theirTotal * 100, 0, 100);
-
     return { mine, theirs };
   }
-
   const safeTotal = Math.max(1, G.board.safeCount || (G.board.rows * G.board.cols));
   const c1 = countRevealedBy(G.myBoard, 1);
   const c2 = countRevealedBy(G.myBoard, 2);
@@ -6432,38 +5963,26 @@ function mapRevealStats(){
   };
 }
 
-/* ── End-screen reveal statistics ────────────────────────────────
-   Returns tile counts AND percentages for both players so a single
-   stat box can show "123 · 4.2%" instead of two separate boxes. */
 function revealCountsAndPct(){
   if (!G.board || !G.myBoard) return null;
   const mode = G.config.mode;
   const isDuel = (mode === 'duel');
   const isInf = isInfiniteSize(G.config.size);
   const theirLayout = isDuel ? (G.theirBoardLayout || G.board) : G.board;
-
   const myTotal = Math.max(1, G.board.safeCount || (G.board.rows * G.board.cols) || 1);
   const theirTotal = Math.max(1, (theirLayout && theirLayout.safeCount) || myTotal);
-
   const mine = myRevealedCount();
   const theirs = G.them ? theirRevealedCount() : 0;
-
-  /* Infinite co-op has no finite board to divide by, so split the
-     percentage by each player's share of the team's combined reveals.
-     The two numbers then always add up to 100%. */
   if (isInf && mode === 'coop'){
     const teamTotal = Math.max(1, mine + theirs);
     return {
-      mine: mine,
-      theirs: theirs,
+      mine: mine, theirs: theirs,
       minePct: clamp(mine / teamTotal * 100, 0, 100),
       theirsPct: clamp(theirs / teamTotal * 100, 0, 100)
     };
   }
-
   return {
-    mine: mine,
-    theirs: theirs,
+    mine: mine, theirs: theirs,
     minePct: clamp(mine / myTotal * 100, 0, 100),
     theirsPct: clamp(theirs / theirTotal * 100, 0, 100)
   };
@@ -6541,27 +6060,32 @@ function findSafeSwapTargetExcluding(board, boardState, r, c, excludeSet){
   if (!candidates.length) return null;
   return candidates[Math.floor(Math.random() * candidates.length)];
 }
-function ensureFirstDigSafe(board, boardState, playerState, r, c, syncNetwork){
-  if (!playerState || playerState.digged) return false;
-  playerState.digged = true;
 
+/* First dig guarantee.
+   - Co-op: global one-shot only — the first ever click gets it.
+   - Solo / Duel: per-player first click gets it.
+   - Territory: never — the starting safe zone already protects the
+     initial reveal, and clicks outside it should behave normally. */
+function ensureFirstDigSafe(board, boardState, playerState, r, c, syncNetwork){
+  if (G.config.mode === 'territory') return false;
+  if (!playerState || playerState.digged) return false;
+  if (G.config.mode === 'coop'){
+    if (G.firstSafeDone) return false;
+    G.firstSafeDone = true;
+  }
+  playerState.digged = true;
   const cleared = [];
   if (board.mines.has(r + ',' + c)) cleared.push([r, c]);
   for (const [nr, nc] of board.neighbors(r, c, board.rows, board.cols)){
     if (board.mines.has(nr + ',' + nc)) cleared.push([nr, nc]);
   }
   if (!cleared.length) return false;
-
   const excl = new Set();
   excl.add(r + ',' + c);
   for (const [nr, nc] of board.neighbors(r, c, board.rows, board.cols)){
     excl.add(nr + ',' + nc);
   }
-
-  for (const [mr, mc] of cleared){
-    board.mines.delete(mr + ',' + mc);
-  }
-
+  for (const [mr, mc] of cleared){ board.mines.delete(mr + ',' + mc); }
   const swaps = [];
   for (const [mr, mc] of cleared){
     const swap = findSafeSwapTargetExcluding(board, boardState, mr, mc, excl);
@@ -6571,7 +6095,6 @@ function ensureFirstDigSafe(board, boardState, playerState, r, c, syncNetwork){
       swaps.push({ fr: mr, fc: mc, sr: swap.r, sc: swap.c });
     }
   }
-
   recomputeAdjacency(board);
   if (syncNetwork){
     for (const sw of swaps){
@@ -6582,15 +6105,19 @@ function ensureFirstDigSafe(board, boardState, playerState, r, c, syncNetwork){
 }
 
 function canAct(){
-  return G.state === 'playing' && G.me && !G.me.done && performance.now() >= G.me.stunUntil;
+  if (G.state !== 'playing' || !G.me || G.me.done) return false;
+  if (performance.now() < G.me.stunUntil) return false;
+  if (G.config.mode === 'duel' && G.duelShowOpponent) return false;
+  return true;
 }
 function isFrozen(){ return G.me && performance.now() < G.me.stunUntil; }
 
 let lastCursorSent = 0;
-function sendCursor(){
+function sendCursor(force){
   if (G.role === 'solo' || !G.conn) return;
+  if (!G.me) return;
   const now = performance.now();
-  if (now - lastCursorSent < 110) return;
+  if (!force && now - lastCursorSent < 110) return;
   lastCursorSent = now;
   send({ t:'cur', r: G.me.cursor.r, c: G.me.cursor.c });
 }
@@ -6604,26 +6131,31 @@ function moveCursor(dr, dc){
   if (nr === G.me.cursor.r && nc === G.me.cursor.c) return;
   G.me.cursor = { r: nr, c: nc };
   cursorActiveUntil = performance.now() + 1200;
-  sendCursor();
+  sendCursor(false);
 }
-function localDigAt(r, c){ if (!canAct()) return; G.me.cursor = { r, c }; localDig(); }
-function localFlagAt(r, c){ if (!canAct()) return; G.me.cursor = { r, c }; localFlag(); }
+function localDigAt(r, c){
+  if (!canAct()) return;
+  G.me.cursor = { r, c };
+  sendCursor(true);
+  localDig();
+}
+function localFlagAt(r, c){
+  if (!canAct()) return;
+  G.me.cursor = { r, c };
+  sendCursor(true);
+  localFlag();
+}
 
 let digBusy = false;
 
 async function localDig(){
   if (!canAct()) return;
   if (digBusy) return;
-
-  /* Any action unlocks the camera. */
   G.cameraUnlocked = true;
-
   const r = G.me.cursor.r, c = G.me.cursor.c;
   const mode = G.config.mode;
-
   if (G.myBoard.flagged[r][c]) return;
   if (mode === 'territory' && !canTouchTerritory(G.myBoard, G.board, r, c, G.myOwner)) return;
-
   if (G.boardPending){
     digBusy = true;
     try {
@@ -6653,11 +6185,8 @@ function doLocalDig(r, c){
   const mode = G.config.mode;
   const insta = !!G.config.insta;
   const isInf = isInfiniteSize(G.config.size);
-
   G.cameraUnlocked = true;
-
   if (G.myBoard && G.myBoard.flagged[r][c]) return;
-
   if (mode === 'coop' || mode === 'territory'){
     if (G.role === 'host') hostApplyDig(r, c, G.myOwner);
     else {
@@ -6676,7 +6205,6 @@ function doLocalDig(r, c){
       G.me.hits++; G.deathTile = { r, c };
       G.lossHintMe = computeHintForBoard(G.board, preSnap, null, false, r, c);
       send({ t:'hit', r, c });
-
       if (insta){
         send({ t:'lose' });
         revealAllMines(bs, G.board, r, c);
@@ -6694,7 +6222,6 @@ function doLocalDig(r, c){
         }, 1000);
         return;
       }
-
       duelFreeze(r, c);
       return;
     }
@@ -6749,7 +6276,8 @@ function handleCoopLoss(r, c, broadcast, iTriggered){
   if (G.lossPending) return;
   G.lossPending = true;
   if (G.me) G.me.done = true;
-  G.deathTile = { r, c };
+  if (iTriggered) G.deathTile = { r, c };
+  else G.theirDeathTile = { r, c };
   const bs = G.myBoard;
   const view = G.viewMe;
   if (view){
@@ -6816,6 +6344,7 @@ function handleTerritoryBoom(r, c, owner){
   const bs = G.myBoard;
   const iTriggered = (owner === G.myOwner);
   if (iTriggered) G.deathTile = { r, c };
+  else G.theirDeathTile = { r, c };
   if (bs){
     if (bs.owner) bs.owner[r][c] = owner;
     if (bs.fakeFlag) bs.fakeFlag[r][c] = false;
@@ -6825,7 +6354,6 @@ function handleTerritoryBoom(r, c, owner){
       bs.count++;
     }
   }
-
   const view = G.viewMe;
   if (view){
     if (iTriggered) view.triggerShake();
@@ -6833,16 +6361,13 @@ function handleTerritoryBoom(r, c, owner){
     view.boom(p.x, p.y, '#ff4d6d', iTriggered ? 40 : 24, iTriggered ? 280 : 180);
     view.boom(p.x, p.y, '#ffd166', iTriggered ? 18 : 10, 140);
   }
-
   const hintPayload = {};
   if (G.lossHintMe)   hintPayload[G.myOwner]    = serializeHint(G.lossHintMe);
   if (G.lossHintThem) hintPayload[G.theirOwner] = serializeHint(G.lossHintThem);
-
   const deltaMsg = {
     t:'delta', mine:[r, c], own: owner, rev: [[r, c]],
     hints: (Object.keys(hintPayload).length ? hintPayload : undefined)
   };
-
   if (G.config.insta){
     send(deltaMsg);
     const elapsed = performance.now() - G.startTime;
@@ -6863,7 +6388,6 @@ function handleTerritoryBoom(r, c, owner){
     }
     return;
   }
-
   applyPenalty(owner, 'bomb');
   send(deltaMsg);
 }
@@ -6901,33 +6425,28 @@ function finishTerritory(fromNetwork, land1, land2, real1, real2){
 
 function endTerritoryScreen(land1, land2, real1, real2){
   if (G.state === 'over') return;
-  const mine   = (G.myOwner === 1) ? land1 : land2;
-  const theirs = (G.myOwner === 1) ? land2 : land1;
+  const myRev    = G.myBoard ? countRevealedBy(G.myBoard, G.myOwner)    : 0;
+  const theirRev = G.myBoard ? countRevealedBy(G.myBoard, G.theirOwner) : 0;
   const myReal     = (G.myOwner === 1) ? real1 : real2;
   const theirReal  = (G.myOwner === 1) ? real2 : real1;
-  const total  = Math.max(1, G.board ? (G.board.rows * G.board.cols) : (mine + theirs));
-  const minePct   = (mine   / total * 100);
-  const theirsPct = (theirs / total * 100);
-
+  const total  = Math.max(1, G.board ? (G.board.rows * G.board.cols) : (myRev + theirRev));
+  const minePct   = (myRev   / total * 100);
+  const theirsPct = (theirRev / total * 100);
   let result, icon, title, sub;
   if (myReal > theirReal){
     result = 'win';  icon = '🏆'; title = 'LAND GRAB WON!';
-    sub = 'You claimed <b style="color:#4dd8ff">' + mine + '</b> tiles — opponent got <b style="color:#ff3d81">' + theirs + '</b>.';
+    sub = 'You revealed <b style="color:#4dd8ff">' + myRev + '</b> tiles — opponent revealed <b style="color:#ff3d81">' + theirRev + '</b>.';
   } else if (theirReal > myReal){
     result = 'lose'; icon = '💀'; title = 'LAND GRAB LOST';
-    sub = 'Opponent claimed <b style="color:#ff3d81">' + theirs + '</b> tiles — you got <b style="color:#4dd8ff">' + mine + '</b>.';
+    sub = 'Opponent revealed <b style="color:#ff3d81">' + theirRev + '</b> tiles — you revealed <b style="color:#4dd8ff">' + myRev + '</b>.';
   } else {
     result = 'draw'; icon = '🤝'; title = 'DEAD EVEN';
-    sub = 'Both players claimed <b>' + mine + '</b> tiles.';
+    sub = 'Both players revealed <b>' + myRev + '</b> tiles.';
   }
-
-  /* Tile amount and percentage share a single box per player. */
   const cards =
-    statCardHtml('win',  'YOUR LAND',  mine,   formatRevealPct(minePct)) +
-    statCardHtml('lose', 'THEIR LAND', theirs, formatRevealPct(theirsPct));
-
+    statCardHtml('win',  'YOU REVEALED',  myRev,   formatRevealPct(minePct)) +
+    statCardHtml('lose', 'THEY REVEALED', theirRev, formatRevealPct(theirsPct));
   const elapsed = performance.now() - G.startTime;
-
   if (G.config && elapsed > 0 && !isGuest && result === 'win'){
     const partner = (G.theirName && G.theirNameKey)
       ? { name: G.theirName, key: G.theirNameKey }
@@ -6935,7 +6454,6 @@ function endTerritoryScreen(land1, land2, real1, real2){
     recordWin('territory', G.config.style, G.config.size, !!G.config.insta,
               Math.max(1, Math.round(elapsed)), true, partner).catch(()=>{});
   }
-
   endGame(result, icon, title, sub, elapsed, cards, { skipRecord: true });
 }
 
@@ -6947,20 +6465,16 @@ function localFlag(){
   if (bs.revealed[r][c]) return;
   const mode = G.config.mode;
   const insta = !!G.config.insta;
-
   if (mode === 'territory'){
     if (!canTouchTerritory(bs, G.board, r, c, G.myOwner)) return;
-
     if (insta){
-      if (G.role === 'host'){
-        hostApplyTerritoryFlag(r, c, G.myOwner);
-      } else {
+      if (G.role === 'host'){ hostApplyTerritoryFlag(r, c, G.myOwner); }
+      else {
         bs.flagged[r][c] ? SFX.unflag() : SFX.flag();
         send({ t:'flag', r, c });
       }
       return;
     }
-
     if (bs.flagged[r][c] && bs.owner[r][c] && bs.owner[r][c] !== G.myOwner){
       SFX.denied();
       return;
@@ -6972,7 +6486,6 @@ function localFlag(){
     }
     return;
   }
-
   if (mode === 'coop'){
     if (G.role === 'host') hostApplyFlag(r, c);
     else {
@@ -6981,10 +6494,8 @@ function localFlag(){
     }
     return;
   }
-
   if (mode === 'duel'){
     const isMine = G.board.mines.has(r + ',' + c);
-
     if (insta){
       const on = bs.flagged[r][c] ? 0 : 1;
       bs.flagged[r][c] = !!on;
@@ -6994,7 +6505,6 @@ function localFlag(){
       send({ t:'flag', r, c, on });
       return;
     }
-
     if (isMine){
       const on = bs.flagged[r][c] ? 0 : 1;
       bs.flagged[r][c] = !!on;
@@ -7004,20 +6514,17 @@ function localFlag(){
       send({ t:'flag', r, c, on });
       return;
     }
-
     bs.revealed[r][c] = true;
     bs.revealAt[r][c] = performance.now();
     bs.count++;
     bs.safeRevealed++;
     send({ t:'rev', tiles: [[r, c]] });
-
     const view = G.viewMe;
     if (view){
       const p = hexOrSqCenter(view, r, c);
       view.triggerShake();
       view.boom(p.x, p.y, '#7fd8ff', 18, 160);
     }
-
     const now = performance.now();
     G.me.hits++;
     G.me.stunUntil = now + STUN_MS;
@@ -7026,11 +6533,9 @@ function localFlag(){
     SFX.freeze();
     vibrate(160);
     send({ t:'stun', who: G.myOwner, reason: 'flag' });
-
     if (checkWin(bs, G.board)) duelWin();
     return;
   }
-
   const on = bs.flagged[r][c] ? 0 : 1;
   bs.flagged[r][c] = !!on;
   bs.flagAt[r][c] = performance.now();
@@ -7045,7 +6550,6 @@ function localChord(){
   const mode = G.config.mode;
   const insta = !!G.config.insta;
   const isInf = isInfiniteSize(G.config.size);
-
   if (mode === 'coop' || mode === 'territory'){
     if (mode === 'territory' && !canTouchTerritory(G.myBoard, G.board, r, c, G.myOwner)) return;
     if (G.role === 'host') hostApplyChord(r, c, G.myOwner);
@@ -7066,7 +6570,6 @@ function localChord(){
       G.deathTile = { r: mr, c: mc };
       G.lossHintMe = computeHintForBoard(G.board, preSnap, null, false, mr, mc);
       send({ t:'hit', r: mr, c: mc });
-
       if (insta){
         send({ t:'lose' });
         revealAllMines(bs, G.board, mr, mc);
@@ -7084,7 +6587,6 @@ function localChord(){
         }, 1000);
         return;
       }
-
       duelFreeze(mr, mc);
       return;
     }
@@ -7163,10 +6665,10 @@ function hostApplyDig(r, c, owner){
   const bs = G.myBoard;
   const isMyDig = (owner === G.myOwner);
   const who = isMyDig ? G.me : G.them;
-
   if (bs.flagged[r][c]) return;
-
-  if (who && ensureFirstDigSafe(G.board, bs, who, r, c, true)){}
+  /* Territory has a starting safe zone so it doesn't need a first-click
+     guarantee (ensureFirstDigSafe returns false for territory anyway). */
+  if (G.config.mode !== 'territory' && who && ensureFirstDigSafe(G.board, bs, who, r, c, true)){}
   const preSnap = snapshotBoardState(bs);
   const res = applyReveal(bs, G.board, r, c, owner);
   if (!res) return;
@@ -7204,18 +6706,15 @@ function hostApplyTerritoryFlag(r, c, owner){
   if (G.state !== 'playing') return;
   const bs = G.myBoard;
   if (bs.revealed[r][c]) return;
-
   if (G.config.insta){
     if (bs.flagged[r][c]){
       const flagOwner  = bs.owner ? bs.owner[r][c] : 0;
       const flagIsFake = bs.fakeFlag ? bs.fakeFlag[r][c] : false;
       const isEnemyFlag = flagOwner && flagOwner !== owner;
-
       if (isEnemyFlag && !flagIsFake){
         if (owner === G.myOwner) SFX.denied();
         return;
       }
-
       bs.flagged[r][c] = false;
       bs.flagAt[r][c] = performance.now();
       bs.flagCount = Math.max(0, bs.flagCount - 1);
@@ -7226,7 +6725,6 @@ function hostApplyTerritoryFlag(r, c, owner){
       checkTerritoryUnlock();
       return;
     }
-
     const isMine = G.board.mines.has(r + ',' + c);
     bs.flagged[r][c] = true;
     bs.flagAt[r][c] = performance.now();
@@ -7238,7 +6736,6 @@ function hostApplyTerritoryFlag(r, c, owner){
     checkTerritoryUnlock();
     return;
   }
-
   if (bs.flagged[r][c]){
     if (bs.owner && bs.owner[r][c] && bs.owner[r][c] !== owner){
       if (owner === G.myOwner) SFX.denied();
@@ -7253,7 +6750,6 @@ function hostApplyTerritoryFlag(r, c, owner){
     checkTerritoryUnlock();
     return;
   }
-
   const isMine = G.board.mines.has(r + ',' + c);
   if (isMine){
     bs.flagged[r][c] = true;
@@ -7406,14 +6902,12 @@ function handleMessage(msg){
   switch (msg.t){
     case 'ping': break;
     case 'bye': onConnClosed(); break;
-
     case 'name': {
       G.theirName = String(msg.name || '').slice(0, 32);
       G.theirNameKey = String(msg.nameKey || '').slice(0, 32);
       updatePanelNames();
       break;
     }
-
     case 'seed': {
       G.config = msg.config || G.config;
       const seedHost  = (msg.seedHost  >>> 0) || newSeed();
@@ -7422,14 +6916,12 @@ function handleMessage(msg){
       else                          startMatch(seedHost,  'guest', seedHost);
       break;
     }
-
     case 'rematch': {
       G.rematchThem = true;
       maybeStartRematch();
       refreshEndUI();
       break;
     }
-
     case 'terr_board': {
       if (G.config.mode !== 'territory') break;
       if (G.role !== 'guest') break;
@@ -7442,28 +6934,21 @@ function handleMessage(msg){
       }
       break;
     }
-
     case 'cur':
       if (G.them) G.them.cursor = { r: msg.r, c: msg.c };
       break;
-
     case 'layout':
       if (G.config.mode !== 'duel') break;
       if (!G.theirBoardLayout) break;
       rebuildBoardFromMines(G.theirBoardLayout, msg.mines || [], G.config.style);
       break;
-
     case 'grow': {
-      /* Remote-initiated board growth (co-op infinite).  Applied on
-         the receiving side so both partners stay in sync even if
-         their cameras are at different positions. */
       if (!G.board || !G.myBoard) break;
       if (!isInfiniteSize(G.config.size)) break;
       if (!msg.top && !msg.bottom && !msg.left && !msg.right) break;
       applyBoardGrowth(msg.top || 0, msg.bottom || 0, msg.left || 0, msg.right || 0);
       break;
     }
-
     case 'board': {
       if (G.config.mode !== 'coop') break;
       if (!G.boardPending) break;
@@ -7472,7 +6957,6 @@ function handleMessage(msg){
       const wasAlias = (G.theirBoardLayout === G.board);
       const nb = placeholderBoard(G.config.style, d.rows, d.cols);
       nb.infinite = isInf;
-
       if (Array.isArray(msg.mines) && msg.mines.length){
         rebuildBoardFromMines(nb, msg.mines, G.config.style);
       } else {
@@ -7488,7 +6972,6 @@ function handleMessage(msg){
         nb.safeCount = nb.rows * nb.cols - nb.mineCount;
         nb.pending = false;
       }
-
       G.board = nb;
       if (wasAlias) G.theirBoardLayout = nb;
       G.boardSeed = msg.seed;
@@ -7503,7 +6986,6 @@ function handleMessage(msg){
       }
       break;
     }
-
     case 'dig': {
       if (G.role !== 'host') break;
       if (G.state !== 'playing') break;
@@ -7515,7 +6997,6 @@ function handleMessage(msg){
       hostEnsureBoardThen(dr, dc, function(){ hostApplyDig(dr, dc, G.theirOwner); });
       break;
     }
-
     case 'flag':
       if (G.state !== 'playing') break;
       if (G.config.mode === 'coop'){
@@ -7537,7 +7018,6 @@ function handleMessage(msg){
         }
       }
       break;
-
     case 'chord': {
       if (G.role !== 'host') break;
       if (G.state !== 'playing') break;
@@ -7549,7 +7029,6 @@ function handleMessage(msg){
       hostEnsureBoardThen(cr, cc, function(){ hostApplyChord(cr, cc, G.theirOwner); });
       break;
     }
-
     case 'rev':
       if (!G.theirBoard) break;
       {
@@ -7565,7 +7044,6 @@ function handleMessage(msg){
         }
       }
       break;
-
     case 'hit': {
       if (G.config.mode === 'duel' && G.theirBoard && G.theirBoardLayout &&
           msg.r !== undefined && msg.c !== undefined &&
@@ -7573,9 +7051,7 @@ function handleMessage(msg){
         const preSnap = snapshotBoardState(G.theirBoard);
         preSnap.revealed[msg.r][msg.c] = false;
         const hint = computeHintForBoard(G.theirBoardLayout, preSnap, null, false, msg.r, msg.c);
-        if (hint){
-          G.lossHintThem = hint;
-        }
+        if (hint){ G.lossHintThem = hint; }
       }
       if (G.them){
         G.them.hits++;
@@ -7596,7 +7072,6 @@ function handleMessage(msg){
       SFX.oppStun();
       break;
     }
-
     case 'swapmine': {
       const layout = (G.config.mode === 'duel') ? G.theirBoardLayout : G.board;
       if (!layout) break;
@@ -7607,23 +7082,18 @@ function handleMessage(msg){
       }
       break;
     }
-
     case 'delta': applyDelta(msg); break;
-
     case 'unlock':
       if (G.config.mode === 'territory' && !G.territoryUnlocked){
         G.territoryUnlocked = true;
         showUnlockPopup(msg.by === undefined ? G.theirOwner : msg.by);
       }
       break;
-
     case 'terr_over':
       if (G.config.mode === 'territory'){
-        finishTerritory(true, msg.land1 || 0, msg.land2 || 0,
-                        msg.real1, msg.real2);
+        finishTerritory(true, msg.land1 || 0, msg.land2 || 0, msg.real1, msg.real2);
       }
       break;
-
     case 'stun': {
       const now = performance.now();
       const reason = msg.reason || 'bomb';
@@ -7644,7 +7114,6 @@ function handleMessage(msg){
       }
       break;
     }
-
     case 'win':
       if (G.state === 'playing' || G.state === 'countdown'){
         if (G.config.mode === 'coop'){
@@ -7671,7 +7140,6 @@ function handleMessage(msg){
         }
       }
       break;
-
     case 'lose':
       if (G.state === 'playing' || G.state === 'countdown'){
         endGame('win', '🏆', 'VICTORY!',
@@ -7686,7 +7154,6 @@ function applyDelta(msg){
   const bs = G.myBoard;
   if (!bs || !G.board) return;
   const now = performance.now();
-
   if (msg.rev){
     let revealedAny = false;
     let firstVal = 0;
@@ -7760,7 +7227,6 @@ function showNameEntryPopup(opts){
   const currentName = opts.currentName || '';
   const canCancel = !!opts.onCancel;
   const showGuest = !isChange && !!opts.onGuest;
-
   showOverlay(
     '<div class="ovbox menu-pop">' +
       '<div class="big">🏷️</div>' +
@@ -7779,32 +7245,24 @@ function showNameEntryPopup(opts){
       '<div class="err" id="nameErr"></div>' +
     '</div>'
   );
-
   const input = overlay.querySelector('#nameInput');
   const errEl = overlay.querySelector('#nameErr');
   const btnSubmit = overlay.querySelector('#btnSubmitName');
   const btnCancel = overlay.querySelector('#btnCancelName');
   const btnGuest  = overlay.querySelector('#btnGuest');
-
   if (input){ input.focus(); input.select(); }
-
-  const finish = (name) => {
-    if (opts.onSuccess) opts.onSuccess(name);
-  };
-
+  const finish = (name) => { if (opts.onSuccess) opts.onSuccess(name); };
   const submit = async () => {
     if (!errEl || !btnSubmit) return;
     errEl.textContent = '';
     btnSubmit.disabled = true;
     const raw = input ? input.value : '';
-
     const v = validateName(raw);
     if (v.error){
       errEl.textContent = v.error;
       btnSubmit.disabled = false;
       return;
     }
-
     try {
       await registerName(raw, isChange);
       isGuest = false;
@@ -7814,7 +7272,6 @@ function showNameEntryPopup(opts){
       btnSubmit.disabled = false;
     }
   };
-
   if (btnSubmit) btnSubmit.onclick = submit;
   if (btnCancel) btnCancel.onclick = () => {
     if (opts.onCancel) opts.onCancel();
@@ -7867,10 +7324,7 @@ function linkMenuHTML(){
 }
 
 let linkUnsub = null;
-
-function cleanupLinkPeer(){
-  if (linkUnsub){ try { linkUnsub(); } catch(e){} linkUnsub = null; }
-}
+function cleanupLinkPeer(){ if (linkUnsub){ try { linkUnsub(); } catch(e){} linkUnsub = null; } }
 
 function startLinking(){
   if (!db || !auth){
@@ -7935,19 +7389,15 @@ function doStartLinking(name, key, hostUid){
     };
   }
   if (statusEl) statusEl.innerHTML = '<span class="spin"></span>Publishing code…';
-
   cleanupLinkPeer();
-
   const ref = db.collection('linkCodes').doc(code);
   let cancelled = false;
-
   const cleanup = () => {
     if (cancelled) return;
     cancelled = true;
     if (linkUnsub){ try { linkUnsub(); } catch(e){} linkUnsub = null; }
     ref.delete().catch(() => {});
   };
-
   ref.set({
     hostUid: hostUid,
     hostName: name,
@@ -7957,7 +7407,6 @@ function doStartLinking(name, key, hostUid){
   }).then(() => {
     if (cancelled) return;
     if (statusEl) statusEl.innerHTML = '<span class="spin"></span>Waiting for other device…';
-
     linkUnsub = ref.onSnapshot(snap => {
       if (!snap.exists) return;
       const data = snap.data() || {};
@@ -7977,7 +7426,6 @@ function doStartLinking(name, key, hostUid){
   }).catch(err => {
     if (statusEl) statusEl.textContent = 'Error: ' + firebaseErrorMessage(err);
   });
-
   const cancel = overlay.querySelector('#btnCancelLink');
   if (cancel) cancel.onclick = () => {
     cleanup();
@@ -8002,7 +7450,6 @@ function menuHTML(err){
       '<div class="opt-name">' + s.name + '</div>' +
     '</button>';
   }).join('');
-
   const supportsInfinite = (cfg.mode === 'solo' || cfg.mode === 'coop');
   const sizeColor = { small:'color-green', medium:'color-yellow', large:'color-red', infinite:'color-infinite' };
   const sizeKeys = Object.keys(SIZES).filter(k => {
@@ -8017,11 +7464,10 @@ function menuHTML(err){
       '<div class="opt-desc">' + sizeDesc(s.id, cfg.mode, cfg.style) + '</div>' +
     '</button>';
   }).join('');
-
   const supportsInsta = (cfg.mode === 'duel' || cfg.mode === 'territory');
   const instaSection = supportsInsta
     ? ('<div class="config-section danger-mode">' +
-        '<div class="config-label">INSTANT DIE</div>' +
+        '<div class="config-label">RULES</div>' +
         '<div class="config-options">' +
           '<button class="opt' + (!cfg.insta ? ' danger active' : '') + '" data-insta="0">' +
             '<div class="opt-name">Gamemode Rules</div>' +
@@ -8045,13 +7491,9 @@ function menuHTML(err){
       '<input id="joinInput" maxlength="4" placeholder="CODE" autocomplete="off" spellcheck="false" inputmode="latin">' +
       '<button class="primary" id="btnJoinGo">GO</button>' +
     '</div>';
-
-  const displayName = isGuest
-    ? 'GUEST MODE'
-    : (getPlayerName() || 'SET NAME');
+  const displayName = isGuest ? 'GUEST MODE' : (getPlayerName() || 'SET NAME');
   const nameBtnIcon = isGuest ? '👤' : '🏷️';
   const nameBtnClass = 'name-btn' + (isGuest ? ' guest' : '');
-
   return '<div class="ovbox menu-pop">' +
     '<div class="menu-topbar">' +
       '<button class="' + nameBtnClass + '" id="nameBtn">' +
@@ -8104,7 +7546,6 @@ function hotkeysHTML(){
       '</button>' +
     '</div>';
   }).join('');
-
   return '<div class="ovbox menu-pop">' +
     '<div class="big">⌨️</div>' +
     '<h2>HOTKEYS</h2>' +
@@ -8157,6 +7598,16 @@ function howToHTML(){
         INFINITE_REVEAL_RADIUS + ' tile view.' +
       '</div>' +
     '</div>' +
+    '<div class="config-section" style="border-left-color:rgba(255,61,129,.75);background:rgba(255,61,129,.035)">' +
+      '<div class="config-label" style="color:#ffb1c7">DUEL VIEW</div>' +
+      '<div class="ht-text">' +
+        'You play on your own board — your opponent\'s field is hidden.<br>' +
+        'Tap <b style="color:#b98cff">👁 OPPONENT</b> at the top to peek at their board. ' +
+        'You can pan and zoom while watching, but you cannot dig or flag there.<br>' +
+        'Tap it again (or <b style="color:#b98cff">👁 YOUR BOARD</b>) to return — your own progress is remembered.<br>' +
+        'After the match, use <b style="color:#b98cff">VIEW MAP</b> and the on-screen toggle to flip between both boards.' +
+      '</div>' +
+    '</div>' +
     '<div class="ovbtns">' +
       '<button class="primary" id="btnBackMenu">GOT IT</button>' +
     '</div>' +
@@ -8165,9 +7616,7 @@ function howToHTML(){
 
 function renderMenu(err){
   if (err !== undefined) menuError = err;
-
   if (menuView === 'lboverview') return;
-
   if (menuView === 'hotkeys'){
     showOverlay(hotkeysHTML());
     overlay.querySelectorAll('[data-hk]').forEach(b => {
@@ -8188,14 +7637,12 @@ function renderMenu(err){
     };
     return;
   }
-
   if (menuView === 'howto'){
     showOverlay(howToHTML());
     const back = overlay.querySelector('#btnBackMenu');
     if (back) back.onclick = () => { menuView = 'main'; menuError = ''; renderMenu(); };
     return;
   }
-
   if (menuView === 'name'){
     showOverlay(nameMenuHTML());
     const btnChange = overlay.querySelector('#btnChangeName');
@@ -8217,7 +7664,6 @@ function renderMenu(err){
       menuError = '';
       renderMenu('');
     };
-
     const btnRemove = overlay.querySelector('#btnRemoveName');
     if (btnRemove) btnRemove.onclick = async () => {
       const ok = await confirmDialog({
@@ -8230,13 +7676,15 @@ function renderMenu(err){
         cancel: 'CANCEL'
       });
       if (!ok) return;
-
-      btnRemove.disabled = true;
-      try {
-        await removePlayerName();
-      } catch(e){
-        console.warn(e);
-      }
+      /* Show a loading screen while the removal runs, then jump to name entry. */
+      showOverlay(
+        '<div class="ovbox menu-pop">' +
+          '<div class="big">🗑️</div>' +
+          '<h2>REMOVING <span>NAME</span></h2>' +
+          '<p><span class="spin"></span>Cleaning up your data…</p>' +
+        '</div>'
+      );
+      try { await removePlayerName(); } catch(e){ console.warn(e); }
       isGuest = false;
       menuError = '';
       showNameEntryPopup({
@@ -8253,12 +7701,10 @@ function renderMenu(err){
         }
       });
     };
-
     const back = overlay.querySelector('#btnBackMenu');
     if (back) back.onclick = () => { menuView = 'main'; menuError = ''; renderMenu(''); };
     return;
   }
-
   if (menuView === 'link'){
     showOverlay(linkMenuHTML());
     startLinking();
@@ -8269,25 +7715,17 @@ function renderMenu(err){
 
   const nameBtn = overlay.querySelector('#nameBtn');
   if (nameBtn) nameBtn.onclick = () => {
-    if (isGuest){
-      try { location.reload(); } catch(e){}
-      return;
-    }
-    if (!getPlayerName()){
-      try { location.reload(); } catch(e){}
-      return;
-    }
+    if (isGuest){ try { location.reload(); } catch(e){} return; }
+    if (!getPlayerName()){ try { location.reload(); } catch(e){} return; }
     menuView = 'name';
     menuError = '';
     renderMenu('');
   };
-
   const ovBtn = overlay.querySelector('#btnLbOverview');
   if (ovBtn) ovBtn.onclick = () => {
     SFX.clickSoft();
     openLeaderboardOverview();
   };
-
   overlay.querySelectorAll('[data-mode]').forEach(b => {
     b.onclick = () => {
       G.config.mode = b.dataset.mode;
@@ -8327,18 +7765,14 @@ function renderMenu(err){
       refreshLeaderboard(false);
     };
   });
-
   const btnStart = overlay.querySelector('#btnStart');
   if (btnStart) btnStart.onclick = () => { menuError = ''; startMatch(newSeed(), 'solo'); };
-
   const btnHost = overlay.querySelector('#btnHost');
   if (btnHost) btnHost.onclick = () => { menuError = ''; hostGame(); };
-
   const btnJoin = overlay.querySelector('#btnJoin');
   const joinRow = overlay.querySelector('#joinRow');
   const input   = overlay.querySelector('#joinInput');
   const btnGo   = overlay.querySelector('#btnJoinGo');
-
   if (btnJoin) btnJoin.onclick = () => {
     joinRow.classList.toggle('hidden');
     if (!joinRow.classList.contains('hidden') && input) input.focus();
@@ -8350,13 +7784,10 @@ function renderMenu(err){
     menuError = ''; joinGame(code);
   };
   if (input) input.onkeydown = e => { if (e.key === 'Enter') btnGo.click(); };
-
   const btnHk = overlay.querySelector('#btnHotkeys');
   if (btnHk) btnHk.onclick = () => { hotkeyCapture = null; menuView = 'hotkeys'; menuError = ''; renderMenu(); };
-
   const btnHow = overlay.querySelector('#btnHowTo');
   if (btnHow) btnHow.onclick = () => { menuView = 'howto'; menuError = ''; renderMenu(); };
-
   attachLeaderboardHandlers();
 }
 
@@ -8390,6 +7821,8 @@ function idleOverlay(){
   G.viewAnim = null;
   G.myStartR = 0; G.myStartC = 0;
   G.cameraUnlocked = false;
+  G.duelShowOpponent = false;
+  G.firstSafeDone = false;
   lastUnlockCheck = 0;
   lastGrowthCheck = 0;
   clearHeldKeys();
@@ -8404,9 +7837,7 @@ function idleOverlay(){
   controls.innerHTML = '';
   cleanupNet();
   setStatus('OFFLINE', '');
-
   if (!booted){ showBootScreen(); return; }
-
   renderMenu('');
   refreshLeaderboard(true);
 }
@@ -8438,14 +7869,12 @@ function hostGame(){
   setStatus('CONNECTING', 'warn');
   showOverlay(waitHTML('📡', 'CREATING ROOM', '<span class="spin"></span>Setting up a peer connection…'));
   wireCancel();
-
   const code = makeCode();
   let peer;
   try { peer = new Peer(PREFIX + code, PEER_OPTS); }
   catch(e){ renderMenu('Could not start peer connection.'); return; }
   G.peer = peer;
   let started = false;
-
   peer.on('open', () => {
     if (G.peer !== peer) return;
     showCodeScreen(code);
@@ -8501,15 +7930,13 @@ async function joinGame(code){
   setStatus('CONNECTING', 'warn');
   showOverlay(waitHTML('🔎', 'JOINING ' + code, '<span class="spin"></span>Looking for the room…'));
   wireCancel();
-
   if (db && auth){
     try {
       const linkSnap = await db.collection('linkCodes').doc(code).get();
       if (linkSnap.exists){
         const data = linkSnap.data() || {};
-        if (data.status === 'waiting'){
-          await handleLinkCode(code, data);
-        } else {
+        if (data.status === 'waiting'){ await handleLinkCode(code, data); }
+        else {
           showOverlay(waitHTML('❌', 'CODE ALREADY USED',
             'Ask the other device to show a fresh code.'));
           wireCancel();
@@ -8520,7 +7947,6 @@ async function joinGame(code){
       console.warn('[link] Firestore check failed:', e);
     }
   }
-
   joinRoomPeerJS(code);
 }
 
@@ -8530,10 +7956,8 @@ async function handleLinkCode(code, data){
     let user = auth.currentUser;
     if (!user) user = await trySignIn();
     if (!user) throw new Error('Not signed in — check your connection');
-
     const res = await applyLinkedName(data.hostName, data.hostNameKey);
     await ref.update({ status: 'done', joinerUid: user.uid });
-
     isGuest = false;
     showOverlay(
       '<div class="ovbox"><div class="big">✅</div><h2>LINKED!</h2>' +
@@ -8544,8 +7968,7 @@ async function handleLinkCode(code, data){
     const b = overlay.querySelector('#btnLinkDone');
     if (b) b.onclick = () => { idleOverlay(); };
   } catch(e){
-    try { await ref.update({ status: 'error', error: (e && e.message) || 'Failed' }); }
-    catch(_){}
+    try { await ref.update({ status: 'error', error: (e && e.message) || 'Failed' }); } catch(_){}
     showOverlay(
       '<div class="ovbox"><div class="big">❌</div><h2>LINK FAILED</h2>' +
       '<p>' + escapeHtml((e && e.message) || 'Failed to link') + '</p>' +
@@ -8561,11 +7984,9 @@ function joinRoomPeerJS(code){
   try { peer = new Peer(PEER_OPTS); }
   catch(e){ renderMenu('Could not start peer connection.'); return; }
   G.peer = peer;
-
   let settled = false;
   let roomConn = null;
   let failTimer = 0;
-
   const finishFail = (msg) => {
     if (settled) return;
     settled = true;
@@ -8575,17 +7996,14 @@ function joinRoomPeerJS(code){
     showOverlay(waitHTML('❌', 'NOT FOUND', msg || 'No room matched that code.'));
     wireCancel();
   };
-
   failTimer = setTimeout(() => {
     finishFail('No room matched that code.');
   }, 35000);
-
   peer.on('open', () => {
     if (G.peer !== peer || settled) return;
     try { roomConn = peer.connect(PREFIX + code, { reliable: true }); }
     catch(e){ roomConn = null; }
     if (!roomConn){ finishFail('Could not open connection.'); return; }
-
     roomConn.on('open', () => {
       if (settled) return;
       settled = true;
@@ -8600,7 +8018,6 @@ function joinRoomPeerJS(code){
     roomConn.on('error', () => { finishFail('No room matched that code.'); });
     roomConn.on('close', () => { if (!settled) finishFail('No room matched that code.'); });
   });
-
   peer.on('error', err => {
     if (G.peer !== peer) return;
     const t = err && err.type;
@@ -8634,24 +8051,24 @@ function startMatch(seed, role, seedGuest){
   G.lossHintThem = null;
   G.pendingPreSnap = null;
   G.viewAnim = null;
-  G.cameraUnlocked = false;
+  G.firstSafeDone = false;
+  /* Territory uses a fixed-size board that fits the viewport — keep the
+     camera unlocked so the view doesn't try to re-center on a start tile. */
+  G.cameraUnlocked = (G.config.mode === 'territory');
+  G.duelShowOpponent = false;
   lastUnlockCheck = 0;
   lastGrowthCheck = 0;
   clearHeldKeys();
   hotkeyCapture = null;
-
   cancelPregen();
   genInFlight = null;
-
   const oldPop = document.querySelector('.terr-unlock');
   if (oldPop) oldPop.remove();
-
   const d = dimsFor(G.config);
   const mode = G.config.mode;
   const isInf = isInfiniteSize(G.config.size);
   let starts = [{ r: (d.rows >> 1), c: (d.cols >> 1) }];
   if (mode === 'territory') starts = territoryStarts(d.rows, d.cols);
-
   if (mode === 'territory'){
     const opening = starts.map(s => [s.r, s.c]);
     const res = generateSolvableBoard(
@@ -8695,30 +8112,22 @@ function startMatch(seed, role, seedGuest){
     G.boardPending = true;
     G.terrBoardReady = true;
   }
-
   G.myBoard = makeBoardState(d.rows, d.cols);
   G.theirBoard = makeBoardState(d.rows, d.cols);
   G.theirBoardLayout = (mode === 'duel')
     ? placeholderBoard(G.config.style, d.rows, d.cols)
     : G.board;
-
   const myStart = starts.length > 1 ? starts[G.myOwner - 1] : starts[0];
   const theirStart = starts.length > 1 ? starts[G.theirOwner - 1] : starts[0];
-
   G.me = makePlayerState(myStart);
   G.them = (role === 'solo') ? null : makePlayerState(theirStart);
-
   G.myStartR = myStart.r;
   G.myStartC = myStart.c;
-
   buildArena();
   buildControls();
   hideOverlay();
-
   G.state = 'countdown';
-
   if (G.boardPending) setTimeout(kickPregen, 40);
-
   countdown(() => {
     G.state = 'playing';
     G.startTime = performance.now();
@@ -8747,23 +8156,27 @@ function countdown(done){
   const styleName = (STYLES[cfg.style]|| {}).name || cfg.style;
   const sizeName  = (SIZES[cfg.size]  || {}).name || cfg.size;
   const isInf = isInfiniteSize(cfg.size);
-
   const styleCls = (cfg.style === 'hex') ? 'hex' : '';
   const sizeCls = isInf ? 'infinite'
                  : (cfg.size === 'small') ? 'green'
                  : (cfg.size === 'medium') ? 'yellow'
                  : (cfg.size === 'large') ? 'red' : '';
-
+  const showRulesBox = (cfg.mode === 'duel' || cfg.mode === 'territory');
+  /* Rules box: Standard (instant death) = red, Gamemode (stun) = green. */
+  const rulesBoxHtml = showRulesBox
+    ? ('<div class="cd-rule"><span>RULES</span><b class="' + (cfg.insta ? 'red' : 'green') + '">' +
+        (cfg.insta ? 'STANDARD' : 'GAMEMODE') + '</b></div>')
+    : '';
   const rulesHtml =
     '<div class="cd-rules">' +
-      '<div class="cd-rule' + (cfg.insta ? ' insta' : '') + '"><span>MODE</span><b>' +
-        escapeHtml(modeName) + (cfg.insta ? ' · INSTANT' : '') + '</b></div>' +
+      '<div class="cd-rule"><span>MODE</span><b>' +
+        escapeHtml(modeName) + '</b></div>' +
       '<div class="cd-rule"><span>STYLE</span><b class="' + styleCls + '">' +
         escapeHtml(styleName) + '</b></div>' +
       '<div class="cd-rule"><span>SIZE</span><b class="' + sizeCls + '">' +
         escapeHtml(sizeName) + '</b></div>' +
+      rulesBoxHtml +
     '</div>';
-
   let n = 5;
   const step = () => {
     if (n > 0){
@@ -8834,12 +8247,17 @@ function buildFullRevealState(baseState, board){
   s.safeRevealed = board.safeCount;
   return s;
 }
-function buildEndReviewState(baseState, board, deathTile){
+function buildEndReviewState(baseState, board, deathTiles){
+  const list = deathTiles == null ? [] : (Array.isArray(deathTiles) ? deathTiles : [deathTiles]);
+  const deathSet = new Set();
+  for (const d of list){
+    if (d && d.r !== undefined && d.c !== undefined) deathSet.add(d.r + ',' + d.c);
+  }
   const s = makeBoardState(board.rows, board.cols);
   for (let r = 0; r < board.rows; r++){
     for (let c = 0; c < board.cols; c++){
       const isMine = board.mines.has(r + ',' + c);
-      const isDeath = deathTile && deathTile.r === r && deathTile.c === c;
+      const isDeath = deathSet.has(r + ',' + c);
       const rev = baseState.revealed[r][c] && (!isMine || isDeath);
       s.revealed[r][c] = rev;
       s.flagged[r][c]  = baseState.flagged[r][c];
@@ -8878,19 +8296,12 @@ function clipInfiniteRegion(board, state, r0, r1, c0, c1){
   c0 = Math.max(0, c0); c1 = Math.min(board.cols - 1, c1);
   const nrows = r1 - r0 + 1;
   const ncols = c1 - c0 + 1;
-
   const nb = {
-    style: board.style,
-    cols: ncols, rows: nrows,
-    mines: new Set(),
-    adj: [],
-    neighbors: board.neighbors,
-    mineCount: 0, safeCount: 0,
-    infinite: false,
-    starts: [], start: null
+    style: board.style, cols: ncols, rows: nrows,
+    mines: new Set(), adj: [], neighbors: board.neighbors,
+    mineCount: 0, safeCount: 0, infinite: false, starts: [], start: null
   };
   for (let i = 0; i < nrows; i++) nb.adj.push(new Array(ncols).fill(0));
-
   for (let r = r0; r <= r1; r++){
     for (let c = c0; c <= c1; c++){
       const nr = r - r0, nc = c - c0;
@@ -8904,7 +8315,6 @@ function clipInfiniteRegion(board, state, r0, r1, c0, c1){
     }
   }
   nb.safeCount = nrows * ncols - nb.mineCount;
-
   const nbs = makeBoardState(nrows, ncols);
   for (let r = r0; r <= r1; r++){
     for (let c = c0; c <= c1; c++){
@@ -8920,7 +8330,6 @@ function clipInfiniteRegion(board, state, r0, r1, c0, c1){
       if (state.revealed[r][c] && !board.mines.has(r + ',' + c)) nbs.safeRevealed++;
     }
   }
-
   return { board: nb, state: nbs, offsetR: r0, offsetC: c0 };
 }
 
@@ -8950,8 +8359,8 @@ function showMapReview(){
   if (!G.board || !G.myBoard) return;
   const isDuel = (G.config.mode === 'duel') && !!G.theirBoard;
   const isTerr = (G.config.mode === 'territory');
+  const isCoop = (G.config.mode === 'coop');
   const isInf  = isInfiniteSize(G.config.size);
-
   const theirLayout = (G.config.mode === 'duel') ? (G.theirBoardLayout || G.board) : G.board;
 
   let smallWorld;
@@ -8960,20 +8369,31 @@ function showMapReview(){
     let centerR = G.board.rows >> 1, centerC = G.board.cols >> 1;
     if (G.deathTile){
       centerR = G.deathTile.r; centerC = G.deathTile.c;
+    } else if (G.theirDeathTile){
+      centerR = G.theirDeathTile.r; centerC = G.theirDeathTile.c;
     } else if (bounds){
       centerR = Math.round((bounds.r0 + bounds.r1) / 2);
       centerC = Math.round((bounds.c0 + bounds.c1) / 2);
     }
     const clip = clipInfiniteReview(G.board, G.myBoard, centerR, centerC, INFINITE_REVEAL_RADIUS);
-    smallWorld = {
-      layout: clip.board,
-      state: clip.state,
-      death: G.deathTile
-        ? { r: G.deathTile.r - clip.offsetR, c: G.deathTile.c - clip.offsetC }
-        : null
-    };
+    const toLocal = (t) => t ? { r: t.r - clip.offsetR, c: t.c - clip.offsetC } : null;
+    const localDeath = toLocal(G.deathTile);
+    const localTheirDeath = toLocal(G.theirDeathTile);
+    const deaths = [];
+    if (localDeath) deaths.push(localDeath);
+    if (localTheirDeath &&
+        (!localDeath || localDeath.r !== localTheirDeath.r || localDeath.c !== localTheirDeath.c)){
+      deaths.push(localTheirDeath);
+    }
+    smallWorld = { layout: clip.board, state: clip.state, death: localDeath, deaths: deaths };
   } else {
-    smallWorld = { layout: G.board, state: G.myBoard, death: G.deathTile };
+    const deaths = [];
+    if (G.deathTile) deaths.push(G.deathTile);
+    if (G.theirDeathTile &&
+        (!G.deathTile || G.deathTile.r !== G.theirDeathTile.r || G.deathTile.c !== G.theirDeathTile.c)){
+      deaths.push(G.theirDeathTile);
+    }
+    smallWorld = { layout: G.board, state: G.myBoard, death: G.deathTile, deaths: deaths };
   }
 
   let fullWorld = smallWorld;
@@ -8987,29 +8407,31 @@ function showMapReview(){
         bounds.c0 - PAD, bounds.c1 + PAD);
       if (clip.board.rows > smallWorld.layout.rows ||
           clip.board.cols > smallWorld.layout.cols){
-        fullWorld = {
-          layout: clip.board,
-          state: clip.state,
-          death: G.deathTile
-            ? { r: G.deathTile.r - clip.offsetR, c: G.deathTile.c - clip.offsetC }
-            : null
-        };
+        const toLocal = (t) => t ? { r: t.r - clip.offsetR, c: t.c - clip.offsetC } : null;
+        const localDeath = toLocal(G.deathTile);
+        const localTheirDeath = toLocal(G.theirDeathTile);
+        const deaths = [];
+        if (localDeath) deaths.push(localDeath);
+        if (localTheirDeath &&
+            (!localDeath || localDeath.r !== localTheirDeath.r || localDeath.c !== localTheirDeath.c)){
+          deaths.push(localTheirDeath);
+        }
+        fullWorld = { layout: clip.board, state: clip.state, death: localDeath, deaths: deaths };
         hasFullWorld = true;
       }
     }
   }
 
   function deriveWorld(w){
-    const end  = buildEndReviewState(w.state, w.layout, w.death);
+    const deaths = w.deaths || (w.death ? [w.death] : []);
+    const end  = buildEndReviewState(w.state, w.layout, deaths);
     const full = buildFullRevealState(w.state, w.layout);
     return {
-      end: end,
-      full: full,
+      end: end, full: full,
       sol: w.death ? hideCellInState(end, w.death.r, w.death.c) : end,
       solFull: w.death ? hideCellInState(full, w.death.r, w.death.c) : full
     };
   }
-
   const smallDerived = deriveWorld(smallWorld);
   let fullDerived = null;
   const getFullDerived = () => {
@@ -9028,7 +8450,6 @@ function showMapReview(){
     themSolutionFull = G.theirDeathTile
       ? hideCellInState(themFull, G.theirDeathTile.r, G.theirDeathTile.c) : themFull;
   }
-
   if (isDuel){
     if (!G.lossHintMe && smallWorld.layout && G.myBoard){
       G.lossHintMe = computeHintForBoard(
@@ -9045,35 +8466,24 @@ function showMapReview(){
       );
     }
   }
-
   const hasHints = !isInf && !!(G.lossHintMe || G.lossHintThem);
-  const hintBtnHtml = hasHints
-    ? '<button id="btnShowHints">💡 SHOW SOLUTION</button>'
-    : '';
-  const fullMapBtnHtml = (isInf && hasFullWorld)
-    ? '<button id="btnFullMap">🗺️ FULL MAP</button>'
-    : '';
-
+  const hintBtnHtml = hasHints ? '<button id="btnShowHints">💡 SHOW SOLUTION</button>' : '';
+  const fullMapBtnHtml = (isInf && hasFullWorld) ? '<button id="btnFullMap">🗺️ FULL MAP</button>' : '';
+  const duelMapBtnHtml = isDuel ? '<button id="btnToggleDuelMap">👁 OPPONENT MAP</button>' : '';
   const cells =
     '<div class="review-cell">' +
       '<canvas data-review="me"></canvas>' +
-      (isDuel ? '<div class="review-label me">YOU</div>' : '') +
-    '</div>' +
-    (isDuel
-      ? '<div class="review-cell">' +
-          '<canvas data-review="them"></canvas>' +
-          '<div class="review-label them">OPPONENT</div>' +
-        '</div>'
-      : '');
-
+      (isDuel ? '<div class="review-label me" data-review-label>YOU</div>' : '') +
+    '</div>';
   modal.innerHTML =
     '<div class="ovbox mapreview">' +
       '<h2>MAP <span>REVIEW</span>' +
         (isInf ? ' · <span style="color:#b98cff">∞</span>' : '') + '</h2>' +
-      '<div class="mapreview-canvas' + (isDuel ? ' two' : '') + '">' + cells + '</div>' +
+      '<div class="mapreview-canvas">' + cells + '</div>' +
       '<div class="mapreview-foot">' +
         hintBtnHtml +
         fullMapBtnHtml +
+        duelMapBtnHtml +
         '<button id="btnToggleView">🧩 REVEAL ALL</button>' +
         '<button class="ghost" id="btnCloseReview">CLOSE</button>' +
       '</div>' +
@@ -9087,7 +8497,6 @@ function showMapReview(){
     rows: layout.rows,
     size: 'small'
   });
-
   const views = [];
   modal.querySelectorAll('canvas[data-review]').forEach(c => {
     const v = new BoardView(c);
@@ -9103,50 +8512,55 @@ function showMapReview(){
   let showingFull = false;
   let showingHints = false;
   let showingFullMap = false;
-
+  let showingOpponentMap = false;
+  const updateLabel = () => {
+    const el = modal.querySelector('[data-review-label]');
+    if (!el) return;
+    const opp = showingOpponentMap;
+    el.textContent = opp ? 'OPPONENT' : 'YOU';
+    el.classList.toggle('them', opp);
+    el.classList.toggle('me', !opp);
+  };
   const draw = (now) => {
     reviewRafId = requestAnimationFrame(draw);
     const t = now + 60000;
-
     const useFullMap = isInf && showingFullMap && hasFullWorld;
     const meWorld = useFullMap ? fullWorld : smallWorld;
     const meDer   = useFullMap ? getFullDerived() : smallDerived;
-
-    const meHints   = (showingHints && G.lossHintMe && !useFullMap)
-      ? hintRenderState(G.lossHintMe) : null;
-    const themHints = (showingHints && G.lossHintThem)
-      ? hintRenderState(G.lossHintThem) : null;
-
+    const meHints   = (showingHints && G.lossHintMe && !useFullMap) ? hintRenderState(G.lossHintMe) : null;
+    const themHints = (showingHints && G.lossHintThem) ? hintRenderState(G.lossHintThem) : null;
     const meState = showingFull
       ? (showingHints ? meDer.solFull : meDer.full)
       : (showingHints ? meDer.sol     : meDer.end);
-
     const themState = showingFull
       ? (showingHints ? themSolutionFull : themFull)
       : (showingHints ? themSolution     : themEnd);
-
-    const highlights = meWorld.death
-      ? [{ r: meWorld.death.r, c: meWorld.death.c, color: '#ffe066' }]
-      : [];
-
-    if (views[0]){
-      const combinedHints = isTerr ? mergeHintStates(meHints, themHints) : meHints;
-      views[0].render(t, {
-        board: meWorld.layout,
-        boardState: meState,
-        cursors: [],
-        highlights: showingHints ? [] : highlights,
-        hints: combinedHints
-      });
+    const meHighlights = [];
+    for (const d of (meWorld.deaths || [])){
+      meHighlights.push({ r: d.r, c: d.c, color: '#ffe066' });
     }
-    if (views[1]){
-      views[1].render(t, {
-        board: theirLayout,
-        boardState: themState,
-        cursors: [],
-        highlights: [],
-        hints: themHints
-      });
+    const themHighlights = G.theirDeathTile
+      ? [{ r: G.theirDeathTile.r, c: G.theirDeathTile.c, color: '#ffe066' }]
+      : [];
+    if (views[0]){
+      if (isDuel && showingOpponentMap){
+        views[0].render(t, {
+          board: theirLayout,
+          boardState: themState,
+          cursors: [],
+          highlights: showingHints ? [] : themHighlights,
+          hints: themHints
+        });
+      } else {
+        const combinedHints = isTerr ? mergeHintStates(meHints, themHints) : meHints;
+        views[0].render(t, {
+          board: meWorld.layout,
+          boardState: meState,
+          cursors: [],
+          highlights: showingHints ? [] : meHighlights,
+          hints: combinedHints
+        });
+      }
     }
   };
   reviewRafId = requestAnimationFrame(draw);
@@ -9180,6 +8594,15 @@ function showMapReview(){
       }
     };
   }
+  const duelMapBtn = modal.querySelector('#btnToggleDuelMap');
+  if (duelMapBtn){
+    duelMapBtn.onclick = () => {
+      showingOpponentMap = !showingOpponentMap;
+      duelMapBtn.textContent = showingOpponentMap ? '👁 MY MAP' : '👁 OPPONENT MAP';
+      duelMapBtn.classList.toggle('primary', showingOpponentMap);
+      updateLabel();
+    };
+  }
   const closeReview = () => {
     if (reviewRafId){ cancelAnimationFrame(reviewRafId); reviewRafId = null; }
     views.forEach(v => v.destroy());
@@ -9199,7 +8622,6 @@ function maybeStartRematch(){
   if (!G.rematchMe || !G.rematchThem) return;
   if (G.rematchLock) return;
   G.rematchLock = true;
-
   if (G.role === 'host'){
     const seedHost = newSeed();
     const seedGuest = newSeed();
@@ -9212,7 +8634,6 @@ function refreshEndUI(){
   const msg = overlay.querySelector('#endMsg');
   if (!msg) return;
   const btn = overlay.querySelector('#btnAgain');
-
   if (G.opponentGone){
     msg.className = 'endmsg bad';
     msg.textContent = 'Opponent disconnected.';
@@ -9241,16 +8662,12 @@ function endGame(result, icon, title, sub, elapsed, cards, opts){
   G.state = 'over';
   if (G.me) G.me.done = true;
   clearHeldKeys();
-
   opts = opts || {};
   const isInf = isInfiniteSize(G.config && G.config.size);
-
   G.rematchMe = false;
   G.rematchThem = false;
   G.rematchLock = false;
-
-  const shouldRecord = !opts.skipRecord && G.config && elapsed > 0 &&
-                       (result === 'win' || isInf);
+  const shouldRecord = !opts.skipRecord && G.config && elapsed > 0 && (result === 'win' || isInf);
   if (shouldRecord){
     const mode = G.config.mode;
     const isTeam = (mode === 'coop' || mode === 'territory');
@@ -9260,18 +8677,11 @@ function endGame(result, icon, title, sub, elapsed, cards, opts){
     const tiles = G.myBoard ? G.myBoard.safeRevealed : 0;
     try {
       recordWin(
-        mode,
-        G.config.style,
-        G.config.size,
-        !!G.config.insta,
-        Math.max(1, Math.round(elapsed)),
-        true,
-        partner,
-        tiles
+        mode, G.config.style, G.config.size, !!G.config.insta,
+        Math.max(1, Math.round(elapsed)), true, partner, tiles
       ).catch(()=>{});
     } catch(e){}
   }
-
   const statusMap = {
     win:        ['VICTORY', 'live'],
     lose:       ['DEFEAT', 'bad'],
@@ -9284,42 +8694,35 @@ function endGame(result, icon, title, sub, elapsed, cards, opts){
   let cardsHtml = cards;
   if (!cardsHtml){
     cardsHtml = statCardHtml('', 'TIME', formatClock(elapsed));
-
     if (usesStunPenalty()){
       cardsHtml += statCardHtml('', 'YOUR HITS', (G.me ? G.me.hits : 0));
-      if (G.them){
-        cardsHtml += statCardHtml('lose', 'THEIR HITS', G.them.hits);
-      }
+      if (G.them){ cardsHtml += statCardHtml('lose', 'THEIR HITS', G.them.hits); }
     } else {
-      /* One box per player: tile amount + percentage.
-         Solo infinite runs show only the raw tile count — there is no
-         meaningful board total to take a percentage of.  Co-op infinite
-         runs split the percentage between both players so the two
-         numbers always add up to 100%. */
       const st = revealCountsAndPct();
       if (st){
         const soloInf = isInf && G.config.mode === 'solo';
-        cardsHtml += statCardHtml(isInf ? 'inf' : 'win', 'YOU REVEALED',
+        cardsHtml += statCardHtml('win', 'YOU REVEALED',
                                   st.mine, soloInf ? '' : formatRevealPct(st.minePct));
         if (G.them){
           cardsHtml += statCardHtml('lose', 'THEY REVEALED',
                                     st.theirs, formatRevealPct(st.theirsPct));
         }
+        if (G.config.mode === 'coop'){
+          const total = st.mine + st.theirs;
+          cardsHtml += statCardHtml('', 'TOTAL REVEALED', total);
+        }
       }
     }
   }
-
   const canRematch = !G.opponentGone &&
     (G.role === 'solo' || G.role === 'host' || G.role === 'guest');
   const canReview  = !!G.board && !!G.myBoard;
-
   const instaBadge = (G.config && G.config.insta)
-    ? '<div style="margin-top:10px;font-size:11px;letter-spacing:.24em;font-weight:900;color:#ff9f43;text-shadow:0 0 12px rgba(255,159,67,.5)">INSTANT DIE MATCH</div>'
+    ? '<div style="margin-top:10px;font-size:11px;letter-spacing:.24em;font-weight:900;color:#ff6b8a;text-shadow:0 0 12px rgba(255,107,138,.5)">STANDARD RULES MATCH</div>'
     : '';
   const infBadge = isInf
     ? '<div style="margin-top:10px;font-size:11px;letter-spacing:.24em;font-weight:900;color:#b98cff;text-shadow:0 0 14px rgba(185,140,255,.65)">INFINITE MODE</div>'
     : '';
-
   showOverlay(
     '<div class="ovbox">' +
       '<div class="big">' + icon + '</div>' +
@@ -9335,7 +8738,6 @@ function endGame(result, icon, title, sub, elapsed, cards, opts){
       '<div class="endmsg" id="endMsg"></div>' +
     '</div>'
   );
-
   const again = overlay.querySelector('#btnAgain');
   if (again) again.onclick = () => {
     if (G.role === 'solo'){ startMatch(newSeed(), 'solo'); return; }
@@ -9345,13 +8747,10 @@ function endGame(result, icon, title, sub, elapsed, cards, opts){
     maybeStartRematch();
     refreshEndUI();
   };
-
   const review = overlay.querySelector('#btnReview');
   if (review) review.onclick = () => showMapReview();
   overlay.querySelector('#btnMenu').onclick = () => { cleanupNet(); idleOverlay(); };
-
   refreshEndUI();
-
   if (result === 'win') SFX.win();
   else if (result === 'lose' || result === 'disconnect') SFX.lose();
 }
@@ -9360,70 +8759,73 @@ let lastTheirBoardRender = 0;
 
 function renderAll(now){
   if (!G.viewMe || !G.myBoard || !G.board || !G.me) return;
-
-  /* ── Infinite mode: grow the board when the camera nears an edge ── */
   growInfiniteBoardIfNeeded(now);
+  const isDuel = G.config.mode === 'duel';
+  const showThem = isDuel && !!G.duelShowOpponent && !!G.viewThem;
+  const pal = myPalette();
+  const myColor = pal[G.myOwner].solid;
+  const theirColor = pal[G.theirOwner].solid;
 
-  /* ── Camera lock before first dig ──
-     Until the player has performed their first dig / flag, the view
-     is pinned to the start tile.  Zoom is still allowed; the pan is
-     simply re-derived each frame so it always centres the start. */
-  if (!G.cameraUnlocked && G.viewMe.metrics && G.state === 'playing'){
-    const p = hexOrSqCenter(G.viewMe, G.myStartR, G.myStartC);
-    const scale = G.viewMe.baseScale * G.viewMe.zoom;
-    G.viewMe.panX = G.viewMe.pw / 2 - p.x * scale;
-    G.viewMe.panY = G.viewMe.ph / 2 - p.y * scale;
-    G.viewAnim = null;
-  }
-
-  /* Smooth pan-back-to-start animation. */
-  if (G.viewAnim && G.viewAnim.active){
-    const t = (now - G.viewAnim.startTime) / G.viewAnim.duration;
-    if (t >= 1){
-      G.viewMe.panX = G.viewAnim.targetPanX;
-      G.viewMe.panY = G.viewAnim.targetPanY;
-      G.viewAnim.active = false;
-    } else {
-      const e = easeOutCubic(clamp(t, 0, 1));
-      G.viewMe.panX = G.viewAnim.startPanX + (G.viewAnim.targetPanX - G.viewAnim.startPanX) * e;
-      G.viewMe.panY = G.viewAnim.startPanY + (G.viewAnim.targetPanY - G.viewAnim.startPanY) * e;
-    }
-  } else if (performance.now() < cursorActiveUntil && !isManualPanning() &&
-             isInfiniteSize(G.config.size) && G.viewMe.metrics && G.viewMe.metrics.infinite){
-    const p = hexOrSqCenter(G.viewMe, G.me.cursor.r, G.me.cursor.c);
-    const scale = G.viewMe.baseScale * G.viewMe.zoom;
-    const sx = p.x * scale + G.viewMe.panX;
-    const sy = p.y * scale + G.viewMe.panY;
-    const marginX = Math.min(60, G.viewMe.pw * 0.15);
-    const marginY = Math.min(60, G.viewMe.ph * 0.15);
-    let dx = 0, dy = 0;
-    if (sx < marginX) dx = marginX - sx;
-    else if (sx > G.viewMe.pw - marginX) dx = (G.viewMe.pw - marginX) - sx;
-    if (sy < marginY) dy = marginY - sy;
-    else if (sy > G.viewMe.ph - marginY) dy = (G.viewMe.ph - marginY) - sy;
-    if (dx || dy){
-      G.viewMe.panX += dx * 0.18;
-      G.viewMe.panY += dy * 0.18;
+  if (!showThem){
+    if (!G.cameraUnlocked && G.viewMe.metrics && G.state === 'playing'
+        && G.config.mode !== 'territory'){
+      const p = hexOrSqCenter(G.viewMe, G.myStartR, G.myStartC);
+      const scale = G.viewMe.baseScale * G.viewMe.zoom;
+      G.viewMe.panX = G.viewMe.pw / 2 - p.x * scale;
+      G.viewMe.panY = G.viewMe.ph / 2 - p.y * scale;
+      G.viewAnim = null;
       G.viewMe.clampPan();
     }
+    if (G.viewAnim && G.viewAnim.active){
+      const t = (now - G.viewAnim.startTime) / G.viewAnim.duration;
+      if (t >= 1){
+        G.viewMe.panX = G.viewAnim.targetPanX;
+        G.viewMe.panY = G.viewAnim.targetPanY;
+        G.viewAnim.active = false;
+      } else {
+        const e = easeOutCubic(clamp(t, 0, 1));
+        G.viewMe.panX = G.viewAnim.startPanX + (G.viewAnim.targetPanX - G.viewAnim.startPanX) * e;
+        G.viewMe.panY = G.viewAnim.startPanY + (G.viewAnim.targetPanY - G.viewAnim.startPanY) * e;
+      }
+    } else if (performance.now() < cursorActiveUntil && !isManualPanning() &&
+               isInfiniteSize(G.config.size) && G.viewMe.metrics && G.viewMe.metrics.infinite){
+      const p = hexOrSqCenter(G.viewMe, G.me.cursor.r, G.me.cursor.c);
+      const scale = G.viewMe.baseScale * G.viewMe.zoom;
+      const sx = p.x * scale + G.viewMe.panX;
+      const sy = p.y * scale + G.viewMe.panY;
+      const marginX = Math.min(60, G.viewMe.pw * 0.15);
+      const marginY = Math.min(60, G.viewMe.ph * 0.15);
+      let dx = 0, dy = 0;
+      if (sx < marginX) dx = marginX - sx;
+      else if (sx > G.viewMe.pw - marginX) dx = (G.viewMe.pw - marginX) - sx;
+      if (sy < marginY) dy = marginY - sy;
+      else if (sy > G.viewMe.ph - marginY) dy = (G.viewMe.ph - marginY) - sy;
+      if (dx || dy){
+        G.viewMe.panX += dx * 0.18;
+        G.viewMe.panY += dy * 0.18;
+        G.viewMe.clampPan();
+      }
+    }
+    const cursors = [{ r: G.me.cursor.r, c: G.me.cursor.c, color: myColor }];
+    if ((G.config.mode === 'coop' || G.config.mode === 'territory') && G.them){
+      cursors.push({ r: G.them.cursor.r, c: G.them.cursor.c, color: theirColor });
+    }
+    G.viewMe.render(now, { board: G.board, boardState: G.myBoard, cursors });
   }
 
-  const myColor = '#4dd8ff';
-  const cursors = [{ r: G.me.cursor.r, c: G.me.cursor.c, color: myColor }];
-  G.viewMe.render(now, { board: G.board, boardState: G.myBoard, cursors });
-
-  if (G.viewThem && G.theirBoard){
-    if (now - lastTheirBoardRender >= OPPONENT_RENDER_MS){
-      lastTheirBoardRender = now;
-      const layout = (G.config.mode === 'duel')
-        ? (G.theirBoardLayout || G.board)
-        : G.board;
-      G.viewThem.render(now, {
-        board: layout,
-        boardState: G.theirBoard,
-        cursors: []
-      });
-    }
+  if (isDuel && G.viewThem && G.theirBoard && showThem){
+    /* OPPONENT_RENDER_MS is 0 so the opponent board renders on the same
+       120 FPS tick as the main board. */
+    lastTheirBoardRender = now;
+    const layout = G.theirBoardLayout || G.board;
+    const themCursors = G.them
+      ? [{ r: G.them.cursor.r, c: G.them.cursor.c, color: theirColor }]
+      : [];
+    G.viewThem.render(now, {
+      board: layout,
+      boardState: G.theirBoard,
+      cursors: themCursors
+    });
   }
   updateHUD(now);
   maybeCheckTerritoryUnlock(now);
@@ -9436,26 +8838,47 @@ function updateHUD(now){
   const isInf = isInfiniteSize(G.config.size);
   const elapsed = (G.state === 'playing' || G.state === 'over')
     ? Math.max(0, now - G.startTime) : 0;
-
   const els = G.panelMe && G.panelMe._els;
   if (els){
     if (mode === 'territory'){
-      const mine   = countLand(bs, G.myOwner);
-      const theirs = countLand(bs, G.theirOwner);
+      const mine   = countRevealedBy(bs, G.myOwner);
+      const theirs = countRevealedBy(bs, G.theirOwner);
       const total  = Math.max(1, mine + theirs);
       setText(els.myLand, mine);
       setText(els.theirLand, theirs);
       setText(els.time, formatClock(elapsed));
       setText(els.hits, G.me.hits);
+      if (els.theirHits) setText(els.theirHits, G.them ? G.them.hits : 0);
       if (els.myBar)    els.myBar.style.width    = (mine / total * 100).toFixed(1) + '%';
       if (els.theirBar) els.theirBar.style.width = (theirs / total * 100).toFixed(1) + '%';
     } else {
-      if (!isInf) setText(els.mines, Math.max(0, G.board.mineCount - bs.flagCount));
+      if (!isInf){
+        /* In duel mode, opponent hits also consume mines — one less mine remains. */
+        const oppHits = (mode === 'duel' && G.them) ? G.them.hits : 0;
+        setText(els.mines, Math.max(0, G.board.mineCount - bs.flagCount - oppHits));
+      }
       setText(els.time, formatClock(elapsed));
       setText(els.hits, G.me.hits);
-      setText(els.revealed, myRevealedCount());
+      if (mode === 'coop'){
+        const youR = myRevealedCount();
+        const mateR = theirRevealedCount();
+        setText(els.revealYou, youR);
+        setText(els.revealMate, mateR);
+        setText(els.revealTotal, youR + mateR);
+      } else if (mode === 'duel'){
+        setText(els.revealed, myRevealedCount());
+        if (els.theirRevealed) setText(els.theirRevealed, theirRevealedCount());
+        if (els.theirHits) setText(els.theirHits, G.them ? G.them.hits : 0);
+      } else {
+        setText(els.revealed, myRevealedCount());
+      }
       if (els.bar && !isInf){
         els.bar.style.width = (bs.safeRevealed / Math.max(1, G.board.safeCount) * 100).toFixed(1) + '%';
+      }
+      if (mode === 'duel' && els.barThem){
+        const tl = G.theirBoardLayout || G.board;
+        const theirSafe = G.theirBoard ? G.theirBoard.safeRevealed : 0;
+        els.barThem.style.width = (theirSafe / Math.max(1, tl.safeCount) * 100).toFixed(1) + '%';
       }
     }
     if (els.stun){
@@ -9522,7 +8945,6 @@ requestAnimationFrame(loop);
 let resizeTimer = null;
 window.addEventListener('resize', () => {
   if (!overlay.classList.contains('hidden')) fitMenuBox();
-
   clearTimeout(resizeTimer);
   resizeTimer = setTimeout(() => {
     if (!overlay.classList.contains('hidden')) fitMenuBox();
@@ -9575,11 +8997,8 @@ idleOverlay();
   try {
     await fbReadyPromise;
     const ok = await ensurePlayerName();
-
     booted = true;
-
     if (G.state !== 'lobby') return;
-
     if (ok){
       isGuest = false;
       renderMenu('');

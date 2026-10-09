@@ -1384,6 +1384,22 @@ function resetHotkeys(){
 }
 loadHotkeys();
 
+const SETTINGS_STORE = 'mineduel-settings-v1';
+const SETTINGS = { leftClickRemoveFlag: true };
+function loadSettings(){
+  try {
+    const raw = localStorage.getItem(SETTINGS_STORE);
+    if (!raw) return;
+    const obj = JSON.parse(raw);
+    if (!obj || typeof obj !== 'object') return;
+    if (typeof obj.leftClickRemoveFlag === 'boolean') SETTINGS.leftClickRemoveFlag = obj.leftClickRemoveFlag;
+  } catch(e){}
+}
+function saveSettings(){
+  try { localStorage.setItem(SETTINGS_STORE, JSON.stringify(SETTINGS)); } catch(e){}
+}
+loadSettings();
+
 const PRETTY = {
   ArrowUp:'↑', ArrowDown:'↓', ArrowLeft:'←', ArrowRight:'→',
   Space:'SPACE', ControlLeft:'L‑CTRL', ControlRight:'R‑CTRL',
@@ -5203,10 +5219,10 @@ function makePanelStatsHTML(isCoop, isThem, mode){
 
   if (isCoop){
     html +=
+      '<button type="button" class="pstat-action" data-returnstart style="display:none" title="Return to start">RETURN</button>' +
       '<div class="pstat"><span class="plabel">YOU REVEALED</span><span class="pval reveal-mine" data-revealyou>0</span></div>' +
       '<div class="pstat"><span class="plabel">THEY REVEALED</span><span class="pval reveal-theirs" data-revealmate>0</span></div>' +
-      '<div class="pstat"><span class="plabel">TOTAL REVEALED</span><span class="pval" data-revealtotal>0</span></div>' +
-      '<button type="button" class="pstat-action" data-returnstart style="display:none" title="Return to start">RETURN</button>';
+      '<div class="pstat"><span class="plabel">TOTAL REVEALED</span><span class="pval" data-revealtotal>0</span></div>';
     html += '</div>';
     return html;
   }
@@ -5230,10 +5246,10 @@ function makePanelStatsHTML(isCoop, isThem, mode){
   }
 
   html +=
+    '<button type="button" class="pstat-action" data-returnstart style="display:none" title="Return to start">RETURN</button>' +
     '<div class="pstat"><span class="plabel">' +
       (isThem ? 'THEY REVEALED' : 'YOU REVEALED') +
-    '</span><span class="pval ' + (isThem ? 'reveal-theirs' : 'reveal-mine') + '" data-revealed>0</span></div>' +
-    '<button type="button" class="pstat-action" data-returnstart style="display:none" title="Return to start">RETURN</button>';
+    '</span><span class="pval ' + (isThem ? 'reveal-theirs' : 'reveal-mine') + '" data-revealed>0</span></div>';
   if (stunRules){
     html += '<div class="pstat" data-hitsstat><span class="plabel">' +
       (isThem ? 'THEIR HITS' : 'HITS') +
@@ -6201,6 +6217,10 @@ async function localDig(){
   G.cameraUnlocked = true;
   const r = G.me.cursor.r, c = G.me.cursor.c;
   const mode = G.config.mode;
+  if (G.myBoard.flagged[r][c]){
+    if (SETTINGS.leftClickRemoveFlag) localFlag();
+    return;
+  }
   if (G.myBoard.flagged[r][c]) return;
   if (mode === 'territory' && !canTouchTerritory(G.myBoard, G.board, r, c, G.myOwner)) return;
   if (G.boardPending){
@@ -7593,6 +7613,13 @@ function hotkeysHTML(){
       '</button>' +
     '</div>';
   }).join('');
+  const optionRows =
+    '<div class="hk-row">' +
+      '<span class="hk-label">LEFT CLICK REMOVES FLAG</span>' +
+      '<button class="hk-key" data-toggle="leftClickRemoveFlag">' +
+        (SETTINGS.leftClickRemoveFlag ? 'ON' : 'OFF') +
+      '</button>' +
+    '</div>';
   return '<div class="ovbox menu-pop">' +
     '<div class="big">⌨️</div>' +
     '<h2>HOTKEYS</h2>' +
@@ -7600,6 +7627,10 @@ function hotkeysHTML(){
     '<div class="config-section">' +
       '<div class="config-label">BINDINGS</div>' +
       rows +
+    '</div>' +
+    '<div class="config-section">' +
+      '<div class="config-label">OPTIONS</div>' +
+      optionRows +
     '</div>' +
     '<div class="ovbtns">' +
       '<button class="ghost" id="btnResetHk">RESET DEFAULTS</button>' +
@@ -7643,6 +7674,16 @@ function renderMenu(err){
     overlay.querySelectorAll('[data-hk]').forEach(b => {
       b.onclick = () => {
         hotkeyCapture = b.dataset.hk;
+        menuError = '';
+        renderMenu();
+      };
+    });
+    overlay.querySelectorAll('[data-toggle]').forEach(b => {
+      b.onclick = () => {
+        const k = b.dataset.toggle;
+        SETTINGS[k] = !SETTINGS[k];
+        saveSettings();
+        hotkeyCapture = null;
         menuError = '';
         renderMenu();
       };
@@ -8488,16 +8529,19 @@ function showMapReview(){
   /* Recompute the solution from the FINAL board state so it can never
      suggest tiles that are already uncovered (this was happening in Duel
      after a stun — the stored hint was computed before more tiles were
-     revealed). Revealed mines now count as known mines for the solver. */
+     revealed). Revealed mines now count as known mines for the solver.
+     We feed the solver the *solution* state (sol/solution), which hides the
+     mine that was actually clicked on death — so SHOW SOLUTION can never
+     "cheat" by knowing where that bomb is. */
   if (!isInf){
     if (isTerr){
-      G.lossHintMe   = computeHintForBoard(smallWorld.layout, smallDerived.end, G.myOwner,    G.territoryUnlocked);
-      G.lossHintThem = computeHintForBoard(smallWorld.layout, smallDerived.end, G.theirOwner, G.territoryUnlocked);
+      G.lossHintMe   = computeHintForBoard(smallWorld.layout, smallDerived.sol, G.myOwner,    G.territoryUnlocked);
+      G.lossHintThem = computeHintForBoard(smallWorld.layout, smallDerived.sol, G.theirOwner, G.territoryUnlocked);
     } else if (isDuel){
-      G.lossHintMe   = computeHintForBoard(smallWorld.layout, smallDerived.end, null, false);
-      G.lossHintThem = computeHintForBoard(theirLayout, themEnd, null, false);
+      G.lossHintMe   = computeHintForBoard(smallWorld.layout, smallDerived.sol, null, false);
+      G.lossHintThem = computeHintForBoard(theirLayout, themSolution, null, false);
     } else {
-      G.lossHintMe   = computeHintForBoard(smallWorld.layout, smallDerived.end, null, false);
+      G.lossHintMe   = computeHintForBoard(smallWorld.layout, smallDerived.sol, null, false);
     }
   }
 

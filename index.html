@@ -1915,18 +1915,12 @@ function solveBoard(board, opening){
     }
     break;
   }
-  let count = 0, count1 = 0, count2 = 0;
-  for (let i = 0; i < N; i++){
-    if (state[i] === 1){
-      count++;
-      if (owner[i] === 1) count1++;
-      else if (owner[i] === 2) count2++;
-    }
-  }
-  return { count: count, state: state, owner1: count1, owner2: count2 };
+  let count = 0;
+  for (let i = 0; i < N; i++) if (state[i] === 1) count++;
+  return { count: count, state: state };
 }
 
-function infiniteStartIsPlayable(board, startR, startC, R){
+function solveBoardTerritory(board, starts){
   const rows = board.rows, cols = board.cols;
   const N = rows * cols;
   const state = new Uint8Array(N);
@@ -2192,9 +2186,15 @@ function infiniteStartIsPlayable(board, startR, startC, R){
     if (deduced) continue;
     break;
   }
-  let count = 0;
-  for (let i = 0; i < N; i++) if (state[i] === 1) count++;
-  return { count: count, state: state };
+  let count = 0, count1 = 0, count2 = 0;
+  for (let i = 0; i < N; i++){
+    if (state[i] === 1){
+      count++;
+      if (owner[i] === 1) count1++;
+      else if (owner[i] === 2) count2++;
+    }
+  }
+  return { count: count, state: state, owner1: count1, owner2: count2 };
 }
 
 function infiniteStartIsPlayable(board, startR, startC, R){

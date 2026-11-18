@@ -2194,7 +2194,16 @@ function solveBoardTerritory(board, starts){
       else if (owner[i] === 2) count2++;
     }
   }
-  return { count: count, state: state, owner1: count1, owner2: count2 };
+  let stuck = 0;
+  for (let i = 0; i < N; i++){
+    if (state[i] !== 0) continue;
+    const list = nbrs[i];
+    for (let k = 0; k < list.length; k++){
+      const j = list[k];
+      if (state[j] === 1 && adjFlat[j] > 0){ stuck++; break; }
+    }
+  }
+  return { count: count, state: state, owner1: count1, owner2: count2, stuck: stuck };
 }
 
 function infiniteStartIsPlayable(board, startR, startC, R){
@@ -2261,8 +2270,11 @@ function generateSolvableBoard(seed, style, cols, rows, mineCount,
       const s = (seed + Math.imul(attempt, 0x9E3779B9)) >>> 0;
       const b = genBoardDeferred(s, style, cols, rows, mines, clickR, clickC, starts);
       const res = solve(b);
+      const stuck = (res.stuck || 0);
       const score = (territory && res.owner1 !== undefined)
-        ? Math.min(res.owner1, res.owner2)
+        ? (stuck === 0
+            ? 1000000 + Math.min(res.owner1, res.owner2)
+            : Math.min(res.owner1, res.owner2) - stuck * 100)
         : res.count;
       if (score > bestScore){
         bestScore = score;
@@ -2270,7 +2282,7 @@ function generateSolvableBoard(seed, style, cols, rows, mineCount,
         bestSeed = s;
       }
       if (territory && res.owner1 !== undefined){
-        if (res.owner1 >= MIN_OWNED && res.owner2 >= MIN_OWNED){
+        if (stuck === 0 && res.owner1 >= MIN_OWNED && res.owner2 >= MIN_OWNED){
           return { board: b, seed: s, score: score };
         }
       } else if (res.count >= b.safeCount){

@@ -1915,12 +1915,18 @@ function solveBoard(board, opening){
     }
     break;
   }
-  let count = 0;
-  for (let i = 0; i < N; i++) if (state[i] === 1) count++;
-  return { count: count, state: state };
+  let count = 0, count1 = 0, count2 = 0;
+  for (let i = 0; i < N; i++){
+    if (state[i] === 1){
+      count++;
+      if (owner[i] === 1) count1++;
+      else if (owner[i] === 2) count2++;
+    }
+  }
+  return { count: count, state: state, owner1: count1, owner2: count2 };
 }
 
-function solveBoardTerritory(board, starts){
+function infiniteStartIsPlayable(board, startR, startC, R){
   const rows = board.rows, cols = board.cols;
   const N = rows * cols;
   const state = new Uint8Array(N);
@@ -2246,6 +2252,7 @@ function generateSolvableBoard(seed, style, cols, rows, mineCount,
   const perStep = territory ? 150 : 300;
   const minMines = Math.max(3, Math.floor(mineCount * 0.90));
   let attempt = 0;
+  const MIN_OWNED = territory ? Math.max(30, Math.floor(Math.sqrt(rows * cols))) : 0;
   let best = null, bestSeed = seed, bestScore = -1;
   for (let si = 0; si < STEPS.length; si++){
     const mines = Math.max(minMines, Math.floor(mineCount * STEPS[si]));
@@ -2254,12 +2261,19 @@ function generateSolvableBoard(seed, style, cols, rows, mineCount,
       const s = (seed + Math.imul(attempt, 0x9E3779B9)) >>> 0;
       const b = genBoardDeferred(s, style, cols, rows, mines, clickR, clickC, starts);
       const res = solve(b);
-      if (res.count > bestScore){
-        bestScore = res.count;
+      const score = (territory && res.owner1 !== undefined)
+        ? Math.min(res.owner1, res.owner2)
+        : res.count;
+      if (score > bestScore){
+        bestScore = score;
         best = b;
         bestSeed = s;
       }
-      if (res.count >= b.safeCount){
+      if (territory && res.owner1 !== undefined){
+        if (res.owner1 >= MIN_OWNED && res.owner2 >= MIN_OWNED){
+          return { board: b, seed: s, score: score };
+        }
+      } else if (res.count >= b.safeCount){
         return { board: b, seed: s, score: res.count };
       }
     }

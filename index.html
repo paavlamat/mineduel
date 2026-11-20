@@ -6522,7 +6522,7 @@ function endTerritoryScreen(land1, land2, real1, real2){
   const theirRev = G.myBoard ? countRevealedBy(G.myBoard, G.theirOwner) : 0;
   const myReal     = (G.myOwner === 1) ? real1 : real2;
   const theirReal  = (G.myOwner === 1) ? real2 : real1;
-  const total  = Math.max(1, G.board ? (G.board.rows * G.board.cols) : (myRev + theirRev));
+  const total     = (myRev + theirRev) || 1;
   const minePct   = (myRev   / total * 100);
   const theirsPct = (theirRev / total * 100);
   let result, icon, title, sub;

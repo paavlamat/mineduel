@@ -1746,7 +1746,7 @@ function solveBoard(board, opening){
       adjFlat[i] = board.adj[r][c];
     }
   }
-  const MAX_ITER = 400;
+  const MAX_ITER = 1200;
   const hiddenBuf = new Int32Array(16);
   for (let iter = 0; iter < MAX_ITER; iter++){
     let changed = false;
@@ -1932,7 +1932,7 @@ function solveBoard(board, opening){
   return { count: count, state: state };
 }
 
-function solveBoardTerritory(board, starts){
+function solveBoardTerritory(board, starts, onlyPlayer){
   const rows = board.rows, cols = board.cols;
   const N = rows * cols;
   const state = new Uint8Array(N);
@@ -1956,8 +1956,8 @@ function solveBoardTerritory(board, starts){
     return false;
   }
   function toucher(i){
-    if (canTouch(i, 1)) return 1;
-    if (canTouch(i, 2)) return 2;
+    if ((!onlyPlayer || onlyPlayer === 1) && canTouch(i, 1)) return 1;
+    if ((!onlyPlayer || onlyPlayer === 2) && canTouch(i, 2)) return 2;
     return 0;
   }
   function revealAt(r, c, who){
@@ -1982,6 +1982,7 @@ function solveBoardTerritory(board, starts){
   }
   for (let s = 0; s < starts.length && s < 2; s++){
     const who = s + 1;
+    if (onlyPlayer && onlyPlayer !== who) continue;
     const st = starts[s];
     if (!st || st.r < 0 || st.r >= rows || st.c < 0 || st.c >= cols) continue;
     if (!revealAt(st.r, st.c, who)) return null;
@@ -1990,7 +1991,7 @@ function solveBoardTerritory(board, starts){
       if (!revealAt(ring[k][0], ring[k][1], who)) return null;
     }
   }
-  const MAX_ITER = 400;
+  const MAX_ITER = 1200;
   const hiddenBuf = new Int32Array(64);
   for (let iter = 0; iter < MAX_ITER; iter++){
     let changed = false;
@@ -2226,9 +2227,25 @@ function infiniteStartIsPlayable(board, startR, startC, R){
   const c1 = Math.min(board.cols - 1, startC + R);
   const nrows = r1 - r0 + 1;
   const ncols = c1 - c0 + 1;
+  const parentNeighbors = board.neighbors;
+  const parentRows = board.rows;
+  const parentCols = board.cols;
   const nb = {
     style: board.style, cols: ncols, rows: nrows,
-    mines: new Set(), adj: [], neighbors: board.neighbors,
+    mines: new Set(), adj: [],
+    /* Wrapped neighbor fn: call the PARENT neighbor logic with parent
+       coordinates so hex parity is computed from the true row index,
+       then translate the results back into sub-board space. */
+    neighbors: function(r, c, rows, cols){
+      const pn = parentNeighbors(r + r0, c + c0, parentRows, parentCols);
+      const out = [];
+      for (let k = 0; k < pn.length; k++){
+        const nr = pn[k][0] - r0;
+        const nc = pn[k][1] - c0;
+        if (nr >= 0 && nr < nrows && nc >= 0 && nc < ncols) out.push([nr, nc]);
+      }
+      return out;
+    },
     mineCount: 0, safeCount: 0, infinite: false
   };
   for (let i = 0; i < nrows; i++) nb.adj.push(new Array(ncols).fill(0));
@@ -2255,9 +2272,25 @@ function infiniteStartIsPlayable(board, startR, startC, R){
 function generateSolvableBoard(seed, style, cols, rows, mineCount,
                                clickR, clickC, starts, opening, territory, infinite){
   if (infinite){
-    const b = genBoardDeferred(seed, style, cols, rows, mineCount, clickR, clickC, starts);
-    b.infinite = true;
-    return { board: b, seed, score: b.safeCount };
+    const REGION_R    = 10;
+    const MAX_TRIES   = 30;
+    const MAX_TIME_MS = 800;
+    const cx = (clickR !== undefined) ? clickR : (rows >> 1);
+    const cy = (clickC !== undefined) ? clickC : (cols >> 1);
+    const startedAt = Date.now();
+    let firstB = null;
+    for (let attempt = 0; attempt < MAX_TRIES; attempt++){
+      if (attempt > 0 && Date.now() - startedAt > MAX_TIME_MS) break;
+      const s = attempt === 0 ? (seed >>> 0)
+                              : ((seed + Math.imul(attempt, 0x9E3779B9)) >>> 0);
+      const b = genBoardDeferred(s, style, cols, rows, mineCount, clickR, clickC, starts);
+      b.infinite = true;
+      if (attempt === 0) firstB = b;
+      if (infiniteStartIsPlayable(b, cx, cy, REGION_R)){
+        return { board: b, seed: s, score: b.safeCount };
+      }
+    }
+    return { board: firstB, seed: seed >>> 0, score: firstB.safeCount };
   }
   const solve = b => {
     if (!territory){
@@ -2295,7 +2328,12 @@ function generateSolvableBoard(seed, style, cols, rows, mineCount,
       }
       if (territory && res.owner1 !== undefined){
         if (stuck === 0 && res.owner1 >= MIN_OWNED && res.owner2 >= MIN_OWNED){
-          return { board: b, seed: s, score: score };
+          const SOLO_MIN = Math.max(15, Math.floor(MIN_OWNED * 0.6));
+          const solo1 = solveBoardTerritory(b, starts, 1);
+          const solo2 = solveBoardTerritory(b, starts, 2);
+          if (solo1 && solo2 && solo1.owner1 >= SOLO_MIN && solo2.owner2 >= SOLO_MIN){
+            return { board: b, seed: s, score: score };
+          }
         }
       } else if (res.count >= b.safeCount){
         return { board: b, seed: s, score: res.count };
@@ -2309,6 +2347,45 @@ function generateSolvableBoard(seed, style, cols, rows, mineCount,
                             Math.max(1, Math.floor(mineCount * 0.5)),
                             clickR, clickC, starts);
     bestSeed = s;
+  }
+  // --- Safety net: the main loop can time out and hand us a partially
+  //     solvable board. Re-roll with fewer mines until the guarantee holds.
+  if (!territory){
+    const need = best.safeCount || (best.rows * best.cols - best.mineCount);
+    if (bestScore < need){
+      let tryMines = Math.max(1, Math.floor(mineCount * 0.5));
+      for (let attempt = 0; attempt < 120; attempt++){
+        const s = ((seed ^ 0xDEADBEEF) + Math.imul(attempt + 1, 0x9E3779B9)) >>> 0;
+        const b2 = genBoardDeferred(s, style, cols, rows, tryMines, clickR, clickC, starts);
+        const r2 = solve(b2);
+        if (r2.count >= b2.safeCount){
+          best = b2; bestSeed = s; bestScore = r2.count; break;
+        }
+        if ((r2.count || 0) > bestScore){ best = b2; bestSeed = s; bestScore = r2.count; }
+        if (attempt % 10 === 9) tryMines = Math.max(1, Math.floor(tryMines * 0.85));
+      }
+    }
+  } else {
+    const SOLO_MIN = Math.max(15, Math.floor(MIN_OWNED * 0.6));
+    const sol1 = solveBoardTerritory(best, starts, 1);
+    const sol2 = solveBoardTerritory(best, starts, 2);
+    if (!sol1 || !sol2 || sol1.owner1 < SOLO_MIN || sol2.owner2 < SOLO_MIN){
+      let tryMines = Math.max(1, Math.floor(mineCount * 0.7));
+      for (let attempt = 0; attempt < 120; attempt++){
+        const s = ((seed ^ 0xDEADBEEF) + Math.imul(attempt + 1, 0x9E3779B9)) >>> 0;
+        const b2 = genBoardDeferred(s, style, cols, rows, tryMines, clickR, clickC, starts);
+        const r2 = solveBoardTerritory(b2, starts);
+        if (r2 && (r2.stuck || 0) === 0 &&
+            r2.owner1 >= MIN_OWNED && r2.owner2 >= MIN_OWNED){
+          const a1 = solveBoardTerritory(b2, starts, 1);
+          const a2 = solveBoardTerritory(b2, starts, 2);
+          if (a1 && a2 && a1.owner1 >= SOLO_MIN && a2.owner2 >= SOLO_MIN){
+            best = b2; bestSeed = s; bestScore = 0; break;
+          }
+        }
+        if (attempt % 10 === 9) tryMines = Math.max(1, Math.floor(tryMines * 0.85));
+      }
+    }
   }
   return { board: best, seed: bestSeed, score: bestScore };
 }
@@ -2327,6 +2404,7 @@ function buildBoardWorkerSource(){
     enumerateSolutions.toString(),
     solveBoard.toString(),
     solveBoardTerritory.toString(),
+    infiniteStartIsPlayable.toString(),
     generateSolvableBoard.toString(),
     'self.onmessage = function(ev){',
     '  var d = ev.data || {};',
@@ -2442,15 +2520,25 @@ function applyGeneratedBoard(res, clickR, clickC){
 
 let pregenTarget = null;
 let pregenPromise = null;
-
 function cancelPregen(){ pregenTarget = null; pregenPromise = null; }
-
 function kickPregen(){
   cancelPregen();
   if (!G.boardPending) return;
-  if (G.config.mode === 'territory') return;
   if (isInfiniteSize(G.config.size)) return;
   const d = dimsFor(G.config);
+  const mode = G.config.mode;
+  if (mode === 'territory'){
+    const starts = territoryStarts(d.rows, d.cols);
+    pregenTarget = null;
+    pregenPromise = generateBoardAsync({
+      seed: G.mySeed >>> 0, style: G.config.style,
+      cols: d.cols, rows: d.rows, mineCount: d.mines,
+      clickR: undefined, clickC: undefined, starts: starts,
+      opening: starts.map(s => [s.r, s.c]),
+      territory: true, infinite: false
+    });
+    return;
+  }
   const r = d.rows >> 1, c = d.cols >> 1;
   pregenTarget = { r: r, c: c };
   pregenPromise = generateBoardAsync({
@@ -2468,6 +2556,7 @@ function ensureBoardReadyAsync(clickR, clickC){
   if (genInFlight) return genInFlight;
   const d = dimsFor(G.config);
   const mode = G.config.mode;
+  if (mode === 'territory'){ clickR = undefined; clickC = undefined; }
   const isInf = isInfiniteSize(G.config.size);
   let starts = [{ r: (d.rows >> 1), c: (d.cols >> 1) }];
   if (mode === 'territory') starts = territoryStarts(d.rows, d.cols);
@@ -2475,7 +2564,9 @@ function ensureBoardReadyAsync(clickR, clickC){
     ? starts.map(s => [s.r, s.c])
     : [[clickR, clickC]];
   let promise;
-  if (pregenTarget && pregenPromise &&
+  if (mode === 'territory' && pregenPromise){
+    promise = pregenPromise;
+  } else if (pregenTarget && pregenPromise &&
       clickR !== undefined && clickC !== undefined &&
       pregenTarget.r === clickR && pregenTarget.c === clickC){
     promise = pregenPromise;
@@ -8199,18 +8290,10 @@ function startMatch(seed, role, seedGuest){
     }
   } else if (isInf){
     const cr = d.rows >> 1, cc = d.cols >> 1;
-    let res = null;
-    let attempts = 0;
-    let s = G.mySeed;
-    while (attempts < 25){
-      res = generateSolvableBoard(
-        s, G.config.style, d.cols, d.rows, d.mines,
-        cr, cc, starts, [[cr, cc]], false, true
-      );
-      if (infiniteStartIsPlayable(res.board, cr, cc, 10)) break;
-      attempts++;
-      s = (G.mySeed + Math.imul(attempts, 0x9E3779B9)) >>> 0;
-    }
+    const res = generateSolvableBoard(
+      G.mySeed, G.config.style, d.cols, d.rows, d.mines,
+      cr, cc, starts, [[cr, cc]], false, true
+    );
     G.board = res.board;
     G.board.infinite = true;
     G.board.seed = res.seed >>> 0;

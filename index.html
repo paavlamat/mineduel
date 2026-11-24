@@ -198,6 +198,18 @@
     box-shadow:0 0 14px rgba(185,140,255,.35);
   }
   button.pstat-action:active{transform:translateY(0) scale(.98)}
+    button.pstat-action.cooldown-lock,
+    button.pstat-action:disabled{
+      cursor:not-allowed;
+      pointer-events:none;
+      opacity:.88;
+      background:linear-gradient(180deg, rgba(239,68,68,.22), rgba(239,68,68,.08));
+      border-color:rgba(255,120,150,.55);
+      color:#ffd6e0;
+      font-variant-numeric:tabular-nums;
+      transform:none;
+      box-shadow:none;
+    }
 
   .pbar{
     flex:none;
@@ -5413,12 +5425,26 @@ function applyDuelView(){
     if (show){ try { G.viewThem.resize(); } catch(e){} }
   }
   const btn = G.panelMe ? G.panelMe.querySelector('[data-toggleopp]') : null;
-  if (btn) btn.textContent = show ? '👁 YOUR BOARD' : '👁 OPPONENT';
+  if (btn){
+    const rem = (G.me && G.state === 'playing') ? (G.me.stunUntil - performance.now()) : 0;
+    const isBombCooldown = usesStunPenalty() && rem > 0 && G.me.stunReason === 'bomb';
+    const locked = show && isBombCooldown;
+    btn.disabled = locked;
+    btn.classList.toggle('cooldown-lock', locked);
+    if (locked){
+      btn.textContent = '⏱ ' + (rem / 1000).toFixed(1) + 's';
+    } else {
+      btn.textContent = show ? '👁 YOUR BOARD' : '👁 OPPONENT';
+    }
+  }
 }
 
 function toggleDuelView(){
   if (G.config.mode !== 'duel') return;
   if (G.state !== 'playing' && G.state !== 'over') return;
+  const rem = (G.me && G.state === 'playing') ? (G.me.stunUntil - performance.now()) : 0;
+  const isBombCooldown = usesStunPenalty() && rem > 0 && G.me.stunReason === 'bomb';
+  if (G.duelShowOpponent && isBombCooldown) return;
   G.duelShowOpponent = !G.duelShowOpponent;
   applyDuelView();
   SFX.clickSoft();
@@ -8989,15 +9015,34 @@ function updateHUD(now){
       }
     }
     if (els.stun){
-      const rem = G.me.stunUntil - now;
-      if (rem > 0 && G.state === 'playing'){
-        els.stun.classList.add('on');
-        setStunFace(els.stun, G.me.stunReason);
-        setText(els.stun.querySelector('[data-timer]'), (rem / 1000).toFixed(1));
-      } else {
-        els.stun.classList.remove('on');
-      }
-    }
+          const rem = G.me.stunUntil - now;
+          const isDuelGamemode = (mode === 'duel' && usesStunPenalty());
+          const isBombCooldown = isDuelGamemode && rem > 0 && G.state === 'playing' && G.me.stunReason === 'bomb';
+          const btn = G.panelMe ? G.panelMe.querySelector('[data-toggleopp]') : null;
+
+          if (rem > 0 && G.state === 'playing'){
+            if (isDuelGamemode && G.duelShowOpponent){
+              els.stun.classList.remove('on');
+            } else {
+              els.stun.classList.add('on');
+              setStunFace(els.stun, G.me.stunReason);
+              setText(els.stun.querySelector('[data-timer]'), (rem / 1000).toFixed(1));
+            }
+          } else {
+            els.stun.classList.remove('on');
+          }
+
+          if (isDuelGamemode && btn){
+            if (G.duelShowOpponent && isBombCooldown){
+              btn.disabled = true;
+              btn.classList.add('cooldown-lock');
+              setText(btn, '⏱ ' + (rem / 1000).toFixed(1) + 's');
+            } else if (btn.classList.contains('cooldown-lock') || btn.disabled){
+              G.duelShowOpponent = false;
+              applyDuelView();
+            }
+          }
+        }
     if (els.oppStun){
       const rem = G.them ? (G.them.stunUntil - now) : 0;
       if (rem > 0 && G.state === 'playing'){

@@ -234,6 +234,16 @@
     position:relative;flex:1;min-height:0;min-width:0;
     z-index:1;overflow:hidden;
   }
+
+  @media (min-width: 1100px){
+    .boardwrap{
+      flex:1 1 auto;
+      width:auto;
+      max-width:100%;
+      aspect-ratio:16 / 10;
+      align-self:center;
+    }
+  }
   .boardwrap canvas{
     position:absolute;top:0;left:0;
     display:block;
@@ -521,7 +531,7 @@
     flex:1 1 150px;padding:14px 16px;text-align:left;border-radius:14px;
     background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.02));
     border:1px solid rgba(255,255,255,.12);
-    cursor:pointer;transition:all .2s cubic-bezier(.4,0,.2,1);
+    cursor:pointer;transition:background .2s cubic-bezier(.4,0,.2,1),border-color .2s cubic-bezier(.4,0,.2,1),transform .2s cubic-bezier(.4,0,.2,1);
     color:inherit;font-family:inherit;
     position:relative;overflow:hidden;
   }
@@ -580,9 +590,20 @@
   }
   .opt.danger.active::before{color:#ff3d81}
   .opt.danger.active .opt-name{color:#ff3d81}
-  .opt.danger:hover{
+  .opt.danger:hover,
+  .opt.danger:active,
+  .opt.danger:focus,
+  .opt.danger:focus-visible{
     background:linear-gradient(180deg,rgba(255,61,129,.12),rgba(255,61,129,.04));
     border-color:rgba(255,61,129,.55);
+    color:#ff6b8a !important;
+  }
+  .opt.danger:hover .opt-name,
+  .opt.danger:active .opt-name,
+  .opt.danger:focus .opt-name,
+  .opt.danger:focus-visible .opt-name{
+    color:#ff3d81 !important;
+  }
   }
   .opt-name{font-size:14px;font-weight:900;letter-spacing:.14em;color:#e6edf7;margin-bottom:4px}
   .opt-desc{font-size:11px;color:#7c8aa5;letter-spacing:.05em;line-height:1.5}
@@ -597,10 +618,20 @@
     padding:clamp(12px,2.4vh,30px) clamp(16px,2.6vw,44px);
     border-radius:clamp(16px,2.6vh,28px);
   }
-  .ovbox.menu-pop::-webkit-scrollbar{
-    width:0;
-    height:0;
-    display:none;
+  .ovbox.menu-pop.lb-overview{
+    max-width:min(100%, 1300px);
+    height:calc(100dvh - 84px);
+    max-height:calc(100dvh - 84px);
+    overflow:hidden;
+    display:flex;
+    flex-direction:column;
+    padding:clamp(12px,2.4vh,30px) clamp(16px,2.6vw,44px);
+    border-radius:clamp(16px,2.6vh,28px);
+  }
+  .ovbox.menu-pop.lb-overview .lb-overview-body{
+    flex:1 1 auto;
+    height:auto;
+    min-height:0;
   }
   .ovbox.menu-pop .big{
     font-size:clamp(34px,7.2vh,80px);
@@ -843,10 +874,19 @@
     scrollbar-width:thin;
     padding-right:2px;
   }
-  .lb-list::-webkit-scrollbar{
-    width:0;
-    height:0;
-    display:none;
+  .lb-overview-body::-webkit-scrollbar{
+    width:9px;
+  }
+  .lb-overview-body::-webkit-scrollbar-track{
+    background:rgba(255,255,255,.05);
+    border-radius:99px;
+  }
+  .lb-overview-body::-webkit-scrollbar-thumb{
+    background:rgba(255,209,102,.55);
+    border-radius:99px;
+  }
+  .lb-overview-body::-webkit-scrollbar-thumb:hover{
+    background:rgba(255,209,102,.8);
   }
   .lb-row{
     display:flex;align-items:center;gap:8px;
@@ -920,12 +960,13 @@
     display:flex;
     flex-direction:column;
     gap:clamp(16px,2.6vh,30px);
-    max-height:min(76vh, 780px);
+    height:min(56vh, 560px);
     overflow-y:auto;
     -webkit-overflow-scrolling:touch;
     scrollbar-width:thin;
+    scrollbar-color:rgba(255,209,102,.55) rgba(255,255,255,.05);
     text-align:left;
-    padding-right:6px;
+    padding-right:10px;
   }
   .lb-ov-group{min-width:0}
   .lb-ov-group-title{
@@ -986,24 +1027,53 @@
   .lb-ov-card-title{
     display:flex;
     align-items:center;
-    gap:8px;
-    font-size:clamp(11px,1.65vh,13.5px);
-    letter-spacing:.18em;
+    gap:6px;
+    flex-wrap:wrap;
+    font-size:clamp(9.5px,1.45vh,11.5px);
+    letter-spacing:.14em;
     font-weight:900;
-    color:#7fb0e0;
     padding-bottom:8px;
     margin-bottom:5px;
     border-bottom:1px solid rgba(255,255,255,.06);
     white-space:nowrap;
   }
-  .lb-ov-card-title .sep{color:#3d4d63}
-  .lb-ov-card-title .sty{color:#8fb6e0}
-  .lb-ov-card-title .sty.hex{color:#b98cff}
-  .lb-ov-card-title .sz{color:#8fb6e0}
-  .lb-ov-card-title .sz.green{color:#5dff9e}
-  .lb-ov-card-title .sz.yellow{color:#ffd166}
-  .lb-ov-card-title .sz.red{color:#ff6b8a}
-  .lb-ov-card-title .sz.infinite{color:#b98cff}
+  .lb-ov-card-title .sty,
+  .lb-ov-card-title .sz{
+    display:inline-flex;
+    align-items:center;
+    padding:3px 8px;
+    border-radius:8px;
+    background:rgba(255,255,255,.045);
+    border:1px solid rgba(255,255,255,.12);
+    color:#8fb6e0;
+    line-height:1.2;
+    white-space:nowrap;
+  }
+  .lb-ov-card-title .sty.hex{
+    color:#b98cff;
+    border-color:rgba(185,140,255,.45);
+    background:rgba(185,140,255,.08);
+  }
+  .lb-ov-card-title .sz.green{
+    color:#5dff9e;
+    border-color:rgba(93,255,158,.42);
+    background:rgba(93,255,158,.07);
+  }
+  .lb-ov-card-title .sz.yellow{
+    color:#ffd166;
+    border-color:rgba(255,209,102,.42);
+    background:rgba(255,209,102,.07);
+  }
+  .lb-ov-card-title .sz.red{
+    color:#ff6b8a;
+    border-color:rgba(255,107,138,.42);
+    background:rgba(255,107,138,.07);
+  }
+  .lb-ov-card-title .sz.infinite{
+    color:#b98cff;
+    border-color:rgba(185,140,255,.5);
+    background:rgba(185,140,255,.09);
+  }
 
   .lb-ov-row{
     display:grid;
@@ -1465,13 +1535,6 @@ function makeCode(){
   return s;
 }
 function newSeed(){ return (Math.random() * 0xFFFFFFFF) >>> 0; }
-
-function isMobileDevice(){
-  if (typeof window === 'undefined') return false;
-  const mq = window.matchMedia;
-  if (!mq) return 'ontouchstart' in window;
-  return mq('(hover: none) and (pointer: coarse)').matches && ('ontouchstart' in window || navigator.maxTouchPoints > 0);
-}
 
 const clamp = (v,a,b) => v < a ? a : v > b ? b : v;
 const easeOutCubic = t => 1 - Math.pow(1 - t, 3);
@@ -2494,12 +2557,77 @@ function generateBoardAsync(params){
   });
 }
 
+function territoryBoardIsFair(layout){
+  if (!layout || !layout.mines) return true;
+  const starts = territoryStarts(layout.rows, layout.cols);
+  const totalSafe = layout.rows * layout.cols - layout.mines.size;
+
+  for (const start of starts){
+    const seen = new Set();
+    const queue = [start];
+    seen.add(start.r + ',' + start.c);
+
+    while (queue.length){
+      const cell = queue.pop();
+      const r = cell.r, c = cell.c;
+
+      for (const [nr, nc] of layout.neighbors(r, c, layout.rows, layout.cols)){
+        const key = nr + ',' + nc;
+        if (seen.has(key)) continue;
+        if (layout.mines.has(key)) continue;
+        seen.add(key);
+        queue.push({ r: nr, c: nc });
+      }
+    }
+
+    if (seen.size !== totalSafe) return false;
+  }
+
+  return true;
+}
+
 function applyGeneratedBoard(res, clickR, clickC){
   const d = dimsFor(G.config);
-  const layout = placeholderBoard(G.config.style, d.rows, d.cols);
+  let layout = placeholderBoard(G.config.style, d.rows, d.cols);
   rebuildBoardFromMines(layout, res.mines, G.config.style);
   layout.infinite = !!res.infinite || isInfiniteSize(G.config.size);
   layout.seed = res.seed >>> 0;
+
+  if (
+    G.config.mode === 'territory' &&
+    !isInfiniteSize(G.config.size) &&
+    (G.role === 'solo' || G.role === 'host')
+  ){
+    let attempts = 0;
+
+    while (!territoryBoardIsFair(layout) && attempts < 40){
+      const newSeed = (Math.random() * 0xFFFFFFFF) >>> 0;
+      const starts = territoryStarts(d.rows, d.cols);
+
+      const regenerated = generateBoardSync({
+        seed: newSeed,
+        style: G.config.style,
+        cols: d.cols,
+        rows: d.rows,
+        mineCount: d.mines,
+        clickR: undefined,
+        clickC: undefined,
+        starts: starts,
+        opening: starts.map(s => [s.r, s.c]),
+        territory: true,
+        infinite: false
+      });
+
+      layout = placeholderBoard(G.config.style, d.rows, d.cols);
+      rebuildBoardFromMines(layout, regenerated.mines, G.config.style);
+      layout.infinite = false;
+      layout.seed = regenerated.seed >>> 0;
+
+      res = regenerated;
+      attempts++;
+    }
+  }
+
   const wasAlias = (G.theirBoardLayout === G.board);
   G.board = layout;
   if (wasAlias) G.theirBoardLayout = layout;
@@ -2758,6 +2886,7 @@ function applyBoardGrowth(top, bottom, left, right){
     try {
       G.viewMe.metrics = G.viewMe.computeMetrics(G.viewMe.config);
       G.viewMe.resize();
+      G.viewMe.clampPan();
     } catch(e){}
   }
   if (G.viewThem && G.viewThem.config){
@@ -3319,60 +3448,6 @@ function tilesTitle(e){
   const safe = String(t).replace(/"/g, '&quot;');
   return ' data-tip="⏱ Time used: ' + safe + '"';
 }
-
-(function initLbTooltip(){
-  let tip = null;
-  let current = null;
-  const ensure = () => {
-    if (tip) return tip;
-    tip = document.createElement('div');
-    tip.id = 'lbTip';
-    tip.className = 'hidden';
-    document.body.appendChild(tip);
-    return tip;
-  };
-  const place = (x, y) => {
-    const el = ensure();
-    const pad = 14;
-    const w = el.offsetWidth, h = el.offsetHeight;
-    let left = x + pad;
-    let top  = y + pad;
-    if (left + w > window.innerWidth - 6)  left = x - w - pad;
-    if (left < 6) left = 6;
-    if (top + h > window.innerHeight - 6)  top = y - h - pad;
-    if (top < 6) top = 6;
-    el.style.left = left + 'px';
-    el.style.top  = top + 'px';
-  };
-  const hide = () => { current = null; if (tip) tip.classList.add('hidden'); };
-  document.addEventListener('pointerover', e => {
-    if (e.pointerType && e.pointerType !== 'mouse') return;
-    const t = e.target;
-    const el = (t && t.closest) ? t.closest('[data-tip]') : null;
-    if (!el) return;
-    current = el;
-    const box = ensure();
-    box.textContent = el.getAttribute('data-tip') || '';
-    box.classList.remove('hidden');
-    place(e.clientX, e.clientY);
-  });
-  document.addEventListener('pointermove', e => {
-    if (!current) return;
-    if (!current.isConnected){ hide(); return; }
-    place(e.clientX, e.clientY);
-  });
-  document.addEventListener('pointerout', e => {
-    if (!current) return;
-    const t = e.target;
-    const el = (t && t.closest) ? t.closest('[data-tip]') : null;
-    if (el !== current) return;
-    const rt = e.relatedTarget;
-    const to = (rt && rt.closest) ? rt.closest('[data-tip]') : null;
-    if (to === el) return;
-    hide();
-  });
-  window.addEventListener('scroll', hide, true);
-})();
 
 async function fetchLeaderboard(mode, style, size, cat, insta){
   const key = lbKey(mode, style, size, insta);
@@ -4064,9 +4139,6 @@ async function refreshLeaderboard(force){
   }
 }
 
-/* Infinite sizes now live inside their own mode group (SOLO / CO-OP)
-   instead of separate groups, and the "DUEL · STANDARD" label replaces
-   the old "· INSTANT" wording. */
 const OV_GROUPS = [
   { mode:'solo',      insta:false, label:'SOLO',                    sizes:['small','medium','large','infinite'] },
   { mode:'coop',      insta:false, label:'CO-OP',                   sizes:['small','medium','large','infinite'] },
@@ -4097,13 +4169,10 @@ async function fetchTopForConfig(g, style, size, cat, limit){
   return out;
 }
 
-async function fetchOverviewData(cat){
+async function fetchOverviewData(cat, mode){
   const all = [];
-  /* Category-aware filtering:
-     - WINS:   finite boards only (duel, territory, solo/coop small-medium-large)
-     - TIME:   finite solo/coop only (duel & territory don't track time)
-     - TILES:  infinite boards only (solo/coop infinite) */
   for (const g of OV_GROUPS){
+    if (mode && g.mode !== mode) continue;
     if (cat === 'time' && (g.mode === 'duel' || g.mode === 'territory')) continue;
     for (const style of ['square','hex']){
       for (const size of g.sizes){
@@ -4158,7 +4227,6 @@ function renderOverviewData(cat, data){
     let html = '<div class="lb-ov-card">';
     html += '<div class="lb-ov-card-title">' +
               '<span class="sty' + styleCls + '">' + escapeHtml(styleName) + '</span>' +
-              '<span class="sep">·</span>' +
               '<span class="sz' + sizeCls + '">' + escapeHtml(sizeName) + '</span>' +
             '</div>';
     if (!item.entries.length){
@@ -4222,7 +4290,7 @@ function renderOverviewData(cat, data){
 function openLeaderboardOverview(){
   menuView = 'lboverview';
   showOverlay(
-    '<div class="ovbox menu-pop">' +
+    '<div class="ovbox menu-pop lb-overview">' +
       '<div class="big">📊</div>' +
       '<h2>ALL <span>LEADERBOARDS</span></h2>' +
       '<p>Every mode at a glance · up to top 10 per board.<br>Infinite boards rank by tiles revealed · hover an entry for its time.</p>' +
@@ -4231,6 +4299,7 @@ function openLeaderboardOverview(){
         '<button class="lb-cat" data-ovcat="time">⏱ TIME</button>' +
         '<button class="lb-cat" data-ovcat="tiles">🧭 TILES</button>' +
       '</div>' +
+      '<div class="lb-ov-cats" id="lbOvModes"></div>' +
       '<div class="lb-overview-body" id="lbOvBody">' +
         '<div class="lb-empty"><span class="spin"></span>Loading…</div>' +
       '</div>' +
@@ -4241,8 +4310,41 @@ function openLeaderboardOverview(){
   if (back) back.onclick = () => {
     menuView = 'main'; menuError = ''; renderMenu(''); refreshLeaderboard(false);
   };
+
   let cat = 'wins';
+  let mode = 'solo';
   let ovSeq = 0;
+
+  const MODES_FOR_CAT = {
+    wins: ['solo', 'coop', 'duel', 'territory'],
+    time: ['solo', 'coop'],
+    tiles: ['solo', 'coop']
+  };
+
+  const renderModeButtons = () => {
+    const wrap = overlay.querySelector('#lbOvModes');
+    if (!wrap) return;
+
+    const available = MODES_FOR_CAT[cat] || [];
+    if (available.indexOf(mode) === -1) mode = available[0] || 'solo';
+
+    wrap.innerHTML = available.map(m =>
+      '<button class="lb-cat' + (m === mode ? ' active' : '') + '" data-ovmode="' + m + '">' +
+        escapeHtml((MODES[m] || MODES.solo).name.toUpperCase()) +
+      '</button>'
+    ).join('');
+
+    wrap.querySelectorAll('[data-ovmode]').forEach(b => {
+      b.onclick = () => {
+        if (b.disabled) return;
+        wrap.querySelectorAll('[data-ovmode]').forEach(x => x.classList.remove('active'));
+        b.classList.add('active');
+        mode = b.dataset.ovmode;
+        load();
+      };
+    });
+  };
+
   const load = async () => {
     const body = overlay.querySelector('#lbOvBody');
     if (!body) return;
@@ -4250,26 +4352,30 @@ function openLeaderboardOverview(){
     if (!db){ body.innerHTML = '<div class="lb-empty">Leaderboards offline</div>'; return; }
     body.innerHTML = '<div class="lb-empty"><span class="spin"></span>Loading…</div>';
     try {
-      const data = await fetchOverviewData(cat);
+      const data = await fetchOverviewData(cat, mode);
       if (mySeq !== ovSeq) return;
       if (!overlay.querySelector('#lbOvBody')) return;
       renderOverviewData(cat, data);
     } catch(e){
-      console.warn('[fb] overview fetch failed:', e && (e.code || e.message));
+      console.warn('[fb] overview fetch failed:', e && (e.code || e.message || e));
       if (mySeq !== ovSeq) return;
       const b2 = overlay.querySelector('#lbOvBody');
       if (b2) b2.innerHTML = '<div class="lb-empty">Could not load</div>';
     }
   };
+
   overlay.querySelectorAll('[data-ovcat]').forEach(b => {
     b.onclick = () => {
       if (b.disabled) return;
       overlay.querySelectorAll('[data-ovcat]').forEach(x => x.classList.remove('active'));
       b.classList.add('active');
       cat = b.dataset.ovcat;
+      renderModeButtons();
       load();
     };
   });
+
+  renderModeButtons();
   load();
 }
 
@@ -4343,6 +4449,12 @@ let fitRaf1 = 0, fitRaf2 = 0;
 function fitMenuBox(){
   const box = overlay.querySelector('.ovbox.menu-pop');
   if (!box || !box.parentElement) return;
+  if (box.classList.contains('lb-overview')){
+    box.style.zoom = '';
+    box.style.maxHeight = '';
+    box.style.overflowY = 'hidden';
+    return;
+  }
   box.style.zoom = '';
   box.style.maxHeight = 'none';
   box.style.overflowY = 'hidden';
@@ -6112,28 +6224,6 @@ function countRevealedBy(boardState, owner){
     for (let c = 0; c < boardState.cols; c++)
       if (boardState.owner[r][c] === owner && boardState.revealed[r][c]) n++;
   return n;
-}
-
-function mapRevealStats(){
-  const mode = G.config.mode;
-  if (mode === 'solo') return null;
-  if (!G.board || !G.myBoard) return null;
-  if (mode === 'duel'){
-    const myTotal = Math.max(1, G.board.safeCount || 0);
-    const mine = clamp((G.myBoard.safeRevealed || 0) / myTotal * 100, 0, 100);
-    const theirLayout = G.theirBoardLayout || G.board;
-    const theirTotal = Math.max(1, (theirLayout && theirLayout.safeCount) || myTotal);
-    const theirRevealed = G.theirBoard ? (G.theirBoard.safeRevealed || 0) : 0;
-    const theirs = clamp(theirRevealed / theirTotal * 100, 0, 100);
-    return { mine, theirs };
-  }
-  const safeTotal = Math.max(1, G.board.safeCount || (G.board.rows * G.board.cols));
-  const c1 = countRevealedBy(G.myBoard, 1);
-  const c2 = countRevealedBy(G.myBoard, 2);
-  return {
-    mine:   clamp(((G.myOwner === 1) ? c1 : c2) / safeTotal * 100, 0, 100),
-    theirs: clamp(((G.myOwner === 1) ? c2 : c1) / safeTotal * 100, 0, 100)
-  };
 }
 
 function revealCountsAndPct(){

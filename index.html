@@ -115,9 +115,7 @@
     display:flex;gap:10px;justify-content:center;align-items:stretch;
     width:100%;
   }
-  #arena.solo .panel{max-width:1400px}
-  #arena.duel .panel{max-width:1400px}
-  #arena.territory .panel{max-width:1600px}
+  #arena .panel{max-width:none}
 
   .panel{
     --pc:#4dd8ff;
@@ -1232,6 +1230,17 @@
     .lb-ov-grid{grid-template-columns:1fr}
     .lb-overview-body.wide .lb-ov-grid{grid-template-columns:1fr}
     .lb-overview-body.time-view .lb-ov-grid{grid-template-columns:1fr}
+}
+
+  /* Block Chrome's long-press text selection / Google Lens popup on game UI. */
+  .stun, .oppstun, .zoom-badge, .review-label, #lbTip,
+  .pkeys, .pname, .plabel, .pval, #statusbar,
+  .stun .stun-timer, .stun .stun-title, .stun .stun-sub, .stun .stun-emoji,
+  .oppstun b{
+    -webkit-user-select:none;
+    user-select:none;
+    -webkit-touch-callout:none;
+  }
 </style>
 </head>
 <body>
@@ -2761,6 +2770,22 @@ function applyBoardGrowth(top, bottom, left, right){
     view.panY -= dwy * scale;
   }
   if (G.viewAnim) G.viewAnim.active = false;
+  if (G.viewMe && G.viewMe.config){
+    G.viewMe.config.cols = newCols;
+    G.viewMe.config.rows = newRows;
+    try {
+      G.viewMe.metrics = G.viewMe.computeMetrics(G.viewMe.config);
+      G.viewMe.resize();
+    } catch(e){}
+  }
+  if (G.viewThem && G.viewThem.config){
+    G.viewThem.config.cols = newCols;
+    G.viewThem.config.rows = newRows;
+    try {
+      G.viewThem.metrics = G.viewThem.computeMetrics(G.viewThem.config);
+      G.viewThem.resize();
+    } catch(e){}
+  }
   if (G.config.mode === 'coop' && G.role === 'host' && G.conn && G.conn.open){
     try { send({ t: 'grow', top: top, bottom: bottom, left: left, right: right }); } catch(e){}
   }
@@ -5348,8 +5373,8 @@ function makePanelStatsHTML(isCoop, isThem, mode){
 
   if (isCoop){
     html +=
-      '<button type="button" class="pstat-action" data-returnstart style="display:none" title="Return to start">RETURN</button>' +
       '<div class="pstat"><span class="plabel">YOU REVEALED</span><span class="pval reveal-mine" data-revealyou>0</span></div>' +
+      '<button type="button" class="pstat-action" data-returnstart style="display:none" title="Return to start">RETURN</button>' +
       '<div class="pstat"><span class="plabel">THEY REVEALED</span><span class="pval reveal-theirs" data-revealmate>0</span></div>' +
       '<div class="pstat"><span class="plabel">TOTAL REVEALED</span><span class="pval" data-revealtotal>0</span></div>';
     html += '</div>';
@@ -6005,23 +6030,10 @@ function buildTouchpad(){
   const pad = document.createElement('div');
   pad.className = 'touchpad';
   pad.innerHTML =
-    '<div class="dpad">' +
-      '<button class="u ghost" data-mv="up">▲</button>' +
-      '<button class="l ghost" data-mv="left">◀</button>' +
-      '<button class="r ghost" data-mv="right">▶</button>' +
-      '<button class="dn ghost" data-mv="down">▼</button>' +
-    '</div>' +
     '<div class="tp-actions">' +
       '<button class="primary" data-act="dig">DIG ⛏</button>' +
       '<button data-act="flag">FLAG ⚑</button>' +
     '</div>';
-  const map = {
-    up:    () => moveCursor(-1, 0),
-    down:  () => moveCursor(1, 0),
-    left:  () => moveCursor(0, -1),
-    right: () => moveCursor(0, 1)
-  };
-  pad.querySelectorAll('[data-mv]').forEach(b => holdButton(b, map[b.dataset.mv]));
   pad.querySelector('[data-act="dig"]').addEventListener('click', () => localDig());
   pad.querySelector('[data-act="flag"]').addEventListener('click', () => localFlag());
   return pad;
@@ -8717,6 +8729,7 @@ function showMapReview(){
     const cfg = reviewConfigFor(smallWorld.layout);
     v._reviewCfg = cfg;
     v.setConfig(cfg);
+    v.maxZoom = 5;
     if (isTerr) v.setOwnerPalette(myPalette());
     bindCanvasInput(v, false, true);
     views.push(v);
@@ -9226,6 +9239,17 @@ window.addEventListener('pagehide', () => {
   if (G.conn && G.conn.open && G.state !== 'lobby'){
     try { G.conn.send({ t:'bye' }); } catch(err){}
   }
+});
+
+document.addEventListener('contextmenu', e => {
+  if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
+  e.preventDefault();
+});
+document.addEventListener('selectstart', e => {
+  if (e.target && e.target.tagName === 'INPUT') return;
+  if (e.target && e.target.tagName === 'TEXTAREA') return;
+  if (e.target && e.target.closest && e.target.closest('.overlay:not(.hidden)')) return;
+  e.preventDefault();
 });
 
 idleOverlay();

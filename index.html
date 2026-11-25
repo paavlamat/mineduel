@@ -343,20 +343,6 @@
     border-color:#ff3d81;color:#fff;
   }
 
-  .touchpad{display:flex;gap:12px;justify-content:center;align-items:center;flex-wrap:wrap;width:100%}
-  .dpad{
-    --tb:48px;
-    display:grid;grid-template-columns:repeat(3,var(--tb));grid-template-rows:repeat(3,var(--tb));
-    gap:6px;justify-content:center;
-  }
-  .dpad button{width:100%;height:100%;padding:0;font-size:16px;border-radius:12px;letter-spacing:0;line-height:1;display:flex;align-items:center;justify-content:center}
-  .dpad .u{grid-area:1/2/2/3}
-  .dpad .l{grid-area:2/1/3/2}
-  .dpad .r{grid-area:2/3/3/4}
-  .dpad .dn{grid-area:3/2/4/3}
-  .tp-actions{display:flex;flex-direction:column;gap:8px;min-width:110px}
-  .tp-actions button{width:100%;padding:10px 12px;font-size:11px}
-
   .overlay{
     position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;
     background:rgba(3,6,12,.87);
@@ -1205,10 +1191,6 @@
     .phead{margin-bottom:5px}
     .pname{font-size:11px;letter-spacing:.14em}
     .controls button{padding:8px 12px;font-size:11px;border-radius:10px}
-    .dpad{--tb:42px;gap:5px}
-    .dpad button{font-size:14px;border-radius:10px}
-    .tp-actions{min-width:92px;gap:6px}
-    .tp-actions button{padding:8px 10px;font-size:10px}
     .overlay{padding:48px 8px 8px}
     .ovbox{padding:26px 18px 22px;border-radius:20px}
     .ovbox h2{font-size:clamp(20px,7vw,30px)}
@@ -6010,27 +5992,6 @@ function updateZoomFromKeys(dtMs){
     if (Math.abs(nz - v.zoom) < 0.0002) continue;
     v.zoomAround(v.pw / 2, v.ph / 2, nz);
   }
-}
-
-function holdButton(btn, fn){
-  let t1 = null, t2 = null;
-  const start = e => {
-    e.preventDefault();
-    if (!interactive()) return;
-    fn();
-    t1 = setTimeout(() => { t2 = setInterval(() => { if (interactive()) fn(); }, 110); }, 320);
-  };
-  const stop = () => { clearTimeout(t1); clearInterval(t2); t1 = t2 = null; };
-  btn.addEventListener('pointerdown', start);
-  btn.addEventListener('pointerup', stop);
-  btn.addEventListener('pointerleave', stop);
-  btn.addEventListener('pointercancel', stop);
-}
-function buildTouchpad(){
-  const pad = document.createElement('div');
-  pad.className = 'touchpad';
-  pad.innerHTML = '';
-  return pad;
 }
 
 function applyReveal(boardState, board, r, c, owner){

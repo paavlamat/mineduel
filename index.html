@@ -6029,13 +6029,7 @@ function holdButton(btn, fn){
 function buildTouchpad(){
   const pad = document.createElement('div');
   pad.className = 'touchpad';
-  pad.innerHTML =
-    '<div class="tp-actions">' +
-      '<button class="primary" data-act="dig">DIG ⛏</button>' +
-      '<button data-act="flag">FLAG ⚑</button>' +
-    '</div>';
-  pad.querySelector('[data-act="dig"]').addEventListener('click', () => localDig());
-  pad.querySelector('[data-act="flag"]').addEventListener('click', () => localFlag());
+  pad.innerHTML = '';
   return pad;
 }
 
@@ -8424,9 +8418,6 @@ function buildControls(){
   leave.onclick = onLeaveClick;
   row.appendChild(leave);
   controls.appendChild(row);
-  if (isMobileDevice()){
-    controls.appendChild(buildTouchpad());
-  }
 }
 
 async function onLeaveClick(){

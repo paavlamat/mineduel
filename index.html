@@ -698,7 +698,6 @@
   .opt.danger:focus-visible .opt-name{
     color:#ff3d81 !important;
   }
-  }
   .opt-name{font-size:14px;font-weight:900;letter-spacing:.14em;color:#e6edf7;margin-bottom:4px}
   .opt-desc{font-size:11px;color:#7c8aa5;letter-spacing:.05em;line-height:1.5}
   .opt-desc:empty{display:none}
@@ -1453,7 +1452,7 @@ const OPPONENT_RENDER_MS = 0;
 
 const INFINITE_REVEAL_RADIUS = 10;
 const INFINITE_MIN_ZOOM = 0.6;
-const INFINITE_MINE_MULT = 0.9;
+const INFINITE_MINE_MULT = 1;
 
 const INFINITE_EDGE_MARGIN = 5;
 const INFINITE_GROW_TILES = 50;
@@ -2960,7 +2959,7 @@ function applyBoardGrowth(top, bottom, left, right){
     newMines.add(r + ',' + c);
   });
   const seed = (board.seed !== undefined) ? (board.seed >>> 0) : (G.boardSeed >>> 0);
-  const density = INFINITE_MINE_MULT / (TILES_PER_BOMB[board.style] || 4);
+  const density = 1 / (TILES_PER_BOMB[board.style] || 4);
   for (let r = 0; r < newRows; r++){
     const rowIsOld = (r >= top && r < top + oldRows);
     for (let c = 0; c < newCols; c++){
@@ -3038,7 +3037,7 @@ function applyBoardGrowth(top, bottom, left, right){
   ){
     const oppLayout = G.theirBoardLayout;
     const oppSeed = (oppLayout.seed >>> 0) || (G.theirSeed >>> 0);
-    const oppDensity = INFINITE_MINE_MULT / (TILES_PER_BOMB[oppLayout.style] || 4);
+    const oppDensity = 1 / (TILES_PER_BOMB[oppLayout.style] || 4);
     const oppMines = new Set();
 
     oppLayout.mines.forEach(key => {
@@ -4616,6 +4615,7 @@ const G = {
   myStartR: 0, myStartC: 0,
   cameraUnlocked: false,
   duelShowOpponent: false,
+  duelStunViewActive: false,
   firstSafeDone: false,
   seedPayload: null,
   seedAcked: false,
@@ -6065,14 +6065,13 @@ function applyDuelView(){
   const btn = G.panelMe ? G.panelMe.querySelector('[data-toggleopp]') : null;
   if (btn){
     const rem = (G.me && G.state === 'playing') ? (G.me.stunUntil - performance.now()) : 0;
-    const isCooldown = usesStunPenalty() && rem > 0;
-    const locked = isCooldown;
+    const isStunView = !!G.duelStunViewActive && !!G.duelShowOpponent && rem > 0;
 
-    btn.disabled = locked;
-    btn.classList.toggle('cooldown-lock', locked);
+    btn.disabled = isStunView;
+    btn.classList.toggle('cooldown-lock', isStunView);
     btn.classList.toggle('view-enemy', show);
 
-    if (locked){
+    if (isStunView){
       btn.innerHTML = '<span class="pstat-icon-timer">' + (rem / 1000).toFixed(1) + 's</span>';
     } else {
       btn.innerHTML =
@@ -6087,9 +6086,13 @@ function applyDuelView(){
 function toggleDuelView(){
   if (G.config.mode !== 'duel') return;
   if (G.state !== 'playing' && G.state !== 'over') return;
+
   const rem = (G.me && G.state === 'playing') ? (G.me.stunUntil - performance.now()) : 0;
-  if (usesStunPenalty() && rem > 0) return;
+  const isStunned = usesStunPenalty() && rem > 0;
+
   G.duelShowOpponent = !G.duelShowOpponent;
+  G.duelStunViewActive = isStunned && G.duelShowOpponent;
+
   applyDuelView();
   SFX.clickSoft();
 }
@@ -7110,6 +7113,7 @@ function handleCoopLoss(r, c, broadcast, iTriggered){
 function duelFreeze(r, c){
   const now = performance.now();
   G.me.stunUntil = now + STUN_MS;
+  G.duelStunViewActive = false;
   G.me.wasStunned = true;
   G.me.stunReason = 'bomb';
   const view = G.viewMe;
@@ -9366,11 +9370,10 @@ function showMapReview(){
   const isTerr = (G.config.mode === 'territory');
   const isCoop = (G.config.mode === 'coop');
   const isInf  = isInfiniteSize(G.config.size);
-  const theirLayout = (G.config.mode === 'duel') ? (G.theirBoardLayout || G.board) : G.board;
+  const theirLayout = (G.config.mode === 'duel')
+    ? (G.theirBoardLayout || G.board)
+    : G.board;
 
-  /* Death tiles only belong on the board they happened on. In DUEL the two
-     players play separate fields, so the opponent's death tile must NOT be
-     marked on our board (that used to paint a bogus bomb on our review). */
   const sharedBoard = (G.config.mode !== 'duel');
   function collectDeaths(){
     const out = [];
@@ -9451,25 +9454,23 @@ function showMapReview(){
     return fullDerived;
   };
 
-  let themEnd = null, themFull = null, themSolution = null, themSolutionFull = null;
+  let themEnd, themFull, themSolution, themSolutionFull;
+
   if (isDuel){
+    const themLayout = G.theirBoardLayout || G.board;
+    const themState = G.theirBoard || makeBoardState(themLayout.rows, themLayout.cols);
     const themDeaths = G.theirDeathTile ? [G.theirDeathTile] : [];
-    themEnd  = buildEndReviewState(G.theirBoard, theirLayout, themDeaths);
-    themFull = buildFullRevealState(G.theirBoard, theirLayout);
+
+    themEnd  = buildEndReviewState(themState, themLayout, themDeaths);
+    themFull = buildFullRevealState(themState, themLayout);
     themSolution = G.theirDeathTile
       ? hideCellInState(themEnd, G.theirDeathTile.r, G.theirDeathTile.c) : themEnd;
     themSolutionFull = G.theirDeathTile
       ? hideCellInState(themFull, G.theirDeathTile.r, G.theirDeathTile.c) : themFull;
   }
 
-  /* Recompute the solution from the FINAL board state so it can never
-     suggest tiles that are already uncovered (this was happening in Duel
-     after a stun — the stored hint was computed before more tiles were
-     revealed). Revealed mines now count as known mines for the solver.
-     We feed the solver the *solution* state (sol/solution), which hides the
-     mine that was actually clicked on death — so SHOW SOLUTION can never
-     "cheat" by knowing where that bomb is. */
   if (!isInf){
+
     if (isTerr){
       G.lossHintMe   = computeHintForBoard(smallWorld.layout, smallDerived.sol, G.myOwner,    G.territoryUnlocked);
       G.lossHintThem = computeHintForBoard(smallWorld.layout, smallDerived.sol, G.theirOwner, G.territoryUnlocked);
@@ -9994,35 +9995,38 @@ function updateHUD(now){
       }
     }
     if (els.stun){
-          const rem = G.me.stunUntil - now;
-          const isDuelGamemode = (mode === 'duel' && usesStunPenalty());
-          const isBombCooldown = isDuelGamemode && rem > 0 && G.state === 'playing';
+      const rem = G.me.stunUntil - now;
+      const isDuelGamemode = (mode === 'duel' && usesStunPenalty());
+      const isStunned = isDuelGamemode && rem > 0 && G.state === 'playing';
+      const isStunView = isStunned && !!G.duelStunViewActive && G.duelShowOpponent;
+      const btn = G.panelMe ? G.panelMe.querySelector('[data-toggleopp]') : null;
 
-          if (rem > 0 && G.state === 'playing'){
-            if (isDuelGamemode && G.duelShowOpponent){
-              els.stun.classList.remove('on');
-            } else {
-              els.stun.classList.add('on');
-              setStunFace(els.stun, G.me.stunReason);
-              setText(els.stun.querySelector('[data-timer]'), (rem / 1000).toFixed(1));
-            }
-          } else {
-            els.stun.classList.remove('on');
-          }
+      if (rem > 0 && G.state === 'playing' && !isStunView){
+        els.stun.classList.add('on');
+        setStunFace(els.stun, G.me.stunReason);
+        setText(els.stun.querySelector('[data-timer]'), (rem / 1000).toFixed(1));
+      } else {
+        els.stun.classList.remove('on');
+      }
 
-          if (isDuelGamemode && btn){
-            if (isBombCooldown){
-              btn.disabled = true;
-              btn.classList.add('cooldown-lock');
-              setText(btn, '⏱ ' + (rem / 1000).toFixed(1) + 's');
-            } else if (btn.classList.contains('cooldown-lock') || btn.disabled){
-              btn.disabled = false;
-              btn.classList.remove('cooldown-lock');
-              if (G.duelShowOpponent) G.duelShowOpponent = false;
-              applyDuelView();
-            }
+      if (isDuelGamemode && btn){
+        if (isStunView){
+          btn.disabled = true;
+          btn.classList.add('cooldown-lock');
+          btn.classList.add('view-enemy');
+          btn.innerHTML = '<span class="pstat-icon-timer">' + (rem / 1000).toFixed(1) + 's</span>';
+        } else if (btn.classList.contains('cooldown-lock') || btn.disabled){
+          btn.disabled = false;
+          btn.classList.remove('cooldown-lock');
+
+          if (G.duelStunViewActive){
+            G.duelStunViewActive = false;
+            G.duelShowOpponent = false;
+            applyDuelView();
           }
         }
+      }
+    }
     if (els.oppStun){
       const rem = G.them ? (G.them.stunUntil - now) : 0;
       if (rem > 0 && G.state === 'playing'){

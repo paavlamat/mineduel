@@ -8927,8 +8927,14 @@ function joinRoomPeerJS(code) {
     }
   };
 
+  const stillSearching = () =>
+    !overlay.classList.contains('hidden') &&
+    !!overlay.querySelector('h2') &&
+    (overlay.querySelector('h2').textContent || '').indexOf('JOINING') === 0;
+
   const finishFail = (msg) => {
     if (settled || joinSearchCancelled) return;
+    if (!stillSearching()) return;
     settled = true;
     stopTimers();
 
@@ -9874,15 +9880,7 @@ function updateHUD(now){
       setText(els.hits, G.me.hits);
       if (els.theirHits) setText(els.theirHits, G.them ? G.them.hits : 0);
       if (els.mines){
-        if (bs.flagCount !== els._lastFlagCount){
-          els._lastFlagCount = bs.flagCount;
-          let correct = 0;
-          for (let rr = 0; rr < bs.rows; rr++)
-            for (let cc = 0; cc < bs.cols; cc++)
-              if (bs.flagged[rr][cc] && G.board.mines.has(rr + ',' + cc)) correct++;
-          els._correctFlags = correct;
-        }
-        setText(els.mines, Math.max(0, G.board.mineCount - (els._correctFlags || 0)));
+        setText(els.mines, Math.max(0, G.board.mineCount - bs.flagCount));
       }
       if (els.myBar) els.myBar.style.width = (mine / total * 100).toFixed(1) + '%';
       if (els.theirBar) els.theirBar.style.width = (theirs / total * 100).toFixed(1) + '%';

@@ -172,6 +172,100 @@
   }
   .pstat .pval.reveal-mine{color:#5dff9e;text-shadow:0 0 12px rgba(93,255,158,.45)}
   .pstat .pval.reveal-theirs{color:#ff6b8a;text-shadow:0 0 12px rgba(255,107,138,.45)}
+
+  .duo-stat{
+    flex:1 1 0;min-width:120px;
+    background:rgba(255,255,255,.03);
+    border:1px solid rgba(255,255,255,.07);
+    border-radius:10px;
+    padding:6px 10px;
+    display:flex;align-items:center;justify-content:center;gap:14px;
+  }
+  .duo-stat .duo-side{
+    display:flex;flex-direction:column;gap:2px;
+    min-width:52px;text-align:center;
+  }
+  .duo-stat .duo-divider{
+    width:1px;height:26px;flex:none;
+    background:linear-gradient(180deg,transparent,rgba(255,255,255,.22),transparent);
+  }
+  .duo-stat button.pstat-icon-btn{
+    flex:none;
+    margin:0 2px;
+  }
+  .duo-stat .plabel{font-size:8.5px;letter-spacing:.18em;color:#5d7fa8;font-weight:800;white-space:nowrap}
+  .duo-stat .pval{
+    font-family:'Courier New',monospace;
+    font-size:clamp(14px,2.5vw,22px);font-weight:900;line-height:1;
+    color:var(--pc,#4dd8ff);
+    font-variant-numeric:tabular-nums;
+  }
+  .duo-stat .pval.reveal-mine{
+    color:#5dff9e;
+    text-shadow:0 0 12px rgba(93,255,158,.45);
+  }
+
+  .duo-stat .pval.hits-mine{
+    color:#4dd8ff;
+    text-shadow:0 0 12px rgba(77,216,255,.45);
+  }
+
+  .duo-stat .pval.reveal-theirs,
+  .duo-stat .pval.hits-theirs{
+    color:#ff6b8a;
+    text-shadow:0 0 12px rgba(255,107,138,.45);
+  }
+  button.pstat-icon-btn{
+    flex:0 0 auto;
+    width:44px;height:44px;padding:0;
+    display:inline-flex;align-items:center;justify-content:center;
+    border-radius:12px;
+    background:linear-gradient(180deg, rgba(185,140,255,.14), rgba(185,140,255,.04));
+    border:1px solid rgba(185,140,255,.42);
+    color:#b98cff;
+    transition:all .18s;
+  }
+  button.pstat-icon-btn:hover{
+    background:linear-gradient(180deg, rgba(185,140,255,.28), rgba(185,140,255,.10));
+    border-color:#b98cff;
+    color:#fff;
+    transform:translateY(-1px);
+    box-shadow:0 0 14px rgba(185,140,255,.35);
+  }
+  button.pstat-icon-btn:active{transform:translateY(0) scale(.98)}
+  button.pstat-icon-btn.view-enemy{
+    color:#ff6b8a;
+    border-color:rgba(255,107,138,.55);
+    background:linear-gradient(180deg, rgba(255,61,129,.16), rgba(255,61,129,.05));
+  }
+  button.pstat-icon-btn.view-enemy:hover{
+    color:#fff;
+    border-color:#ff3d81;
+    background:linear-gradient(180deg, rgba(255,61,129,.30), rgba(255,61,129,.10));
+    box-shadow:0 0 14px rgba(255,61,129,.35);
+  }
+  button.pstat-action svg{
+    width:22px;height:22px;display:block;pointer-events:none;
+  }
+  button.pstat-icon-btn svg{
+    width:22px;height:22px;display:block;pointer-events:none;
+  }
+  button.pstat-action svg path{
+    fill:none;stroke:currentColor;stroke-width:2;
+    stroke-linecap:round;stroke-linejoin:round;
+  }
+  .pstat-icon-timer{
+    font-family:'Courier New',monospace;
+    font-size:11px;
+    font-weight:900;
+    letter-spacing:.04em;
+    color:#ffd6e0;
+  }
+  button.pstat-icon-btn svg path,
+  button.pstat-icon-btn svg circle{
+    fill:none;stroke:currentColor;stroke-width:2;
+    stroke-linecap:round;stroke-linejoin:round;
+  }
   button.pstat-action{
     flex:0 0 auto;
     font-family:inherit;
@@ -632,6 +726,21 @@
     flex:1 1 auto;
     height:auto;
     min-height:0;
+  }
+  .overlay:has(> .ovbox.menu-pop.lb-overview){
+    overflow:hidden;
+    scrollbar-width:none;
+    -ms-overflow-style:none;
+  }
+
+  .overlay:has(> .ovbox.menu-pop.lb-overview)::-webkit-scrollbar{
+    display:none;
+    width:0;
+    height:0;
+  }
+
+  body:has(.overlay:not(.hidden) > .ovbox.menu-pop.lb-overview){
+    overflow:hidden;
   }
   .ovbox.menu-pop .big{
     font-size:clamp(34px,7.2vh,80px);
@@ -1348,6 +1457,7 @@ const INFINITE_MINE_MULT = 0.9;
 
 const INFINITE_EDGE_MARGIN = 5;
 const INFINITE_GROW_TILES = 50;
+const INFINITE_DUEL_TARGET_TILES = 1000;
 
 const TILES_PER_BOMB = { square: 4, hex: 4 };
 
@@ -1393,6 +1503,17 @@ const PEER_OPTS = {
 
 function isInfiniteSize(sizeId){ return sizeId === 'infinite'; }
 
+function isInfiniteDuel(){
+  return G.config.mode === 'duel' && isInfiniteSize(G.config.size);
+}
+
+function duelWinCheck(boardState){
+  if (isInfiniteDuel()){
+    return !!boardState && (boardState.safeRevealed || 0) >= INFINITE_DUEL_TARGET_TILES;
+  }
+  return checkWin(boardState, G.board);
+}
+
 function dimsFor(config){
   if (isInfiniteSize(config.size)){
     const cols = INFINITE_COLS;
@@ -1415,7 +1536,7 @@ function dimsFor(config){
 function sizeDesc(sizeId, mode, styleId){
   const s = SIZES[sizeId];
   if (s && s.infinite){
-    return '∞ tiles';
+    return mode === 'duel' ? '1000 tiles' : '∞ tiles';
   }
   const d = dimsFor({ style: styleId, mode, size: sizeId });
   return d.cols + ' × ' + d.rows + ' · ' + d.mines + ' mines';
@@ -2355,15 +2476,19 @@ function generateSolvableBoard(seed, style, cols, rows, mineCount,
     return r || { count: 0 };
   };
   const startedAt = Date.now();
-  const BUDGET_MS = territory ? 2500 : 3500;
+  const BUDGET_MS = territory ? 6000 : 3500;
   const STEPS = [1.0, 0.98, 0.96, 0.94, 0.92, 0.90];
   const perStep = territory ? 150 : 300;
-  const minMines = Math.max(3, Math.floor(mineCount * 0.90));
+  const minMines = territory
+    ? mineCount
+    : Math.max(3, Math.floor(mineCount * 0.90));
   let attempt = 0;
   const MIN_OWNED = territory ? Math.max(30, Math.floor(Math.sqrt(rows * cols))) : 0;
   let best = null, bestSeed = seed, bestScore = -1;
   for (let si = 0; si < STEPS.length; si++){
-    const mines = Math.max(minMines, Math.floor(mineCount * STEPS[si]));
+    const mines = territory
+      ? mineCount
+      : Math.max(minMines, Math.floor(mineCount * STEPS[si]));
     for (let k = 0; k < perStep; k++){
       attempt++;
       const s = (seed + Math.imul(attempt, 0x9E3779B9)) >>> 0;
@@ -2381,11 +2506,11 @@ function generateSolvableBoard(seed, style, cols, rows, mineCount,
         bestSeed = s;
       }
       if (territory && res.owner1 !== undefined){
-        if (stuck === 0 && res.owner1 >= MIN_OWNED && res.owner2 >= MIN_OWNED){
-          const SOLO_MIN = Math.max(15, Math.floor(MIN_OWNED * 0.6));
+        if (stuck === 0){
           const solo1 = solveBoardTerritory(b, starts, 1);
           const solo2 = solveBoardTerritory(b, starts, 2);
-          if (solo1 && solo2 && solo1.owner1 >= SOLO_MIN && solo2.owner2 >= SOLO_MIN){
+          if (solo1 && solo2 &&
+              solo1.owner1 >= b.safeCount && solo2.owner2 >= b.safeCount){
             return { board: b, seed: s, score: score };
           }
         }
@@ -2402,8 +2527,6 @@ function generateSolvableBoard(seed, style, cols, rows, mineCount,
                             clickR, clickC, starts);
     bestSeed = s;
   }
-  // --- Safety net: the main loop can time out and hand us a partially
-  //     solvable board. Re-roll with fewer mines until the guarantee holds.
   if (!territory){
     const need = best.safeCount || (best.rows * best.cols - best.mineCount);
     if (bestScore < need){
@@ -2420,25 +2543,26 @@ function generateSolvableBoard(seed, style, cols, rows, mineCount,
       }
     }
   } else {
-    const SOLO_MIN = Math.max(15, Math.floor(MIN_OWNED * 0.6));
-    const sol1 = solveBoardTerritory(best, starts, 1);
-    const sol2 = solveBoardTerritory(best, starts, 2);
-    if (!sol1 || !sol2 || sol1.owner1 < SOLO_MIN || sol2.owner2 < SOLO_MIN){
-      let tryMines = Math.max(1, Math.floor(mineCount * 0.7));
+    let found = false;
+    for (let round = 0; round < 12 && !found; round++){
       for (let attempt = 0; attempt < 120; attempt++){
-        const s = ((seed ^ 0xDEADBEEF) + Math.imul(attempt + 1, 0x9E3779B9)) >>> 0;
-        const b2 = genBoardDeferred(s, style, cols, rows, tryMines, clickR, clickC, starts);
+        const s = ((seed ^ 0xDEADBEEF) +
+                   Math.imul(round * 1009 + attempt + 1, 0x9E3779B9)) >>> 0;
+        const b2 = genBoardDeferred(s, style, cols, rows, mineCount, clickR, clickC, starts);
         const r2 = solveBoardTerritory(b2, starts);
         if (r2 && (r2.stuck || 0) === 0 &&
-            r2.owner1 >= MIN_OWNED && r2.owner2 >= MIN_OWNED){
+            r2.owner1 >= b2.safeCount && r2.owner2 >= b2.safeCount){
           const a1 = solveBoardTerritory(b2, starts, 1);
           const a2 = solveBoardTerritory(b2, starts, 2);
-          if (a1 && a2 && a1.owner1 >= SOLO_MIN && a2.owner2 >= SOLO_MIN){
-            best = b2; bestSeed = s; bestScore = 0; break;
+          if (a1 && a2 &&
+              a1.owner1 >= b2.safeCount && a2.owner2 >= b2.safeCount){
+            best = b2; bestSeed = s; bestScore = 1000000;
+            found = true;
+            break;
           }
         }
-        if (attempt % 10 === 9) tryMines = Math.max(1, Math.floor(tryMines * 0.85));
       }
+      if (found) break;
     }
   }
   return { board: best, seed: bestSeed, score: bestScore };
@@ -2703,6 +2827,16 @@ function ensureBoardReadyAsync(clickR, clickC){
     genInFlight = null;
     if (!G.boardPending) return;
     applyGeneratedBoard(res, clickR, clickC);
+    if (G.config.mode === 'duel' && isInfiniteSize(G.config.size)){
+      const op = G.boardOpening;
+      send({
+        t:'layout',
+        seed: G.boardSeed,
+        clickR: op ? op.r : (G.board.rows >> 1),
+        clickC: op ? op.c : (G.board.cols >> 1),
+        mines: null
+      });
+    }
   }, () => {
     genInFlight = null;
     if (!G.boardPending) return;
@@ -2896,6 +3030,51 @@ function applyBoardGrowth(top, bottom, left, right){
       G.viewThem.metrics = G.viewThem.computeMetrics(G.viewThem.config);
       G.viewThem.resize();
     } catch(e){}
+  }
+    if (
+    G.config.mode === 'duel' &&
+    G.theirBoardLayout &&
+    G.theirBoardLayout !== G.board
+  ){
+    const oppLayout = G.theirBoardLayout;
+    const oppSeed = (oppLayout.seed >>> 0) || (G.theirSeed >>> 0);
+    const oppDensity = INFINITE_MINE_MULT / (TILES_PER_BOMB[oppLayout.style] || 4);
+    const oppMines = new Set();
+
+    oppLayout.mines.forEach(key => {
+      const idx = key.indexOf(',');
+      if (idx < 0) return;
+      const r = parseInt(key.slice(0, idx), 10) + top;
+      const c = parseInt(key.slice(idx + 1), 10) + left;
+      oppMines.add(r + ',' + c);
+    });
+
+    for (let r = 0; r < newRows; r++){
+      const rowIsOld = (r >= top && r < top + oldRows);
+      for (let c = 0; c < newCols; c++){
+        const colIsOld = (c >= left && c < left + oldCols);
+        if (rowIsOld && colIsOld) continue;
+        if (hashRand(oppSeed, r, c) < oppDensity){
+          oppMines.add(r + ',' + c);
+        }
+      }
+    }
+
+    oppLayout.mines = oppMines;
+    const oppAdj = [];
+    for (let r = 0; r < newRows; r++) oppAdj.push(new Array(newCols).fill(0));
+    for (let r = 0; r < oldRows; r++){
+      const srcRow = oppLayout.adj[r];
+      const dstRow = oppAdj[r + top];
+      for (let c = 0; c < oldCols; c++) dstRow[c + left] = srcRow[c];
+    }
+    oppLayout.adj = oppAdj;
+    oppLayout.rows = newRows;
+    oppLayout.cols = newCols;
+    recomputeAdjacency(oppLayout);
+    oppLayout.mineCount = oppLayout.mines.size;
+    oppLayout.safeCount = newRows * newCols - oppLayout.mineCount;
+    oppLayout.infinite = true;
   }
   if (G.config.mode === 'coop' && G.role === 'host' && G.conn && G.conn.open){
     try { send({ t: 'grow', top: top, bottom: bottom, left: left, right: right }); } catch(e){}
@@ -3381,6 +3560,7 @@ function lbKey(mode, style, size, insta){
 }
 
 function currentLbCategory(){
+  if (isInfiniteDuel()) return 'wins';
   if (isInfiniteSize(G.config.size)) return 'tiles';
   if (G.config.mode === 'duel') return 'wins';
   if (G.config.mode === 'territory') return 'wins';
@@ -3523,6 +3703,7 @@ async function recordWin(mode, style, size, insta, timeMs, countAsWin, partner, 
   const isDuel = (mode === 'duel');
   const isTerr = (mode === 'territory');
   const isInf = isInfiniteSize(size);
+  const infTiles = isInf && mode !== 'duel';
   const isTeamMode = (mode === 'coop' || mode === 'territory');
   const timeVal = Math.max(1, Math.round(timeMs || 0));
   const tilesVal = Math.max(0, Math.round(tiles || 0));
@@ -3530,11 +3711,11 @@ async function recordWin(mode, style, size, insta, timeMs, countAsWin, partner, 
   const useTeam = isTeamMode &&
                   partner && partner.name && partner.key &&
                   partner.key !== nameKey;
-  if (!useTeam || !isInf){
+  if (!useTeam || !infTiles){
     try {
       const ref = db.collection('leaderboards').doc(key).collection('entries').doc(nameKey);
       const snap = await ref.get();
-      if (isInf){
+      if (infTiles){
         if (!snap.exists){
           await ref.set({ name, bestTiles: tilesVal, bestTime: timeVal, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
         } else {
@@ -3546,6 +3727,9 @@ async function recordWin(mode, style, size, insta, timeMs, countAsWin, partner, 
         }
       } else {
         const writesTime = !isDuel && !isTerr && !useTeam;
+        if (isInf){
+          upd.bestTiles = Math.max(tilesVal, data.bestTiles || 0);
+        }
         if (!snap.exists){
           const doc = { name, wins: addWin ? 1 : 0, updatedAt: firebase.firestore.FieldValue.serverTimestamp() };
           if (writesTime) doc.bestTime = timeVal;
@@ -4035,7 +4219,7 @@ function renderLeaderboardHTML(){
   const guest = isGuest || !getPlayerName();
 
   let catsHtml;
-  if (isInf){
+  if (isInf && mode !== 'duel'){
     catsHtml = '<button class="lb-cat active" data-lbcat="tiles" disabled>🧭 TILES</button>';
   } else if (showTime){
     catsHtml =
@@ -4142,8 +4326,8 @@ async function refreshLeaderboard(force){
 const OV_GROUPS = [
   { mode:'solo',      insta:false, label:'SOLO',                    sizes:['small','medium','large','infinite'] },
   { mode:'coop',      insta:false, label:'CO-OP',                   sizes:['small','medium','large','infinite'] },
-  { mode:'duel',      insta:false, label:'DUEL',                    sizes:['small','medium','large'] },
-  { mode:'duel',      insta:true,  label:'DUEL · STANDARD',         sizes:['small','medium','large'] },
+  { mode:'duel',      insta:false, label:'DUEL',                    sizes:['small','medium','large','infinite'] },
+  { mode:'duel',      insta:true,  label:'DUEL · STANDARD',         sizes:['small','medium','large','infinite'] },
   { mode:'territory', insta:false, label:'TERRITORIAL',             sizes:['small','medium','large'] },
   { mode:'territory', insta:true,  label:'TERRITORIAL · STANDARD',  sizes:['small','medium','large'] }
 ];
@@ -4153,7 +4337,7 @@ async function fetchTopForConfig(g, style, size, cat, limit){
   const col = db.collection('leaderboards').doc(key).collection('entries');
   let q;
   const isInf = (size === 'infinite');
-  if (isInf){
+  if (isInf && g.mode !== 'duel'){
     q = col.orderBy('bestTiles', 'desc').limit(limit);
   } else if (cat === 'tiles'){
     q = col.orderBy('bestTiles', 'desc').limit(limit);
@@ -4176,7 +4360,7 @@ async function fetchOverviewData(cat, mode){
     if (cat === 'time' && (g.mode === 'duel' || g.mode === 'territory')) continue;
     for (const style of ['square','hex']){
       for (const size of g.sizes){
-        if (cat === 'wins'  && size === 'infinite') continue;
+        if (cat === 'wins'  && size === 'infinite' && g.mode !== 'duel') continue;
         if (cat === 'time'  && size === 'infinite') continue;
         if (cat === 'tiles' && size !== 'infinite') continue;
         all.push({ g, style, size });
@@ -4240,7 +4424,11 @@ function renderOverviewData(cat, data){
         const nmHtml = escapeHtml(info.name) +
           (info.isGuest ? ' &amp; <span class="lb-guest-badge">guest</span>' : '');
         let val, title = '', cls = '';
-        if (isInf || cat === 'tiles'){ val = formatTiles(e.bestTiles); title = tilesTitle(e); cls = ' tiles'; }
+        if ((isInf && item.g.mode !== 'duel') || cat === 'tiles'){
+          val = formatTiles(e.bestTiles);
+          title = tilesTitle(e);
+          cls = ' tiles';
+        }
         else if (cat === 'time') val = formatTime(e.bestTime);
         else val = formatWins(e.wins);
         const isMe = !isGuest && myKey && (
@@ -4293,7 +4481,7 @@ function openLeaderboardOverview(){
     '<div class="ovbox menu-pop lb-overview">' +
       '<div class="big">📊</div>' +
       '<h2>ALL <span>LEADERBOARDS</span></h2>' +
-      '<p>Every mode at a glance · up to top 10 per board.<br>Infinite boards rank by tiles revealed · hover an entry for its time.</p>' +
+      '<p>Every mode at a glance · up to top 10 per board.<br>Infinite Solo &amp; Co-op rank by tiles revealed · Infinite Duel ranks by wins.</p>' +
       '<div class="lb-ov-cats">' +
         '<button class="lb-cat active" data-ovcat="wins">🏆 WINS</button>' +
         '<button class="lb-cat" data-ovcat="time">⏱ TIME</button>' +
@@ -4428,7 +4616,10 @@ const G = {
   myStartR: 0, myStartC: 0,
   cameraUnlocked: false,
   duelShowOpponent: false,
-  firstSafeDone: false
+  firstSafeDone: false,
+  seedPayload: null,
+  seedAcked: false,
+  seedRetryTimer: null
 };
 
 let rememberedInsta = false;
@@ -4665,8 +4856,8 @@ class BoardView {
     this.clampPan();
   }
   revealedWorldBounds(){
-    if (!G.myBoard || !this.metrics) return null;
-    const bs = G.myBoard;
+    const bs = this.activeBoardState || G.myBoard;
+    if (!bs || !this.metrics) return null;
     const m = this.metrics;
     const rows = bs.rows, cols = bs.cols;
     let minX = Infinity, maxX = -Infinity;
@@ -4753,8 +4944,12 @@ class BoardView {
   }
   resetView(){
     this.zoom = 1;
-    if (this.metrics && this.metrics.infinite && G.me){
-      const p = hexOrSqCenter(this, G.me.cursor.r, G.me.cursor.c);
+    const cursor = (G.config.mode === 'duel' && this === G.viewThem && G.them)
+      ? G.them.cursor
+      : (G.me ? G.me.cursor : null);
+
+    if (this.metrics && this.metrics.infinite && cursor){
+      const p = hexOrSqCenter(this, cursor.r, cursor.c);
       this.centerOn(p.x, p.y);
     } else {
       this.clampPan();
@@ -4895,6 +5090,7 @@ class BoardView {
   }
   render(now, state){
     const ctx = this.ctx;
+    this.activeBoardState = state && state.boardState ? state.boardState : this.activeBoardState;
     const dt = Math.min(now - this.lastT, 50);
     this.lastT = now;
     if (this.shake > 0) this.shake = Math.max(0, this.shake - dt * 0.0026);
@@ -5454,50 +5650,159 @@ function theirRevealedCount(){
   return 0;
 }
 
-/* Builds the stats row.
-   - Duel with GAMEMODE rules (non-insta): 7 cells, OPPONENT button at position 4 (middle).
-   - Duel with STANDARD rules (insta): 5 cells, OPPONENT button at position 3 (middle),
-     with YOU REVEALED shifted to the right of the button. */
 function makePanelStatsHTML(isCoop, isThem, mode){
   const isDuelMe = (mode === 'duel') && !isThem;
   const stunRules = usesStunPenalty();
+  const skipSharedTimeMines = isCoop && !isInfiniteSize(G.config.size);
   let html = '<div class="pstats">';
-  html += '<div class="pstat" data-minesstat><span class="plabel">MINES LEFT</span><span class="pval" data-mines>0</span></div>';
-  html += '<div class="pstat"><span class="plabel">TIME</span><span class="pval" data-time>0.0</span></div>';
+  const isSoloStats = mode === 'solo';
+  const timeStat =
+    '<div class="pstat"><span class="plabel">TIME</span><span class="pval" data-time>0.0</span></div>';
 
-  if (isCoop){
-    html +=
-      '<div class="pstat"><span class="plabel">YOU REVEALED</span><span class="pval reveal-mine" data-revealyou>0</span></div>' +
-      '<button type="button" class="pstat-action" data-returnstart style="display:none" title="Return to start">RETURN</button>' +
-      '<div class="pstat"><span class="plabel">THEY REVEALED</span><span class="pval reveal-theirs" data-revealmate>0</span></div>' +
-      '<div class="pstat"><span class="plabel">TOTAL REVEALED</span><span class="pval" data-revealtotal>0</span></div>';
-    html += '</div>';
-    return html;
+  if (!skipSharedTimeMines && !isDuelMe){
+    if (isSoloStats){
+      html += timeStat;
+    } else {
+      html += '<div class="pstat" data-minesstat><span class="plabel">MINES LEFT</span><span class="pval" data-mines>0</span></div>';
+      html += timeStat;
+    }
   }
 
-  if (isDuelMe){
-    if (stunRules){
+  if (isCoop){
+    if (isInfiniteSize(G.config.size)){
       html +=
-        '<div class="pstat"><span class="plabel">YOU REVEALED</span><span class="pval reveal-mine" data-revealed>0</span></div>' +
-        '<button type="button" class="pstat-action" data-toggleopp title="View opponent board">👁 OPPONENT</button>' +
-        '<div class="pstat"><span class="plabel">THEY REVEALED</span><span class="pval reveal-theirs" data-theyrevealed>0</span></div>' +
-        '<div class="pstat" data-hitsstat><span class="plabel">YOUR HITS</span><span class="pval" data-hits>0</span></div>' +
-        '<div class="pstat" data-theirhitsstat><span class="plabel">THEIR HITS</span><span class="pval reveal-theirs" data-theirhits>0</span></div>';
+        '<div class="duo-stat">' +
+          '<div class="duo-side"><span class="plabel">YOU REVEALED</span><span class="pval reveal-mine" data-revealyou>0</span></div>' +
+          '<div class="duo-divider"></div>' +
+          '<div class="duo-side"><span class="plabel">TOTAL REVEALED</span><span class="pval" data-revealtotal>0</span></div>' +
+          '<div class="duo-divider"></div>' +
+          '<div class="duo-side"><span class="plabel">THEY REVEALED</span><span class="pval reveal-theirs" data-revealmate>0</span></div>' +
+        '</div>' +
+        '<button type="button" class="pstat-icon-btn" data-gotocursor style="display:none" title="Go to teammate cursor" aria-label="Go to teammate cursor">' +
+          '<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.4"/><path d="M5.5 20c0-3.6 2.9-6.2 6.5-6.2s6.5 2.6 6.5 6.2"/></svg>' +
+        '</button>' +
+        '<button type="button" class="pstat-icon-btn" data-returnstart style="display:none" title="Return to start" aria-label="Return to start">' +
+          '<svg viewBox="0 0 24 24"><path d="M4 11.2 12 4.5l8 6.7"/><path d="M6.5 10.2V19.5h11V10.2"/></svg>' +
+        '</button>';
     } else {
       html +=
-        '<button type="button" class="pstat-action" data-toggleopp title="View opponent board">👁 OPPONENT</button>' +
-        '<div class="pstat"><span class="plabel">YOU REVEALED</span><span class="pval reveal-mine" data-revealed>0</span></div>' +
-        '<div class="pstat"><span class="plabel">THEY REVEALED</span><span class="pval reveal-theirs" data-theyrevealed>0</span></div>';
+        '<div class="pstat"><span class="plabel">TIME</span><span class="pval" data-time>0.0</span></div>' +
+        '<div class="duo-stat">' +
+          '<div class="duo-side"><span class="plabel">YOU REVEALED</span><span class="pval reveal-mine" data-revealyou>0</span></div>' +
+          '<div class="duo-divider"></div>' +
+          '<div class="duo-side"><span class="plabel">TOTAL REVEALED</span><span class="pval" data-revealtotal>0</span></div>' +
+          '<div class="duo-divider"></div>' +
+          '<div class="duo-side"><span class="plabel">THEY REVEALED</span><span class="pval reveal-theirs" data-revealmate>0</span></div>' +
+        '</div>' +
+        '<div class="pstat" data-minesstat><span class="plabel">MINES LEFT</span><span class="pval" data-mines>0</span></div>' +
+        '<button type="button" class="pstat-action" data-returnstart style="display:none" title="Return to start">RETURN</button>' +
+        '<button type="button" class="pstat-icon-btn" data-gotocursor style="display:none" title="Go to teammate cursor" aria-label="Go to teammate cursor">' +
+          '<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.4"/><path d="M5.5 20c0-3.6 2.9-6.2 6.5-6.2s6.5 2.6 6.5 6.2"/></svg>' +
+        '</button>';
     }
     html += '</div>';
     return html;
   }
 
+  if (isDuelMe){
+    const eyeBtn =
+      '<button type="button" class="pstat-icon-btn" data-toggleopp title="View opponent board" aria-label="View opponent board">' +
+        '<svg viewBox="0 0 24 24" style="width:22px;height:22px">' +
+          '<path d="M2.5 12S6 5.8 12 5.8 21.5 12 21.5 12 18 18.2 12 18.2 2.5 12 2.5 12Z"/>' +
+          '<circle cx="12" cy="12" r="3.1"/>' +
+        '</svg>' +
+      '</button>';
+
+    const returnBtn =
+      '<button type="button" class="pstat-icon-btn" data-returnstart style="display:none" title="Return to start" aria-label="Return to start">' +
+        '<svg viewBox="0 0 24 24">' +
+          '<path d="M4 11.2 12 4.5l8 6.7"/>' +
+          '<path d="M6.5 10.2V19.5h11V10.2"/>' +
+        '</svg>' +
+      '</button>';
+
+    const enemyBtn =
+      '<button type="button" class="pstat-icon-btn" data-gotocursor style="display:none" title="Go to enemy cursor" aria-label="Go to enemy cursor">' +
+        '<svg viewBox="0 0 24 24">' +
+          '<circle cx="12" cy="8" r="3.4"/>' +
+          '<path d="M5.5 20c0-3.6 2.9-6.2 6.5-6.2s6.5 2.6 6.5 6.2"/>' +
+        '</svg>' +
+      '</button>';
+
+    const revealBox =
+      '<div class="duo-stat">' +
+        '<div class="duo-side"><span class="plabel">YOU REVEALED</span><span class="pval reveal-mine" data-revealed>0</span></div>' +
+        eyeBtn +
+        '<div class="duo-side"><span class="plabel">THEY REVEALED</span><span class="pval reveal-theirs" data-theyrevealed>0</span></div>' +
+      '</div>';
+
+    const minesSide =
+      '<div class="duo-side" data-minesstat>' +
+        '<span class="plabel">MINES LEFT</span>' +
+        '<span class="pval" data-mines>0</span>' +
+      '</div>';
+
+    const hitsSides =
+      '<div class="duo-divider"></div>' +
+      '<div class="duo-side"><span class="plabel">YOUR HITS</span><span class="pval hits-mine" data-hits>0</span></div>' +
+      '<div class="duo-divider"></div>' +
+      '<div class="duo-side"><span class="plabel">THEIR HITS</span><span class="pval hits-theirs" data-theirhits>0</span></div>';
+
+    const rightBox =
+      '<div class="duo-stat hits-box" data-hitsstat>' +
+        (stunRules ? hitsSides : '') +
+        minesSide +
+      '</div>';
+
+    if (stunRules){
+      html +=
+        timeStat +
+        revealBox +
+        rightBox +
+        enemyBtn +
+        (isInfiniteSize(G.config.size) ? returnBtn : '');
+
+      html += '</div>';
+      return html;
+    }
+
+    const bombsBox =
+      '<div class="duo-stat" data-minesstat>' +
+        '<div class="duo-side">' +
+          '<span class="plabel">BOMBS LEFT</span>' +
+          '<span class="pval" data-mines>0</span>' +
+        '</div>' +
+      '</div>';
+
+    html +=
+      timeStat +
+      revealBox +
+      bombsBox +
+      (isInfiniteSize(G.config.size)
+        ? '<div class="duo-stat" data-emptyslot></div>'
+        : '') +
+      enemyBtn +
+      (isInfiniteSize(G.config.size) ? returnBtn : '');
+
+    html += '</div>';
+    return html;
+  }
+
+  const soloInfReturn = (mode === 'solo' && isInfiniteSize(G.config.size));
   html +=
-    '<button type="button" class="pstat-action" data-returnstart style="display:none" title="Return to start">RETURN</button>' +
+    (soloInfReturn
+      ? '<button type="button" class="pstat-action" data-returnstart style="display:none" title="Return to start" aria-label="Return to start">' +
+          '<svg viewBox="0 0 24 24"><path d="M4 11.2 12 4.5l8 6.7"/><path d="M6.5 10.2V19.5h11V10.2"/></svg>' +
+        '</button>'
+      : '<button type="button" class="pstat-action" data-returnstart style="display:none" title="Return to start">RETURN</button>') +
     '<div class="pstat"><span class="plabel">' +
       (isThem ? 'THEY REVEALED' : 'YOU REVEALED') +
     '</span><span class="pval ' + (isThem ? 'reveal-theirs' : 'reveal-mine') + '" data-revealed>0</span></div>';
+
+  if (isSoloStats && !skipSharedTimeMines){
+    html += '<div class="pstat" data-minesstat><span class="plabel">MINES LEFT</span><span class="pval" data-mines>0</span></div>';
+  }
+
   if (stunRules){
     html += '<div class="pstat" data-hitsstat><span class="plabel">' +
       (isThem ? 'THEIR HITS' : 'HITS') +
@@ -5553,6 +5858,7 @@ function makePanel(cls, name, color, mode){
 
 function makeTerritoryPanel(){
   const panel = document.createElement('div');
+  const showTerritoryMines = usesStunPenalty();
   panel.className = 'panel me';
   panel.style.setProperty('--pc', '#4dd8ff');
   panel.innerHTML =
@@ -5565,11 +5871,35 @@ function makeTerritoryPanel(){
       '<span class="pkeys"></span>' +
     '</div>' +
     '<div class="pstats">' +
-      '<div class="pstat" style="--pc:#4dd8ff"><span class="plabel">YOU REVEALED</span><span class="pval reveal-mine" data-myland>0</span></div>' +
-      '<div class="pstat" style="--pc:#ff3d81"><span class="plabel">THEY REVEALED</span><span class="pval reveal-theirs" data-theirland>0</span></div>' +
       '<div class="pstat" style="--pc:#cfe4ff"><span class="plabel">TIME</span><span class="pval" data-time>0.0</span></div>' +
-      '<div class="pstat" data-hitsstat><span class="plabel">YOUR HITS</span><span class="pval" data-hits>0</span></div>' +
-      '<div class="pstat" data-theirhitsstat><span class="plabel">THEIR HITS</span><span class="pval reveal-theirs" data-theirhits>0</span></div>' +
+      '<div class="duo-stat">' +
+        '<div class="duo-side" style="--pc:#4dd8ff"><span class="plabel">YOU REVEALED</span><span class="pval reveal-mine" data-myland>0</span></div>' +
+        '<div class="duo-divider"></div>' +
+        '<div class="duo-side" style="--pc:#ff3d81"><span class="plabel">THEY REVEALED</span><span class="pval reveal-theirs" data-theirland>0</span></div>' +
+      '</div>' +
+      '<div class="duo-stat" data-hitsstat>' +
+        '<div class="duo-side"><span class="plabel">YOUR HITS</span><span class="pval hits-mine" data-hits>0</span></div>' +
+        '<div class="duo-divider"></div>' +
+        '<div class="duo-side"><span class="plabel">THEIR HITS</span><span class="pval hits-theirs" data-theirhits>0</span></div>' +
+        (showTerritoryMines
+          ? '<div class="duo-divider"></div>' +
+            '<div class="duo-side" data-minesstat>' +
+              '<span class="plabel">BOMBS LEFT</span>' +
+              '<span class="pval" data-mines>0</span>' +
+            '</div>'
+          : '') +
+      '</div>' +
+      (!showTerritoryMines
+        ? '<div class="duo-stat" data-minesstat>' +
+            '<div class="duo-side">' +
+              '<span class="plabel">BOMBS LEFT</span>' +
+              '<span class="pval" data-mines>0</span>' +
+            '</div>' +
+          '</div>'
+        : '') +
+      '<button type="button" class="pstat-icon-btn" data-gotocursor style="display:none" title="Go to opponent cursor" aria-label="Go to opponent cursor">' +
+        '<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.4"/><path d="M5.5 20c0-3.6 2.9-6.2 6.5-6.2s6.5 2.6 6.5 6.2"/></svg>' +
+      '</button>' +
     '</div>' +
     '<div class="tbar">' +
       '<i class="mine" data-mybar style="width:0%"></i>' +
@@ -5628,23 +5958,128 @@ function activeBoardView(){
 
 function applyDuelView(){
   if (G.config.mode !== 'duel') return;
+
   const show = !!G.duelShowOpponent;
-  if (G.viewMe && G.viewMe.canvas) G.viewMe.canvas.style.display = show ? 'none' : 'block';
+  const cursorBtn = G.panelMe && G.panelMe.querySelector('[data-gotocursor]');
+  if (cursorBtn){
+    cursorBtn.style.display = show ? 'flex' : 'none';
+  }
+
+  const returnBtn = G.panelMe && G.panelMe.querySelector('[data-returnstart]');
+  if (returnBtn){
+    returnBtn.style.display = (show || isInfiniteSize(G.config.size)) ? 'flex' : 'none';
+  }
+
+  const statsRow = G.panelMe && G.panelMe.querySelector('.pstats');
+  const hitsBox = G.panelMe && G.panelMe.querySelector('[data-hitsstat].hits-box');
+  const minesSide = hitsBox && hitsBox.querySelector('[data-minesstat]');
+
+  const resetBox = (box) => {
+    if (!box) return;
+    box.style.flex = '';
+    box.style.minWidth = '';
+    box.style.padding = '';
+    box.style.gap = '';
+    const sides = box.querySelectorAll('.duo-side');
+    for (const s of sides){ s.style.minWidth = ''; }
+    delete box.dataset.normalWidth;
+  };
+
+  const shrinkBox = (box, amount) => {
+    if (!box) return;
+    if (!box.dataset.normalWidth){
+      box.dataset.normalWidth = String(box.getBoundingClientRect().width);
+    }
+    box.style.minWidth = '0';
+    box.style.padding = '6px 3px';
+    box.style.gap = '6px';
+    const sides = box.querySelectorAll('.duo-side');
+    for (const s of sides){ s.style.minWidth = '30px'; }
+    const w = Math.max(46, parseFloat(box.dataset.normalWidth) - amount);
+    box.style.flex = '0 0 ' + w.toFixed(1) + 'px';
+  };
+
+  let bombsStat = statsRow
+    ? statsRow.querySelector('.duo-stat[data-minesstat]')
+    : null;
+  if (!bombsStat && statsRow){
+    bombsStat = statsRow.querySelector('.duo-stat.hits-box[data-hitsstat]') ||
+                statsRow.querySelector('[data-hitsstat]');
+  }
+  const emptySlot = statsRow
+    ? statsRow.querySelector('.duo-stat[data-emptyslot]')
+    : null;
+  if (emptySlot){
+    if (show){
+      shrinkBox(emptySlot, 34);
+    } else {
+      resetBox(emptySlot);
+    }
+  } else if (bombsStat){
+    const isInf = isInfiniteSize(G.config.size);
+
+    if (show && !isInf){
+      shrinkBox(bombsStat, 34);
+    } else if (show && isInf){
+      const isStandard = !statsRow.querySelector('.duo-stat[data-hitsstat]');
+      if (isStandard){
+        const revealBox = statsRow.querySelector('.duo-stat:not([data-minesstat])');
+        shrinkBox(revealBox, 90);
+      }
+    } else {
+      resetBox(bombsStat);
+      const revealBox = statsRow.querySelector('.duo-stat:not([data-minesstat])');
+      resetBox(revealBox);
+    }
+
+    if (statsRow && hitsBox){
+      if (minesSide){
+        minesSide.style.display = show ? 'none' : '';
+      }
+
+      if (show){
+        shrinkBox(hitsBox, 34);
+      } else {
+        resetBox(hitsBox);
+        if (minesSide && !isInf){
+          minesSide.style.display = '';
+        }
+      }
+    }
+  }
+
+  if (G.viewMe && G.viewMe.canvas){
+    G.viewMe.canvas.style.display = show ? 'none' : 'block';
+  }
+
   if (G.viewThem && G.viewThem.canvas){
     G.viewThem.canvas.style.display = show ? 'block' : 'none';
-    if (show){ try { G.viewThem.resize(); } catch(e){} }
   }
+
+  if (show && G.viewThem && G.them){
+    const p = hexOrSqCenter(G.viewThem, G.them.cursor.r, G.them.cursor.c);
+    G.viewThem.centerOn(p.x, p.y);
+    G.viewThem.clampPan();
+  }
+
   const btn = G.panelMe ? G.panelMe.querySelector('[data-toggleopp]') : null;
   if (btn){
     const rem = (G.me && G.state === 'playing') ? (G.me.stunUntil - performance.now()) : 0;
-    const isBombCooldown = usesStunPenalty() && rem > 0 && G.me.stunReason === 'bomb';
-    const locked = show && isBombCooldown;
+    const isCooldown = usesStunPenalty() && rem > 0;
+    const locked = isCooldown;
+
     btn.disabled = locked;
     btn.classList.toggle('cooldown-lock', locked);
+    btn.classList.toggle('view-enemy', show);
+
     if (locked){
-      btn.textContent = '⏱ ' + (rem / 1000).toFixed(1) + 's';
+      btn.innerHTML = '<span class="pstat-icon-timer">' + (rem / 1000).toFixed(1) + 's</span>';
     } else {
-      btn.textContent = show ? '👁 YOUR BOARD' : '👁 OPPONENT';
+      btn.innerHTML =
+        '<svg viewBox="0 0 24 24" style="width:22px;height:22px">' +
+          '<path d="M2.5 12S6 5.8 12 5.8 21.5 12 21.5 12 18 18.2 12 18.2 2.5 12 2.5 12Z"/>' +
+          '<circle cx="12" cy="12" r="3.1"/>' +
+        '</svg>';
     }
   }
 }
@@ -5653,8 +6088,7 @@ function toggleDuelView(){
   if (G.config.mode !== 'duel') return;
   if (G.state !== 'playing' && G.state !== 'over') return;
   const rem = (G.me && G.state === 'playing') ? (G.me.stunUntil - performance.now()) : 0;
-  const isBombCooldown = usesStunPenalty() && rem > 0 && G.me.stunReason === 'bomb';
-  if (G.duelShowOpponent && isBombCooldown) return;
+  if (usesStunPenalty() && rem > 0) return;
   G.duelShowOpponent = !G.duelShowOpponent;
   applyDuelView();
   SFX.clickSoft();
@@ -5702,34 +6136,54 @@ function buildArena(){
     nameEl: panelA.querySelector('.pname'),
     panel: panelA
   };
-  if (!showHits){
-    if (panelA._els.hitsStat) panelA._els.hitsStat.style.display = 'none';
-    if (panelA._els.theirHitsStat) panelA._els.theirHitsStat.style.display = 'none';
-  }
-  if (insta) panelA._els.keys.classList.add('insta');
-  if (mode === 'coop') panelA._els.keys.textContent = 'SHARED · ' + panelKeysText();
-  else                 panelA._els.keys.textContent = panelKeysText();
+  panelA._els.keys.style.display = 'none';
 
   if (isInf){
     const minesBox = panelA.querySelector('[data-minesstat]');
     if (minesBox) minesBox.style.display = 'none';
-    const pbar = panelA.querySelector('.pbar');
-    if (pbar) pbar.style.display = 'none';
+
+    if (G.config.mode !== 'duel'){
+      const pbar = panelA.querySelector('.pbar');
+      if (pbar) pbar.style.display = 'none';
+    }
+
     const statsEl = panelA.querySelector('.pstats');
     if (statsEl) statsEl.classList.add('center-stats');
+
+    const cursorBtn = panelA.querySelector('[data-gotocursor]');
     const retBtn = panelA.querySelector('[data-returnstart]');
-    if (retBtn){
+    if (mode !== 'duel'){
+      if (cursorBtn){
+        cursorBtn.addEventListener('click', e => {
+          e.preventDefault();
+          e.stopPropagation();
+          returnToCursor();
+        });
+        cursorBtn.addEventListener('pointerdown', e => e.stopPropagation());
+      }
+      if (retBtn){
+        retBtn.style.display = 'flex';
+        retBtn.addEventListener('click', e => {
+          e.preventDefault();
+          e.stopPropagation();
+          returnToStart();
+        });
+        retBtn.addEventListener('pointerdown', e => e.stopPropagation());
+      }
+    } else if (retBtn){
       retBtn.style.display = 'flex';
-      retBtn.addEventListener('click', e => {
-        e.preventDefault();
-        e.stopPropagation();
-        returnToStart();
-      });
-      retBtn.addEventListener('pointerdown', e => e.stopPropagation());
     }
+
     if (G.me){
       const p = hexOrSqCenter(G.viewMe, G.me.cursor.r, G.me.cursor.c);
       G.viewMe.centerOn(p.x, p.y);
+    }
+
+    if (cursorBtn){
+      const showCursor =
+        (mode === 'coop' && isInf) ||
+        (mode === 'duel' && G.duelShowOpponent);
+      cursorBtn.style.display = showCursor ? 'flex' : 'none';
     }
   }
 
@@ -5738,14 +6192,37 @@ function buildArena(){
     G.viewThem = new BoardView(cThem);
     G.viewThem.setConfig(viewConfig());
     bindCanvasInput(G.viewThem, false, true);
+
     const togBtn = panelA.querySelector('[data-toggleopp]');
     if (togBtn){
       togBtn.addEventListener('click', e => {
-        e.preventDefault(); e.stopPropagation();
+        e.preventDefault();
+        e.stopPropagation();
         toggleDuelView();
       });
       togBtn.addEventListener('pointerdown', e => e.stopPropagation());
     }
+
+    const cursorBtnD = panelA.querySelector('[data-gotocursor]');
+    if (cursorBtnD){
+      cursorBtnD.addEventListener('click', e => {
+        e.preventDefault();
+        e.stopPropagation();
+        returnToCursor();
+      });
+      cursorBtnD.addEventListener('pointerdown', e => e.stopPropagation());
+    }
+
+    const retBtnD = panelA.querySelector('[data-returnstart]');
+    if (retBtnD){
+      retBtnD.addEventListener('click', e => {
+        e.preventDefault();
+        e.stopPropagation();
+        returnToStart();
+      });
+      retBtnD.addEventListener('pointerdown', e => e.stopPropagation());
+    }
+
     applyDuelView();
   }
 
@@ -5762,6 +6239,8 @@ function buildTerritoryArena(){
   bindCanvasInput(G.viewMe, true, true);
   wireZoomBadge(panel, G.viewMe);
   panel._els = {
+    mines: panel.querySelector('[data-mines]'),
+    gotocursor: panel.querySelector('[data-gotocursor]'),
     myLand:    panel.querySelector('[data-myland]'),
     theirLand: panel.querySelector('[data-theirland]'),
     time:      panel.querySelector('[data-time]'),
@@ -5782,9 +6261,17 @@ function buildTerritoryArena(){
     if (panel._els.hitsStat) panel._els.hitsStat.style.display = 'none';
     if (panel._els.theirHitsStat) panel._els.theirHitsStat.style.display = 'none';
   }
-  const keysEl = panel.querySelector('.pkeys');
-  if (G.config.insta) keysEl.classList.add('insta');
-  keysEl.textContent = panelKeysText();
+  panel.querySelector('.pkeys').style.display = 'none';
+  if (panel._els.gotocursor){
+    const gb = panel._els.gotocursor;
+    gb.style.display = 'flex';
+    gb.addEventListener('click', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      returnToCursor();
+    });
+    gb.addEventListener('pointerdown', e => e.stopPropagation());
+  }
   G.panelMe = panel;
 }
 
@@ -5818,19 +6305,30 @@ function interactive(){
   return G.state === 'playing' && G.me && !G.me.done;
 }
 
-function returnToStart(){
+function returnToCursor(){
   const v = activeBoardView();
-  if (!v || !G.board || !G.me) return;
-  let targetR = G.myStartR, targetC = G.myStartC;
-  if (G.config.mode === 'duel' && G.duelShowOpponent){
-    targetR = G.board.rows >> 1;
-    targetC = G.board.cols >> 1;
-    if (G.them){ targetR = G.them.cursor.r; targetC = G.them.cursor.c; }
+  if (!v || !G.board) return;
+
+  let targetR, targetC;
+
+  if (G.config.mode === 'duel'){
+    if (!G.duelShowOpponent || !G.them) return;
+    targetR = G.them.cursor.r;
+    targetC = G.them.cursor.c;
+  } else if (G.config.mode === 'coop' || G.config.mode === 'territory'){
+    if (!G.them) return;
+    targetR = G.them.cursor.r;
+    targetC = G.them.cursor.c;
+  } else {
+    return;
   }
+
   const p = hexOrSqCenter(v, targetR, targetC);
   const scale = v.baseScale * v.zoom;
+
   G.viewAnim = {
     active: true,
+    view: v,
     startTime: performance.now(),
     duration: 550,
     startPanX: v.panX,
@@ -5838,6 +6336,43 @@ function returnToStart(){
     targetPanX: v.pw / 2 - p.x * scale,
     targetPanY: v.ph / 2 - p.y * scale
   };
+
+  SFX.zoom();
+}
+
+function returnToStart(){
+  if (!G.board || !G.me || !G.viewMe) return;
+
+  const viewingEnemy =
+    G.config.mode === 'duel' && !!G.duelShowOpponent;
+
+  const v = viewingEnemy && G.viewThem ? G.viewThem : G.viewMe;
+  if (!v) return;
+
+  const targetR = viewingEnemy ? G.theirStartR : G.myStartR;
+  const targetC = viewingEnemy ? G.theirStartC : G.myStartC;
+
+  if (
+    typeof targetR !== 'number' || typeof targetC !== 'number' ||
+    targetR < 0 || targetC < 0
+  ){
+    return;
+  }
+
+  const p = hexOrSqCenter(v, targetR, targetC);
+  const scale = v.baseScale * v.zoom;
+
+  G.viewAnim = {
+    active: true,
+    view: v,
+    startTime: performance.now(),
+    duration: 550,
+    startPanX: v.panX,
+    startPanY: v.panY,
+    targetPanX: v.pw / 2 - p.x * scale,
+    targetPanY: v.ph / 2 - p.y * scale
+  };
+
   SFX.zoom();
 }
 
@@ -6429,7 +6964,15 @@ async function localDig(){
       if (mode === 'solo' || mode === 'duel'){
         await ensureBoardReadyAsync(r, c);
         if (mode === 'duel' && !G.boardPending){
-          send({ t:'layout', mines: Array.from(G.board.mines) });
+          const op = G.boardOpening;
+
+          send({
+            t:'layout',
+            seed: G.boardSeed,
+            clickR: op ? op.r : (G.board.rows >> 1),
+            clickC: op ? op.c : (G.board.cols >> 1),
+            mines: Array.from(G.board.mines)
+          });
         }
       } else if (G.role === 'host'){
         await ensureBoardReadyAsync(r, c);
@@ -6494,7 +7037,7 @@ function doLocalDig(r, c){
     }
     send({ t:'rev', tiles: res.tiles });
     afterRevealFeedback(res);
-    if (checkWin(bs, G.board)) duelWin();
+    if (duelWinCheck(bs)) duelWin();
     return;
   }
   const bs = G.myBoard;
@@ -6800,7 +7343,7 @@ function localFlag(){
     SFX.freeze();
     vibrate(160);
     send({ t:'stun', who: G.myOwner, reason: 'flag' });
-    if (checkWin(bs, G.board)) duelWin();
+    if (duelWinCheck(bs)) duelWin();
     return;
   }
   const on = bs.flagged[r][c] ? 0 : 1;
@@ -6859,7 +7402,7 @@ function localChord(){
     }
     send({ t:'rev', tiles: res.tiles });
     afterRevealFeedback(res);
-    if (checkWin(bs, G.board)) duelWin();
+    if (duelWinCheck(bs)) duelWin();
     return;
   }
   const bs = G.myBoard;
@@ -6929,6 +7472,7 @@ function showUnlockPopup(byOwner){
 
 function hostApplyDig(r, c, owner){
   if (G.state !== 'playing') return;
+  G.cameraUnlocked = true;
   const bs = G.myBoard;
   const isMyDig = (owner === G.myOwner);
   const who = isMyDig ? G.me : G.them;
@@ -7151,9 +7695,10 @@ function attachConn(c){
   G.theirName = '';
   G.theirNameKey = '';
   c.on('data', msg => { G.lastRecv = performance.now(); handleMessage(msg); });
-  c.on('close', onConnClosed);
+  c.on('close', () => { if (G.conn === c) onConnClosed(); });
   c.on('error', () => {});
-  startHeartbeat();
+  if (c.open) startHeartbeat();
+  else c.on('open', () => { if (G.conn === c && !hbTimer) startHeartbeat(); });
   const announce = () => {
     if (G.conn !== c) return;
     const nm = getPlayerName() || '';
@@ -7175,12 +7720,19 @@ function handleMessage(msg){
       updatePanelNames();
       break;
     }
+    case 'ready': {
+      G.seedAcked = true;
+      if (G.seedRetryTimer){ clearInterval(G.seedRetryTimer); G.seedRetryTimer = null; }
+      break;
+    }
     case 'seed': {
+      G.seedAcked = true;
+      send({ t:'ready' });
       G.config = msg.config || G.config;
-      const seedHost  = (msg.seedHost  >>> 0) || newSeed();
+      const seedHost = (msg.seedHost >>> 0) || newSeed();
       const seedGuest = (msg.seedGuest >>> 0) || newSeed();
       if (G.config.mode === 'duel') startMatch(seedGuest, 'guest', seedHost);
-      else                          startMatch(seedHost,  'guest', seedHost);
+      else startMatch(seedHost, 'guest', seedHost);
       break;
     }
     case 'rematch': {
@@ -7204,11 +7756,45 @@ function handleMessage(msg){
     case 'cur':
       if (G.them) G.them.cursor = { r: msg.r, c: msg.c };
       break;
-    case 'layout':
+    case 'layout': {
       if (G.config.mode !== 'duel') break;
       if (!G.theirBoardLayout) break;
-      rebuildBoardFromMines(G.theirBoardLayout, msg.mines || [], G.config.style);
+
+      const d = dimsFor(G.config);
+      const isInf = isInfiniteSize(G.config.size);
+
+      if (Array.isArray(msg.mines) && msg.mines.length){
+        rebuildBoardFromMines(G.theirBoardLayout, msg.mines, G.config.style);
+        G.theirBoardLayout.infinite = true;
+        G.theirBoardLayout.seed = (typeof msg.seed === 'number') ? (msg.seed >>> 0) : G.theirSeed;
+      } else if (isInf && typeof msg.seed === 'number'){
+        const clickR = (msg.clickR !== undefined) ? msg.clickR : (d.rows >> 1);
+        const clickC = (msg.clickC !== undefined) ? msg.clickC : (d.cols >> 1);
+
+        const regenerated = generateBoardSync({
+          seed: msg.seed >>> 0,
+          style: G.config.style,
+          cols: d.cols,
+          rows: d.rows,
+          mineCount: d.mines,
+          clickR: clickR,
+          clickC: clickC,
+          starts: [{ r: clickR, c: clickC }],
+          opening: [[clickR, clickC]],
+          territory: false,
+          infinite: true
+        });
+
+        G.theirBoardLayout = placeholderBoard(G.config.style, d.rows, d.cols);
+        G.theirBoardLayout.infinite = true;
+        G.theirBoardLayout.seed = msg.seed >>> 0;
+        rebuildBoardFromMines(G.theirBoardLayout, regenerated.mines, G.config.style);
+      } else {
+        rebuildBoardFromMines(G.theirBoardLayout, msg.mines || [], G.config.style);
+      }
+
       break;
+    }
     case 'grow': {
       if (!G.board || !G.myBoard) break;
       if (!isInfiniteSize(G.config.size)) break;
@@ -7402,7 +7988,9 @@ function handleMessage(msg){
           }
           G.pendingPreSnap = null;
           endGame('lose', '💀', 'DEFEATED',
-            'Your opponent cleared their field first.',
+            isInfiniteDuel()
+              ? 'Your opponent reached ' + INFINITE_DUEL_TARGET_TILES + ' tiles first.'
+              : 'Your opponent cleared their field first.',
             performance.now() - G.startTime);
         }
       }
@@ -7422,6 +8010,7 @@ function applyDelta(msg){
   if (!bs || !G.board) return;
   const now = performance.now();
   if (msg.rev){
+    G.cameraUnlocked = true;
     let revealedAny = false;
     let firstVal = 0;
     for (const pair of msg.rev){
@@ -7478,6 +8067,9 @@ function applyDelta(msg){
 
 function cleanupNet(){
   stopHeartbeat();
+  if (G.seedRetryTimer){ clearInterval(G.seedRetryTimer); G.seedRetryTimer = null; }
+  G.seedPayload = null;
+  G.seedAcked = false;
   G.reconnecting = false;
   if (G.conn){ try { G.conn.close(); } catch(e){} G.conn = null; }
   if (G.peer){ try { G.peer.destroy(); } catch(e){} G.peer = null; }
@@ -7487,6 +8079,7 @@ let menuError = '';
 let menuView = 'main';
 let isGuest = false;
 let booted = false;
+let joinSearchCancelled = false;
 
 function showNameEntryPopup(opts){
   opts = opts || {};
@@ -7717,7 +8310,7 @@ function menuHTML(err){
       '<div class="opt-name">' + s.name + '</div>' +
     '</button>';
   }).join('');
-  const supportsInfinite = (cfg.mode === 'solo' || cfg.mode === 'coop');
+  const supportsInfinite = (cfg.mode === 'solo' || cfg.mode === 'coop' || cfg.mode === 'duel');
   const sizeColor = { small:'color-green', medium:'color-yellow', large:'color-red', infinite:'color-infinite' };
   const sizeKeys = Object.keys(SIZES).filter(k => {
     if (SIZES[k].infinite && !supportsInfinite) return false;
@@ -8082,6 +8675,7 @@ function idleOverlay(){
   G.pendingPreSnap = null;
   G.viewAnim = null;
   G.myStartR = 0; G.myStartC = 0;
+  G.theirStartR = 0; G.theirStartC = 0;
   G.cameraUnlocked = false;
   G.duelShowOpponent = false;
   G.firstSafeDone = false;
@@ -8127,6 +8721,26 @@ function wireCancel(){
   if (b) b.onclick = () => { cleanupNet(); idleOverlay(); };
 }
 
+function wireJoinCancel(){
+  const b = overlay.querySelector('#btnCancel');
+  if (b) b.onclick = () => {
+    joinSearchCancelled = true;
+    cleanupNet();
+
+    showOverlay(waitHTML(
+      '❌',
+      'SEARCH CANCELLED',
+      'No room matched that code.'
+    ));
+
+    const back = overlay.querySelector('#btnCancel');
+    if (back){
+      back.textContent = 'BACK TO MENU';
+      back.onclick = () => { idleOverlay(); };
+    }
+  };
+}
+
 function hostGame(){
   setStatus('CONNECTING', 'warn');
   showOverlay(waitHTML('📡', 'CREATING ROOM', '<span class="spin"></span>Setting up a peer connection…'));
@@ -8143,18 +8757,57 @@ function hostGame(){
     wireCancel();
   });
   peer.on('connection', c => {
-    if (G.conn){ try { c.close(); } catch(e){} return; }
+    if (started) {
+      try { c.close(); } catch (e) {}
+      return;
+    }
+    if (G.conn && G.conn !== c) {
+      try { G.conn.close(); } catch (e) {}
+      G.conn = null;
+    }
+
     attachConn(c);
+
     const begin = () => {
       if (started) return;
       started = true;
+
       const seedHost = newSeed();
       const seedGuest = newSeed();
-      send({ t:'seed', seedHost, seedGuest, config: G.config });
+
+      G.seedPayload = {
+        t: 'seed',
+        seedHost,
+        seedGuest,
+        config: G.config
+      };
+
+      try { c.send({ t: 'hostReady' }); } catch (e) {}
+
+      send(G.seedPayload);
+
+      let tries = 0;
+      G.seedRetryTimer = setInterval(() => {
+        if (!G.conn || !G.conn.open || G.seedAcked || G.state !== 'countdown') {
+          clearInterval(G.seedRetryTimer);
+          G.seedRetryTimer = null;
+          return;
+        }
+        if (++tries > 10) {
+          clearInterval(G.seedRetryTimer);
+          G.seedRetryTimer = null;
+          return;
+        }
+        console.warn('[net] resending seed (no ack)');
+        send(G.seedPayload);
+      }, 1200);
+
       startMatch(seedHost, 'host', seedGuest);
     };
-    c.on('open', begin);
-    if (c.open) begin();
+
+    c.on('data', msg => {
+      if (msg && msg.t === 'guestReady') begin();
+    });
   });
   peer.on('error', err => {
     if (G.peer !== peer) return;
@@ -8189,12 +8842,14 @@ function showCodeScreen(code){
 }
 
 async function joinGame(code){
+  joinSearchCancelled = false;
   setStatus('CONNECTING', 'warn');
   showOverlay(waitHTML('🔎', 'JOINING ' + code, '<span class="spin"></span>Looking for the room…'));
-  wireCancel();
+  wireJoinCancel();
   if (db && auth){
     try {
       const linkSnap = await db.collection('linkCodes').doc(code).get();
+      if (joinSearchCancelled) return;
       if (linkSnap.exists){
         const data = linkSnap.data() || {};
         if (data.status === 'waiting'){ await handleLinkCode(code, data); }
@@ -8241,53 +8896,134 @@ async function handleLinkCode(code, data){
   }
 }
 
-function joinRoomPeerJS(code){
+function joinRoomPeerJS(code) {
   let peer;
   try { peer = new Peer(PEER_OPTS); }
-  catch(e){ renderMenu('Could not start peer connection.'); return; }
+  catch (e) {
+    renderMenu('Could not start peer connection.');
+    return;
+  }
+
   G.peer = peer;
+
   let settled = false;
   let roomConn = null;
   let failTimer = 0;
+  let retryTimer = 0;
+  let hostReady = false;
+
+  const stopTimers = () => {
+    if (failTimer) {
+      clearTimeout(failTimer);
+      failTimer = 0;
+    }
+    if (retryTimer) {
+      clearTimeout(retryTimer);
+      retryTimer = 0;
+    }
+  };
+
   const finishFail = (msg) => {
-    if (settled) return;
+    if (settled || joinSearchCancelled) return;
     settled = true;
-    if (failTimer){ clearTimeout(failTimer); failTimer = 0; }
-    try { if (roomConn) roomConn.close(); } catch(e){}
+    stopTimers();
+
+    try { if (roomConn) roomConn.close(); } catch (e) {}
     if (G.peer === peer) cleanupNet();
-    showOverlay(waitHTML('❌', 'NOT FOUND', msg || 'No room matched that code.'));
+
+    showOverlay(waitHTML(
+      '❌',
+      'NOT FOUND',
+      msg || 'No room matched that code.'
+    ));
     wireCancel();
   };
+
   failTimer = setTimeout(() => {
+    if (joinSearchCancelled) return;
     finishFail('No room matched that code.');
   }, 35000);
-  peer.on('open', () => {
-    if (G.peer !== peer || settled) return;
-    try { roomConn = peer.connect(PREFIX + code, { reliable: true }); }
-    catch(e){ roomConn = null; }
-    if (!roomConn){ finishFail('Could not open connection.'); return; }
-    roomConn.on('open', () => {
-      if (settled) return;
+
+  const tryConnect = () => {
+    if (settled || joinSearchCancelled || !peer.open) return;
+
+    if (roomConn) { try { roomConn.close(); } catch (e) {} roomConn = null; }
+
+    try {
+      roomConn = peer.connect(PREFIX + code, { reliable: true });
+    } catch (e) {
+      roomConn = null;
+    }
+
+    if (!roomConn) {
+      retryTimer = setTimeout(tryConnect, 1500);
+      return;
+    }
+
+    roomConn.on('data', data => {
+      if (!data || data.t !== 'hostReady' || hostReady) return;
+      hostReady = true;
+
+      if (settled || joinSearchCancelled) return;
       settled = true;
-      if (failTimer){ clearTimeout(failTimer); failTimer = 0; }
+      stopTimers();
+
       attachConn(roomConn);
       G.role = 'guest';
       setStatus('WAITING', 'warn');
-      showOverlay(waitHTML('✅', 'CONNECTED',
-        '<span class="spin"></span>Waiting for the host to start…'));
+
+      showOverlay(waitHTML(
+        '✅',
+        'CONNECTED',
+        '<span class="spin"></span>Waiting for the host to start…'
+      ));
       wireCancel();
+
+      try { roomConn.send({ t: 'guestReady' }); } catch (e) {}
     });
-    roomConn.on('error', () => { finishFail('No room matched that code.'); });
-    roomConn.on('close', () => { if (!settled) finishFail('No room matched that code.'); });
+
+    roomConn.on('open', () => {
+      try { roomConn.send({ t: 'guestReady' }); } catch (e) {}
+    });
+
+    roomConn.on('error', () => {
+      if (!joinSearchCancelled && !hostReady) finishFail('No room matched that code.');
+    });
+
+    roomConn.on('close', () => {
+      if (!settled && !joinSearchCancelled && !hostReady) {
+        finishFail('No room matched that code.');
+      }
+    });
+  };
+
+  peer.on('open', () => {
+    if (G.peer !== peer || settled || joinSearchCancelled) return;
+    tryConnect();
   });
+
   peer.on('error', err => {
-    if (G.peer !== peer) return;
+    if (G.peer !== peer || joinSearchCancelled) return;
+
     const t = err && err.type;
-    if (t === 'peer-unavailable'){ finishFail('No room matched that code.'); return; }
+
+    if (t === 'peer-unavailable') {
+      if (!settled && !hostReady) {
+        retryTimer = setTimeout(tryConnect, 1500);
+      }
+      return;
+    }
+
     if (settled) return;
-    if (t === 'network' || t === 'server-error' || t === 'socket-error' || t === 'socket-closed'){
+
+    if (
+      t === 'network' ||
+      t === 'server-error' ||
+      t === 'socket-error' ||
+      t === 'socket-closed'
+    ) {
       settled = true;
-      if (failTimer){ clearTimeout(failTimer); failTimer = 0; }
+      stopTimers();
       cleanupNet();
       renderMenu('Connection error: ' + t);
     }
@@ -8309,13 +9045,13 @@ function startMatch(seed, role, seedGuest){
   G.territoryUnlocked = false; G.reviewViews = [];
   G.boardOpening = null;
   G.rematchMe = false; G.rematchThem = false; G.rematchLock = false;
+  G.seedAcked = false; G.seedPayload = null;
+  if (G.seedRetryTimer){ clearInterval(G.seedRetryTimer); G.seedRetryTimer = null; }
   G.lossHintMe = null;
   G.lossHintThem = null;
   G.pendingPreSnap = null;
   G.viewAnim = null;
   G.firstSafeDone = false;
-  /* Territory uses a fixed-size board that fits the viewport — keep the
-     camera unlocked so the view doesn't try to re-center on a start tile. */
   G.cameraUnlocked = (G.config.mode === 'territory');
   G.duelShowOpponent = false;
   lastUnlockCheck = 0;
@@ -8361,6 +9097,15 @@ function startMatch(seed, role, seedGuest){
     if (role === 'host'){
       sendBoardToGuest();
     }
+    if (mode === 'duel'){
+      send({
+        t: 'layout',
+        seed: G.boardSeed,
+        clickR: cr,
+        clickC: cc,
+        mines: null
+      });
+    }
   } else {
     G.board = placeholderBoard(G.config.style, d.rows, d.cols);
     G.boardPending = true;
@@ -8377,6 +9122,8 @@ function startMatch(seed, role, seedGuest){
   G.them = (role === 'solo') ? null : makePlayerState(theirStart);
   G.myStartR = myStart.r;
   G.myStartC = myStart.c;
+  G.theirStartR = theirStart.r;
+  G.theirStartC = theirStart.c;
   buildArena();
   buildControls();
   hideOverlay();
@@ -9031,73 +9778,78 @@ let lastTheirBoardRender = 0;
 function renderAll(now){
   if (!G.viewMe || !G.myBoard || !G.board || !G.me) return;
   growInfiniteBoardIfNeeded(now);
+
   const isDuel = G.config.mode === 'duel';
-  const showThem = isDuel && !!G.duelShowOpponent && !!G.viewThem;
+  const showThem = isDuel && !!G.duelShowOpponent;
   const pal = myPalette();
   const myColor = pal[G.myOwner].solid;
   const theirColor = pal[G.theirOwner].solid;
 
-  if (!showThem){
-    if (!G.cameraUnlocked && G.viewMe.metrics && G.state === 'playing'
-        && G.config.mode !== 'territory'){
-      const p = hexOrSqCenter(G.viewMe, G.myStartR, G.myStartC);
-      const scale = G.viewMe.baseScale * G.viewMe.zoom;
-      G.viewMe.panX = G.viewMe.pw / 2 - p.x * scale;
-      G.viewMe.panY = G.viewMe.ph / 2 - p.y * scale;
-      G.viewAnim = null;
-      G.viewMe.clampPan();
-    }
-    if (G.viewAnim && G.viewAnim.active){
-      const t = (now - G.viewAnim.startTime) / G.viewAnim.duration;
-      if (t >= 1){
-        G.viewMe.panX = G.viewAnim.targetPanX;
-        G.viewMe.panY = G.viewAnim.targetPanY;
-        G.viewAnim.active = false;
-      } else {
-        const e = easeOutCubic(clamp(t, 0, 1));
-        G.viewMe.panX = G.viewAnim.startPanX + (G.viewAnim.targetPanX - G.viewAnim.startPanX) * e;
-        G.viewMe.panY = G.viewAnim.startPanY + (G.viewAnim.targetPanY - G.viewAnim.startPanY) * e;
-      }
-    } else if (performance.now() < cursorActiveUntil && !isManualPanning() &&
-               isInfiniteSize(G.config.size) && G.viewMe.metrics && G.viewMe.metrics.infinite){
-      const p = hexOrSqCenter(G.viewMe, G.me.cursor.r, G.me.cursor.c);
-      const scale = G.viewMe.baseScale * G.viewMe.zoom;
-      const sx = p.x * scale + G.viewMe.panX;
-      const sy = p.y * scale + G.viewMe.panY;
-      const marginX = Math.min(60, G.viewMe.pw * 0.15);
-      const marginY = Math.min(60, G.viewMe.ph * 0.15);
-      let dx = 0, dy = 0;
-      if (sx < marginX) dx = marginX - sx;
-      else if (sx > G.viewMe.pw - marginX) dx = (G.viewMe.pw - marginX) - sx;
-      if (sy < marginY) dy = marginY - sy;
-      else if (sy > G.viewMe.ph - marginY) dy = (G.viewMe.ph - marginY) - sy;
-      if (dx || dy){
-        G.viewMe.panX += dx * 0.18;
-        G.viewMe.panY += dy * 0.18;
-        G.viewMe.clampPan();
-      }
-    }
-    const cursors = [{ r: G.me.cursor.r, c: G.me.cursor.c, color: myColor }];
-    if ((G.config.mode === 'coop' || G.config.mode === 'territory') && G.them){
-      cursors.push({ r: G.them.cursor.r, c: G.them.cursor.c, color: theirColor });
-    }
-    G.viewMe.render(now, { board: G.board, boardState: G.myBoard, cursors });
+  const useEnemy = showThem;
+  const board = useEnemy ? (G.theirBoardLayout || G.board) : G.board;
+  const boardState = useEnemy ? G.theirBoard : G.myBoard;
+
+  const cursors = useEnemy
+    ? (G.them ? [{ r: G.them.cursor.r, c: G.them.cursor.c, color: theirColor }] : [])
+    : (() => {
+        const arr = [{ r: G.me.cursor.r, c: G.me.cursor.c, color: myColor }];
+        if ((G.config.mode === 'coop' || G.config.mode === 'territory') && G.them){
+          arr.push({ r: G.them.cursor.r, c: G.them.cursor.c, color: theirColor });
+        }
+        return arr;
+      })();
+
+  if (!useEnemy && !G.cameraUnlocked && G.viewMe.metrics && G.state === 'playing' &&
+      isInfiniteSize(G.config.size)){
+    const p = hexOrSqCenter(G.viewMe, G.myStartR, G.myStartC);
+    const scale = G.viewMe.baseScale * G.viewMe.zoom;
+    G.viewMe.panX = G.viewMe.pw / 2 - p.x * scale;
+    G.viewMe.panY = G.viewMe.ph / 2 - p.y * scale;
+    G.viewAnim = null;
+    G.viewMe.clampPan();
   }
 
-  if (isDuel && G.viewThem && G.theirBoard && showThem){
-    /* OPPONENT_RENDER_MS is 0 so the opponent board renders on the same
-       120 FPS tick as the main board. */
-    lastTheirBoardRender = now;
-    const layout = G.theirBoardLayout || G.board;
-    const themCursors = G.them
-      ? [{ r: G.them.cursor.r, c: G.them.cursor.c, color: theirColor }]
-      : [];
-    G.viewThem.render(now, {
-      board: layout,
-      boardState: G.theirBoard,
-      cursors: themCursors
-    });
+  if (G.viewAnim && G.viewAnim.active){
+    const animView = G.viewAnim.view || G.viewMe;
+    const t = (now - G.viewAnim.startTime) / G.viewAnim.duration;
+
+    if (t >= 1){
+      animView.panX = G.viewAnim.targetPanX;
+      animView.panY = G.viewAnim.targetPanY;
+      G.viewAnim.active = false;
+    } else {
+      const e = easeOutCubic(clamp(t, 0, 1));
+      animView.panX = G.viewAnim.startPanX + (G.viewAnim.targetPanX - G.viewAnim.startPanX) * e;
+      animView.panY = G.viewAnim.startPanY + (G.viewAnim.targetPanY - G.viewAnim.startPanY) * e;
+    }
+  } else if (!useEnemy && performance.now() < cursorActiveUntil && !isManualPanning() &&
+             isInfiniteSize(G.config.size) && G.viewMe.metrics && G.viewMe.metrics.infinite){
+    const p = hexOrSqCenter(G.viewMe, G.me.cursor.r, G.me.cursor.c);
+    const scale = G.viewMe.baseScale * G.viewMe.zoom;
+    const sx = p.x * scale + G.viewMe.panX;
+    const sy = p.y * scale + G.viewMe.panY;
+    const marginX = Math.min(60, G.viewMe.pw * 0.15);
+    const marginY = Math.min(60, G.viewMe.ph * 0.15);
+    let dx = 0, dy = 0;
+    if (sx < marginX) dx = marginX - sx;
+    else if (sx > G.viewMe.pw - marginX) dx = (G.viewMe.pw - marginX) - sx;
+    if (sy < marginY) dy = marginY - sy;
+    else if (sy > G.viewMe.ph - marginY) dy = (G.viewMe.ph - marginY) - sy;
+    if (dx || dy){
+      G.viewMe.panX += dx * 0.18;
+      G.viewMe.panY += dy * 0.18;
+      G.viewMe.clampPan();
+    }
   }
+
+  const activeView = useEnemy && G.viewThem ? G.viewThem : G.viewMe;
+
+  activeView.render(now, {
+    board: board,
+    boardState: boardState,
+    cursors: cursors
+  });
+
   updateHUD(now);
   maybeCheckTerritoryUnlock(now);
 }
@@ -9120,11 +9872,46 @@ function updateHUD(now){
       setText(els.time, formatClock(elapsed));
       setText(els.hits, G.me.hits);
       if (els.theirHits) setText(els.theirHits, G.them ? G.them.hits : 0);
-      if (els.myBar)    els.myBar.style.width    = (mine / total * 100).toFixed(1) + '%';
+      if (els.mines){
+        if (bs.flagCount !== els._lastFlagCount){
+          els._lastFlagCount = bs.flagCount;
+          let correct = 0;
+          for (let rr = 0; rr < bs.rows; rr++)
+            for (let cc = 0; cc < bs.cols; cc++)
+              if (bs.flagged[rr][cc] && G.board.mines.has(rr + ',' + cc)) correct++;
+          els._correctFlags = correct;
+        }
+        setText(els.mines, Math.max(0, G.board.mineCount - (els._correctFlags || 0)));
+      }
+      if (els.myBar) els.myBar.style.width = (mine / total * 100).toFixed(1) + '%';
       if (els.theirBar) els.theirBar.style.width = (theirs / total * 100).toFixed(1) + '%';
+      if (els.stun){
+        const rem = G.me.stunUntil - now;
+        if (rem > 0 && G.state === 'playing'){
+          els.stun.classList.add('on');
+          setStunFace(els.stun, G.me.stunReason);
+          setText(els.stun.querySelector('[data-timer]'), (rem / 1000).toFixed(1));
+        } else {
+          els.stun.classList.remove('on');
+        }
+      }
+      if (els.oppStun){
+        const rem = G.them ? (G.them.stunUntil - now) : 0;
+        if (rem > 0 && G.state === 'playing'){
+          const ice = !!(G.them && G.them.stunReason === 'flag');
+          els.oppStun.classList.add('on');
+          els.oppStun.classList.toggle('ice', ice);
+          const oe = els.oppStun.querySelector('[data-oemoji]');
+          if (oe) setText(oe, ice ? '❄️' : '💥');
+          const os = els.oppStun.querySelector('[data-ostate]');
+          if (os) setText(os, ice ? 'FROZEN' : 'STUNNED');
+          setText(els.oppStun.querySelector('b'), (rem / 1000).toFixed(1));
+        } else {
+          els.oppStun.classList.remove('on');
+        }
+      }
     } else {
       if (!isInf){
-        /* In duel mode, opponent hits also consume mines — one less mine remains. */
         const oppHits = (mode === 'duel' && G.them) ? G.them.hits : 0;
         setText(els.mines, Math.max(0, G.board.mineCount - bs.flagCount - oppHits));
       }
@@ -9137,26 +9924,79 @@ function updateHUD(now){
         setText(els.revealMate, mateR);
         setText(els.revealTotal, youR + mateR);
       } else if (mode === 'duel'){
-        setText(els.revealed, myRevealedCount());
-        if (els.theirRevealed) setText(els.theirRevealed, theirRevealedCount());
+        const infDuel = isInf;
+
+        setText(
+          els.revealed,
+          infDuel ? (myRevealedCount() + '/1000') : myRevealedCount()
+        );
+
+        if (els.theirRevealed){
+          setText(
+            els.theirRevealed,
+            infDuel ? (theirRevealedCount() + '/1000') : theirRevealedCount()
+          );
+        }
+
         if (els.theirHits) setText(els.theirHits, G.them ? G.them.hits : 0);
       } else {
         setText(els.revealed, myRevealedCount());
       }
-      if (els.bar && !isInf){
-        els.bar.style.width = (bs.safeRevealed / Math.max(1, G.board.safeCount) * 100).toFixed(1) + '%';
-      }
-      if (mode === 'duel' && els.barThem){
-        const tl = G.theirBoardLayout || G.board;
-        const theirSafe = G.theirBoard ? G.theirBoard.safeRevealed : 0;
-        els.barThem.style.width = (theirSafe / Math.max(1, tl.safeCount) * 100).toFixed(1) + '%';
+      if (isInf && mode === 'duel'){
+        const target = INFINITE_DUEL_TARGET_TILES;
+
+        if (els.bar){
+          els.bar.style.width = clamp(
+            (bs.safeRevealed || 0) / target * 100,
+            0,
+            100
+          ).toFixed(1) + '%';
+        }
+
+        if (els.barThem){
+          const theirSafe = G.theirBoard ? (G.theirBoard.safeRevealed || 0) : 0;
+          els.barThem.style.width = clamp(
+            theirSafe / target * 100,
+            0,
+            100
+          ).toFixed(1) + '%';
+        }
+      } else {
+      if (isInf && mode === 'duel'){
+        const target = INFINITE_DUEL_TARGET_TILES;
+
+        if (els.bar){
+          els.bar.style.width = clamp(
+            (bs.safeRevealed || 0) / target * 100,
+            0,
+            100
+          ).toFixed(1) + '%';
+        }
+
+        if (els.barThem){
+          const theirSafe = G.theirBoard ? (G.theirBoard.safeRevealed || 0) : 0;
+          els.barThem.style.width = clamp(
+            theirSafe / target * 100,
+            0,
+            100
+          ).toFixed(1) + '%';
+        }
+      } else {
+        if (els.bar && !isInf){
+          els.bar.style.width = (bs.safeRevealed / Math.max(1, G.board.safeCount) * 100).toFixed(1) + '%';
+        }
+
+        if (mode === 'duel' && els.barThem){
+          const tl = G.theirBoardLayout || G.board;
+          const theirSafe = G.theirBoard ? G.theirBoard.safeRevealed : 0;
+          els.barThem.style.width = (theirSafe / Math.max(1, tl.safeCount) * 100).toFixed(1) + '%';
+        }
       }
     }
     if (els.stun){
           const rem = G.me.stunUntil - now;
           const isDuelGamemode = (mode === 'duel' && usesStunPenalty());
-          const isBombCooldown = isDuelGamemode && rem > 0 && G.state === 'playing' && G.me.stunReason === 'bomb';
-          const btn = G.panelMe ? G.panelMe.querySelector('[data-toggleopp]') : null;
+          const isBombCooldown = isDuelGamemode && rem > 0 && G.state === 'playing';
 
           if (rem > 0 && G.state === 'playing'){
             if (isDuelGamemode && G.duelShowOpponent){
@@ -9171,12 +10011,14 @@ function updateHUD(now){
           }
 
           if (isDuelGamemode && btn){
-            if (G.duelShowOpponent && isBombCooldown){
+            if (isBombCooldown){
               btn.disabled = true;
               btn.classList.add('cooldown-lock');
               setText(btn, '⏱ ' + (rem / 1000).toFixed(1) + 's');
             } else if (btn.classList.contains('cooldown-lock') || btn.disabled){
-              G.duelShowOpponent = false;
+              btn.disabled = false;
+              btn.classList.remove('cooldown-lock');
+              if (G.duelShowOpponent) G.duelShowOpponent = false;
               applyDuelView();
             }
           }
@@ -9196,6 +10038,7 @@ function updateHUD(now){
         els.oppStun.classList.remove('on');
       }
     }
+  }
   }
   if (G.panelThem && G.panelThem._els && G.theirBoard){
     const layout = (G.config.mode === 'duel') ? (G.theirBoardLayout || G.board) : G.board;
